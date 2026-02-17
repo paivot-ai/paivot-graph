@@ -9,7 +9,7 @@
       "name": "paivot-graph",
       "source": "./",
       "description": "Obsidian vault knowledge integration -- automatic consultation and capture",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }
