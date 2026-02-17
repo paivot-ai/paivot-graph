@@ -1,0 +1,15 @@
+{
+  "name": "paivot-graph",
+  "description": "Obsidian vault knowledge integration for Claude Code",
+  "owner": {
+    "name": "Paivot"
+  },
+  "plugins": [
+    {
+      "name": "paivot-graph",
+      "source": "./",
+      "description": "Obsidian vault knowledge integration -- automatic consultation and capture",
+      "version": "0.1.1"
+    }
+  ]
+}
