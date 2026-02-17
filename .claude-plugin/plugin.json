@@ -1,0 +1,17 @@
+{
+  "name": "paivot-graph",
+  "version": "0.1.0",
+  "description": "Obsidian vault knowledge integration -- automatic consultation and capture",
+  "author": {
+    "name": "Paivot"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "obsidian",
+    "knowledge",
+    "vault",
+    "memory",
+    "learning"
+  ],
+  "hooks": "./hooks/hooks.json"
+}
