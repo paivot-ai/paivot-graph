@@ -77,7 +77,7 @@ func allNoteTags(text string) []string {
 
 // cmdTags lists all tags in the vault. With showCounts, includes note counts.
 // Supports sort="count" to sort by frequency (default: alphabetical).
-func cmdTags(vaultDir string, params map[string]string, showCounts bool) error {
+func cmdTags(vaultDir string, params map[string]string, showCounts bool, format string) error {
 	tagCounts := make(map[string]int)
 	sortBy := params["sort"]
 
@@ -127,19 +127,21 @@ func cmdTags(vaultDir string, params map[string]string, showCounts bool) error {
 		sort.Strings(tags)
 	}
 
-	for _, tag := range tags {
-		if showCounts {
-			fmt.Printf("#%s\t%d\n", tag, tagCounts[tag])
-		} else {
-			fmt.Printf("#%s\n", tag)
+	if showCounts || format != "" {
+		formatTagCounts(tags, tagCounts, format)
+	} else {
+		tagNames := make([]string, len(tags))
+		for i, t := range tags {
+			tagNames[i] = "#" + t
 		}
+		formatList(tagNames, format)
 	}
 	return nil
 }
 
 // cmdTag finds notes that have a specific tag or any subtag of it.
 // Matches case-insensitively, consistent with Obsidian.
-func cmdTag(vaultDir string, params map[string]string) error {
+func cmdTag(vaultDir string, params map[string]string, format string) error {
 	tag := params["tag"]
 	if tag == "" {
 		return fmt.Errorf("tag requires tag=\"<tagname>\"")
@@ -181,8 +183,6 @@ func cmdTag(vaultDir string, params map[string]string) error {
 	}
 
 	sort.Strings(results)
-	for _, r := range results {
-		fmt.Println(r)
-	}
+	formatList(results, format)
 	return nil
 }

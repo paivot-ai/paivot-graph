@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -309,6 +310,116 @@ func TestFindBacklinks_CaseInsensitive(t *testing.T) {
 	}
 }
 
+func TestParseWikilinks_BlockReference(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want wikilink
+	}{
+		{
+			name: "simple block ref",
+			text: "See [[Note#^my-id]] here.",
+			want: wikilink{Title: "Note", BlockID: "my-id", Raw: "[[Note#^my-id]]"},
+		},
+		{
+			name: "block ref with display",
+			text: "See [[Note#^my-id|Custom]] here.",
+			want: wikilink{Title: "Note", BlockID: "my-id", Display: "Custom", Raw: "[[Note#^my-id|Custom]]"},
+		},
+		{
+			name: "embed block ref",
+			text: "![[Note#^my-id]]",
+			want: wikilink{Title: "Note", BlockID: "my-id", Embed: true, Raw: "![[Note#^my-id]]"},
+		},
+		{
+			name: "heading is not confused with block",
+			text: "[[Note#Section]]",
+			want: wikilink{Title: "Note", Heading: "Section", Raw: "[[Note#Section]]"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseWikilinks(tt.text)
+			if len(got) != 1 {
+				t.Fatalf("got %d links, want 1", len(got))
+			}
+			g := got[0]
+			if g.Title != tt.want.Title {
+				t.Errorf("Title = %q, want %q", g.Title, tt.want.Title)
+			}
+			if g.Heading != tt.want.Heading {
+				t.Errorf("Heading = %q, want %q", g.Heading, tt.want.Heading)
+			}
+			if g.BlockID != tt.want.BlockID {
+				t.Errorf("BlockID = %q, want %q", g.BlockID, tt.want.BlockID)
+			}
+			if g.Display != tt.want.Display {
+				t.Errorf("Display = %q, want %q", g.Display, tt.want.Display)
+			}
+			if g.Embed != tt.want.Embed {
+				t.Errorf("Embed = %v, want %v", g.Embed, tt.want.Embed)
+			}
+			if g.Raw != tt.want.Raw {
+				t.Errorf("Raw = %q, want %q", g.Raw, tt.want.Raw)
+			}
+		})
+	}
+}
+
+func TestReplaceWikilinks_BlockReference(t *testing.T) {
+	tests := []struct {
+		name     string
+		text     string
+		oldTitle string
+		newTitle string
+		want     string
+	}{
+		{
+			name:     "block ref preserved on rename",
+			text:     "See [[Old Note#^block-1]] here.",
+			oldTitle: "Old Note",
+			newTitle: "New Note",
+			want:     "See [[New Note#^block-1]] here.",
+		},
+		{
+			name:     "block ref with display preserved",
+			text:     "See [[Old Note#^block-1|alias]] here.",
+			oldTitle: "Old Note",
+			newTitle: "New Note",
+			want:     "See [[New Note#^block-1|alias]] here.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := replaceWikilinks(tt.text, tt.oldTitle, tt.newTitle)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFindBacklinks_BlockReference(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "referrer.md"),
+		[]byte("See [[Target Note#^block-1]] here.\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "Target Note")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("got %d results, want 1 (block ref as backlink)", len(results))
+	}
+}
+
 func TestParseWikilinks_Embeds(t *testing.T) {
 	text := "See ![[Embedded Note]] and ![[Other#Section|alias]] here."
 
@@ -323,6 +434,111 @@ func TestParseWikilinks_Embeds(t *testing.T) {
 	}
 	if !got[1].Embed || got[1].Title != "Other" || got[1].Heading != "Section" || got[1].Display != "alias" {
 		t.Errorf("link[1] = %+v, want embed with heading and display", got[1])
+	}
+}
+
+func TestUpdateVaultMdLinks_Rename(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// File referencing the moved note via markdown link
+	os.MkdirAll(filepath.Join(vaultDir, "docs"), 0755)
+	os.WriteFile(
+		filepath.Join(vaultDir, "docs", "index.md"),
+		[]byte("See [the note](../notes/Old.md) for details.\n"),
+		0644,
+	)
+
+	// The note being moved exists at its new location already
+	os.MkdirAll(filepath.Join(vaultDir, "archive"), 0755)
+	os.WriteFile(
+		filepath.Join(vaultDir, "archive", "New.md"),
+		[]byte("# Moved note\n"),
+		0644,
+	)
+
+	count, err := updateVaultMdLinks(vaultDir, "notes/Old.md", "archive/New.md")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("modified %d files, want 1", count)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(vaultDir, "docs", "index.md"))
+	got := string(data)
+	if !strings.Contains(got, "[the note](../archive/New.md)") {
+		t.Errorf("markdown link not updated: %q", got)
+	}
+}
+
+func TestUpdateVaultMdLinks_Move(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Referencing file at root
+	os.WriteFile(
+		filepath.Join(vaultDir, "referrer.md"),
+		[]byte("Link to [note](_inbox/Note.md) here.\n"),
+		0644,
+	)
+
+	count, err := updateVaultMdLinks(vaultDir, "_inbox/Note.md", "decisions/Note.md")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("modified %d files, want 1", count)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(vaultDir, "referrer.md"))
+	got := string(data)
+	if !strings.Contains(got, "[note](decisions/Note.md)") {
+		t.Errorf("markdown link not updated: %q", got)
+	}
+}
+
+func TestUpdateVaultMdLinks_WithFragment(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "referrer.md"),
+		[]byte("See [section](_inbox/Note.md#heading) for details.\n"),
+		0644,
+	)
+
+	count, err := updateVaultMdLinks(vaultDir, "_inbox/Note.md", "docs/Note.md")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("modified %d files, want 1", count)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(vaultDir, "referrer.md"))
+	got := string(data)
+	if !strings.Contains(got, "[section](docs/Note.md#heading)") {
+		t.Errorf("markdown link with fragment not updated: %q", got)
+	}
+}
+
+func TestUpdateVaultMdLinks_NoMatch(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "referrer.md"),
+		[]byte("Link to [other](other.md) here.\n"),
+		0644,
+	)
+
+	count, err := updateVaultMdLinks(vaultDir, "_inbox/Note.md", "docs/Note.md")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("modified %d files, want 0 (no matching links)", count)
 	}
 }
 

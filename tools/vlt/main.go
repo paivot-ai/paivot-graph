@@ -40,8 +40,10 @@ func main() {
 		fmt.Println("vlt " + version)
 		return
 	}
+	format := outputFormat(flags)
+
 	if cmd == "vaults" {
-		if err := cmdVaults(); err != nil {
+		if err := cmdVaults(format); err != nil {
 			die("%v", err)
 		}
 		return
@@ -69,7 +71,7 @@ func main() {
 	case "read":
 		err = cmdRead(vaultDir, params)
 	case "search":
-		err = cmdSearch(vaultDir, params)
+		err = cmdSearch(vaultDir, params, format)
 	case "create":
 		err = cmdCreate(vaultDir, params, flags["silent"])
 	case "append":
@@ -85,21 +87,21 @@ func main() {
 	case "property:remove":
 		err = cmdPropertyRemove(vaultDir, params)
 	case "properties":
-		err = cmdProperties(vaultDir, params)
+		err = cmdProperties(vaultDir, params, format)
 	case "backlinks":
-		err = cmdBacklinks(vaultDir, params)
+		err = cmdBacklinks(vaultDir, params, format)
 	case "links":
-		err = cmdLinks(vaultDir, params)
+		err = cmdLinks(vaultDir, params, format)
 	case "orphans":
-		err = cmdOrphans(vaultDir)
+		err = cmdOrphans(vaultDir, format)
 	case "unresolved":
-		err = cmdUnresolved(vaultDir)
+		err = cmdUnresolved(vaultDir, format)
 	case "tags":
-		err = cmdTags(vaultDir, params, flags["counts"])
+		err = cmdTags(vaultDir, params, flags["counts"], format)
 	case "tag":
-		err = cmdTag(vaultDir, params)
+		err = cmdTag(vaultDir, params, format)
 	case "files":
-		err = cmdFiles(vaultDir, params, flags["total"])
+		err = cmdFiles(vaultDir, params, flags["total"], format)
 	default:
 		die("unknown command: %s", cmd)
 	}

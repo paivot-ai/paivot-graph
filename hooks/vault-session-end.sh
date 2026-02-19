@@ -35,13 +35,20 @@ if [ -z "$project" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Append session log entry (silently skip if vault unavailable)
+# 3. Append session log entry (prefer vlt, fallback to direct file ops)
 # ---------------------------------------------------------------------------
+session_entry="$(printf '\n\n## Session log (%s)\n- Session ended normally\n' "$TODAY")"
+
+if command -v vlt >/dev/null 2>&1; then
+    vlt vault="Claude" append file="$project" content="$session_entry" 2>/dev/null || true
+    exit 0
+fi
+
 if [ ! -d "$VAULT_DIR" ]; then
     exit 0
 fi
 
-# Find the project note (check projects/ first, then root)
+# Fallback: direct file ops
 project_note=""
 if [ -f "$VAULT_DIR/projects/${project}.md" ]; then
     project_note="$VAULT_DIR/projects/${project}.md"
@@ -50,7 +57,7 @@ elif [ -f "$VAULT_DIR/${project}.md" ]; then
 fi
 
 if [ -n "$project_note" ]; then
-    printf '\n\n## Session log (%s)\n- Session ended normally\n' "$TODAY" >> "$project_note"
+    printf '%s' "$session_entry" >> "$project_note"
 fi
 
 exit 0

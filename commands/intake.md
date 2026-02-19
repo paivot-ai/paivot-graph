@@ -27,21 +27,26 @@ Before spawning the Sr. PM agent, YOU must gather context and pass it in the pro
 ### 2a. Fetch vault knowledge
 
 First, read the vault-backed operating mode:
-```
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md
+```bash
+vlt vault="Claude" read file="Session Operating Mode"
 ```
 
 Then check for any prior session logs for this project:
-```
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/projects/<project-name>.md
+```bash
+vlt vault="Claude" read file="<project-name>"
 ```
 
 Then search for all relevant knowledge:
-```
-Grep: pattern="<project-name>" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
+```bash
+vlt vault="Claude" search query="<project-name>"
 ```
 
-For each relevant note found, read it with the Read tool.
+For each relevant note found, read it:
+```bash
+vlt vault="Claude" read file="<note title>"
+```
+
+Fallback if vlt unavailable: use Read/Grep tools directly on the vault path.
 
 Collect all vault content (decisions, patterns, debug notes, prior session logs) relevant to this project.
 
@@ -92,15 +97,26 @@ After the Sr. PM agent returns, present the backlog to the user:
 
 ## Phase 5: Execute
 
+### Concurrency Limits (HARD RULE)
+
+Unless the user has explicitly said otherwise for this session:
+- **Maximum 2 developer agents** running simultaneously
+- **Maximum 1 PM-Acceptor agent** running simultaneously
+- **Total active subagents (all types) must not exceed 3**
+- Wait for an agent to finish before spawning another if at the limit
+- These limits exist to prevent context exhaustion. Violating them risks losing the entire session.
+
+### Execution Loop
+
 Work through the approved backlog top-to-bottom. For each story:
 
 1. **Read the full story** from beads (`bd show <id>`)
 2. **Load the mandatory skills** listed in the story's MANDATORY SKILLS TO REVIEW section. If the section says "None identified" but the project uses a platform with known skills (macOS, web, mobile), load the relevant platform skills anyway.
-3. **Consult the vault** for relevant prior knowledge (use Grep to search, Read to load notes)
+3. **Consult the vault** for relevant prior knowledge (use `vlt vault="Claude" search query="<term>"` or Grep to search, Read to load notes)
 4. **Show your approach** before writing code. If the fix touches interaction flow or visual design, describe before/after. Wait for user approval on non-trivial changes.
 5. **Implement the fix.** Build and verify.
 6. **Close the story** (`bd close <id>`)
-7. **Capture learnings** to the vault (decisions, patterns, debug insights)
+7. **Capture learnings** to the vault via `vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..."` (decisions, patterns, debug insights)
 8. Move to the next story.
 
 ## Constraints

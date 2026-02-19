@@ -5,20 +5,44 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
 
+// searchResult holds a single search match.
+type searchResult struct {
+	title   string
+	relPath string
+}
+
+// linkInfo holds outgoing link information.
+type linkInfo struct {
+	Target string `json:"target"`
+	Path   string `json:"path"`
+	Broken bool   `json:"broken"`
+}
+
+// unresolvedResult holds an unresolved link and its source.
+type unresolvedResult struct {
+	Target string `json:"target"`
+	Source string `json:"source"`
+}
+
 
 // cmdVaults lists all Obsidian vaults discovered from the config file.
-func cmdVaults() error {
+func cmdVaults(format string) error {
 	vaults, err := discoverVaults()
 	if err != nil {
 		return err
 	}
 
 	if len(vaults) == 0 {
-		fmt.Println("No vaults found.")
+		if format == "" {
+			fmt.Println("No vaults found.")
+		} else {
+			formatList(nil, format)
+		}
 		return nil
 	}
 
@@ -29,9 +53,7 @@ func cmdVaults() error {
 	}
 	sort.Strings(names)
 
-	for _, name := range names {
-		fmt.Printf("%s\t%s\n", name, vaults[name])
-	}
+	formatVaults(names, vaults, format)
 	return nil
 }
 
@@ -56,14 +78,31 @@ func cmdRead(vaultDir string, params map[string]string) error {
 	return nil
 }
 
+// searchFilterPattern matches [key:value] property filters in search queries.
+var searchFilterPattern = regexp.MustCompile(`\[(\w+):([^\]]+)\]`)
+
+// parseSearchQuery splits a query into text terms and property filters.
+// Filters are [key:value] pairs extracted from the query string.
+func parseSearchQuery(query string) (text string, filters map[string]string) {
+	filters = make(map[string]string)
+	matches := searchFilterPattern.FindAllStringSubmatch(query, -1)
+	for _, m := range matches {
+		filters[m[1]] = m[2]
+	}
+	text = strings.TrimSpace(searchFilterPattern.ReplaceAllString(query, ""))
+	return
+}
+
 // cmdSearch finds notes whose title or content matches the query (case-insensitive).
-func cmdSearch(vaultDir string, params map[string]string) error {
+// Supports property filters: query="term [key:value] [key2:value2]"
+func cmdSearch(vaultDir string, params map[string]string, format string) error {
 	query := params["query"]
 	if query == "" {
 		return fmt.Errorf("search requires query=\"<term>\"")
 	}
 
-	queryLower := strings.ToLower(query)
+	textQuery, filters := parseSearchQuery(query)
+	queryLower := strings.ToLower(textQuery)
 	pathFilter := params["path"] // optional: limit to a subdirectory
 
 	searchRoot := vaultDir
@@ -74,11 +113,14 @@ func cmdSearch(vaultDir string, params map[string]string) error {
 		}
 	}
 
-	type result struct {
-		title   string
-		relPath string
+	hasTextQuery := queryLower != ""
+	hasFilters := len(filters) > 0
+
+	if !hasTextQuery && !hasFilters {
+		return fmt.Errorf("search requires query=\"<term>\"")
 	}
-	var results []result
+
+	var results []searchResult
 
 	err := filepath.WalkDir(searchRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -97,19 +139,42 @@ func cmdSearch(vaultDir string, params map[string]string) error {
 		title := strings.TrimSuffix(name, ".md")
 		relPath, _ := filepath.Rel(vaultDir, path)
 
-		// Check title first (cheap)
-		if strings.Contains(strings.ToLower(title), queryLower) {
-			results = append(results, result{title, relPath})
+		// Read file content (needed for both text search and property filters)
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		content := string(data)
+
+		// Check property filters first if present
+		if hasFilters {
+			yaml, _, hasFM := extractFrontmatter(content)
+			if !hasFM {
+				return nil // no frontmatter, can't match property filters
+			}
+			for k, v := range filters {
+				got, ok := frontmatterGetValue(yaml, k)
+				if !ok || !strings.EqualFold(got, v) {
+					return nil // filter doesn't match
+				}
+			}
+		}
+
+		// If no text query, property filters already passed
+		if !hasTextQuery {
+			results = append(results, searchResult{title, relPath})
 			return nil
 		}
 
-		// Check content (needs I/O)
-		data, err := os.ReadFile(path)
-		if err != nil {
+		// Check title first (cheap)
+		if strings.Contains(strings.ToLower(title), queryLower) {
+			results = append(results, searchResult{title, relPath})
 			return nil
 		}
-		if strings.Contains(strings.ToLower(string(data)), queryLower) {
-			results = append(results, result{title, relPath})
+
+		// Check content
+		if strings.Contains(strings.ToLower(content), queryLower) {
+			results = append(results, searchResult{title, relPath})
 		}
 
 		return nil
@@ -123,9 +188,7 @@ func cmdSearch(vaultDir string, params map[string]string) error {
 		return nil // silent on no results, matching grep convention
 	}
 
-	for _, r := range results {
-		fmt.Printf("%s (%s)\n", r.title, r.relPath)
-	}
+	formatSearchResults(results, format)
 	return nil
 }
 
@@ -242,11 +305,20 @@ func cmdMove(vaultDir string, params map[string]string) error {
 		}
 	}
 
+	// Update markdown-style [text](path.md) links across the vault
+	mdCount, mdErr := updateVaultMdLinks(vaultDir, from, to)
+	if mdErr != nil {
+		return fmt.Errorf("moved file but failed updating markdown links: %w", mdErr)
+	}
+	if mdCount > 0 {
+		fmt.Printf("updated [...](%s) -> [...](%s) in %d file(s)\n", from, to, mdCount)
+	}
+
 	return nil
 }
 
 // cmdBacklinks finds all notes that contain wikilinks to the given title.
-func cmdBacklinks(vaultDir string, params map[string]string) error {
+func cmdBacklinks(vaultDir string, params map[string]string, format string) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("backlinks requires file=\"<title>\"")
@@ -257,15 +329,13 @@ func cmdBacklinks(vaultDir string, params map[string]string) error {
 		return err
 	}
 
-	for _, r := range results {
-		fmt.Println(r)
-	}
+	formatList(results, format)
 	return nil
 }
 
 // cmdLinks lists outgoing wikilinks from a note, reporting which resolve
 // and which are broken.
-func cmdLinks(vaultDir string, params map[string]string) error {
+func cmdLinks(vaultDir string, params map[string]string, format string) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("links requires file=\"<title>\"")
@@ -287,6 +357,7 @@ func cmdLinks(vaultDir string, params map[string]string) error {
 	}
 
 	seen := make(map[string]bool)
+	var results []linkInfo
 	for _, link := range links {
 		if seen[link.Title] {
 			continue
@@ -295,12 +366,14 @@ func cmdLinks(vaultDir string, params map[string]string) error {
 
 		resolved, resolveErr := resolveNote(vaultDir, link.Title)
 		if resolveErr != nil {
-			fmt.Printf("  BROKEN: [[%s]]\n", link.Title)
+			results = append(results, linkInfo{Target: link.Title, Path: "", Broken: true})
 		} else {
 			relPath, _ := filepath.Rel(vaultDir, resolved)
-			fmt.Printf("  [[%s]] -> %s\n", link.Title, relPath)
+			results = append(results, linkInfo{Target: link.Title, Path: relPath, Broken: false})
 		}
 	}
+
+	formatLinks(results, format)
 	return nil
 }
 
@@ -459,7 +532,7 @@ func cmdDelete(vaultDir string, params map[string]string, permanent bool) error 
 }
 
 // cmdProperties prints the YAML frontmatter block of a note (with --- delimiters).
-func cmdProperties(vaultDir string, params map[string]string) error {
+func cmdProperties(vaultDir string, params map[string]string, format string) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("properties requires file=\"<title>\"")
@@ -480,7 +553,7 @@ func cmdProperties(vaultDir string, params map[string]string) error {
 		return nil
 	}
 
-	fmt.Println(fm)
+	formatProperties(fm, format)
 	return nil
 }
 
@@ -519,7 +592,7 @@ func cmdPropertyRemove(vaultDir string, params map[string]string) error {
 }
 
 // cmdOrphans finds notes that have no incoming wikilinks or embeds.
-func cmdOrphans(vaultDir string) error {
+func cmdOrphans(vaultDir string, format string) error {
 	// Collect all note titles
 	type noteInfo struct {
 		relPath string
@@ -602,14 +675,12 @@ func cmdOrphans(vaultDir string) error {
 	}
 
 	sort.Strings(orphans)
-	for _, o := range orphans {
-		fmt.Println(o)
-	}
+	formatList(orphans, format)
 	return nil
 }
 
 // cmdUnresolved finds all broken wikilinks across the vault.
-func cmdUnresolved(vaultDir string) error {
+func cmdUnresolved(vaultDir string, format string) error {
 	// Build sets of resolvable titles and aliases
 	titles := make(map[string]bool)
 	aliases := make(map[string]bool)
@@ -643,11 +714,7 @@ func cmdUnresolved(vaultDir string) error {
 	})
 
 	// Find links that don't resolve
-	type unresolvedLink struct {
-		source string
-		target string
-	}
-	var results []unresolvedLink
+	var results []unresolvedResult
 	seenTargets := make(map[string]bool)
 
 	filepath.WalkDir(vaultDir, func(path string, d os.DirEntry, err error) error {
@@ -676,20 +743,18 @@ func cmdUnresolved(vaultDir string) error {
 			}
 			if !titles[lower] && !aliases[lower] {
 				seenTargets[lower] = true
-				results = append(results, unresolvedLink{relPath, link.Title})
+				results = append(results, unresolvedResult{Target: link.Title, Source: relPath})
 			}
 		}
 		return nil
 	})
 
-	for _, r := range results {
-		fmt.Printf("[[%s]] in %s\n", r.target, r.source)
-	}
+	formatUnresolved(results, format)
 	return nil
 }
 
 // cmdFiles lists files in the vault, optionally filtered by folder and extension.
-func cmdFiles(vaultDir string, params map[string]string, showTotal bool) error {
+func cmdFiles(vaultDir string, params map[string]string, showTotal bool, format string) error {
 	folder := params["folder"]
 	ext := params["ext"]
 	if ext == "" {
@@ -730,9 +795,7 @@ func cmdFiles(vaultDir string, params map[string]string, showTotal bool) error {
 		return nil
 	}
 
-	for _, f := range files {
-		fmt.Println(f)
-	}
+	formatList(files, format)
 	return nil
 }
 

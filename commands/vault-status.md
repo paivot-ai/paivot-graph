@@ -11,39 +11,55 @@ Show the current state and health of the Obsidian knowledge vault.
 
 ## Steps
 
-1. **Check if vault directory exists**:
+1. **Check vault accessibility** (prefer vlt):
+   ```bash
+   vlt vault="Claude" files total
+   ```
+   If vlt is unavailable, check the directory directly:
    ```bash
    test -d "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
    ```
-   If not, report and exit.
+   If neither works, report and exit.
 
 2. **Gather vault statistics** by counting files per folder:
 
-   Use Glob to count notes in each folder:
-   ```
-   Glob: pattern="methodology/*.md" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
-   Glob: pattern="conventions/*.md" path="..."
-   Glob: pattern="decisions/*.md" path="..."
-   Glob: pattern="patterns/*.md" path="..."
-   Glob: pattern="debug/*.md" path="..."
-   Glob: pattern="concepts/*.md" path="..."
-   Glob: pattern="projects/*.md" path="..."
-   Glob: pattern="people/*.md" path="..."
-   Glob: pattern="_inbox/*.md" path="..."
+   Preferred (via Bash -- fast counts):
+   ```bash
+   vlt vault="Claude" files folder="methodology" total
+   vlt vault="Claude" files folder="conventions" total
+   vlt vault="Claude" files folder="decisions" total
+   vlt vault="Claude" files folder="patterns" total
+   vlt vault="Claude" files folder="debug" total
+   vlt vault="Claude" files folder="concepts" total
+   vlt vault="Claude" files folder="projects" total
+   vlt vault="Claude" files folder="people" total
+   vlt vault="Claude" files folder="_inbox" total
    ```
 
-   List recently modified notes (Glob results are sorted by modification time).
+   Fallback: use Glob to count notes in each folder.
+
+   Also check vault health:
+   ```bash
+   vlt vault="Claude" orphans
+   vlt vault="Claude" unresolved
+   vlt vault="Claude" tags counts
+   ```
 
 3. **Search for potential issues**:
 
    Notes still in inbox (need triage):
-   ```
-   Glob: pattern="_inbox/*.md" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
+   ```bash
+   vlt vault="Claude" files folder="_inbox"
    ```
 
-   Notes with missing frontmatter:
+   Orphaned notes (no incoming links):
+   ```bash
+   vlt vault="Claude" orphans
    ```
-   Grep: pattern="^type:" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude" output_mode="count"
+
+   Broken wikilinks:
+   ```bash
+   vlt vault="Claude" unresolved
    ```
 
 4. **Present the report**:

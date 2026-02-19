@@ -6,7 +6,7 @@ version: 0.3.0
 
 # Vault Knowledge (Vault-Backed)
 
-The Obsidian vault ("Claude") lives on disk. Interact with it directly using Read, Write, Grep, and Glob tools -- this is much faster than the obsidian CLI.
+The Obsidian vault ("Claude") lives on disk. Interact with it using `vlt` (the fast vault CLI) via Bash, or directly using Read, Write, Grep, and Glob tools. Prefer `vlt` for vault-aware operations (search, create, move with wikilink repair, backlinks, tags). Use Read/Write/Grep/Glob when you need Claude Code tool integration or vlt is unavailable.
 
 **Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
 
@@ -48,46 +48,59 @@ _templates/   # Note templates
 
 ### How to Read
 
-Use the Read tool directly on the vault file:
+Preferred (via Bash):
+
+    vlt vault="Claude" read file="<Note Title>"
+
+Fallback (Read tool):
 
     Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/<folder>/<Note Title>.md
 
 ### How to Search
 
-Use the Grep tool on the vault directory:
+Preferred (via Bash -- vault-aware, searches titles and content):
+
+    vlt vault="Claude" search query="<term>"
+
+Fallback (Grep tool):
 
     Grep: pattern="<term>" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
 
-To find notes by filename:
-
-    Glob: pattern="**/<partial-name>*.md" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
-
 ### How to Create Notes
 
-Use the Write tool to create a new file:
+Preferred (via Bash):
+
+    vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="---\ntype: decision\nproject: <project>\nstatus: active\ncreated: <YYYY-MM-DD>\n---\n\n# <Title>\n\n<content>" silent
+
+Fallback (Write tool):
 
     Write: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Title>.md
 
-    ---
-    type: decision | pattern | debug
-    project: <project>
-    status: active
-    created: <YYYY-MM-DD>
-    ---
-
-    # <Title>
-
-    <content>
+Every note needs frontmatter: type, project, status, created.
 
 ### How to Append to Notes
 
-Use the Edit tool to add content at the end of an existing note, or Read the note and Write it back with additions.
+Preferred (via Bash):
+
+    vlt vault="Claude" append file="<Note Title>" content="<text to append>"
+
+Fallback: Read the note with Read tool, then Write it back with additions, or use Edit tool.
 
 ### How to Move/Triage Notes
 
-Use Bash `mv` to move notes from `_inbox/` to their proper folder:
+Preferred (via Bash -- updates all wikilinks across the vault):
+
+    vlt vault="Claude" move path="_inbox/<Note>.md" to="decisions/<Note>.md"
+
+Fallback (Bash mv -- wikilinks will NOT be updated):
 
     mv "<vault-path>/_inbox/<Note>.md" "<vault-path>/decisions/<Note>.md"
+
+### How to Find Related Notes
+
+    vlt vault="Claude" backlinks file="<Note Title>"
+    vlt vault="Claude" links file="<Note Title>"
+    vlt vault="Claude" tags counts
 
 ### Frontmatter Requirements
 

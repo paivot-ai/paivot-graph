@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -351,6 +352,47 @@ func TestCmdMove_FolderOnlyNoLinkUpdate(t *testing.T) {
 	}
 }
 
+func TestCmdMove_UpdatesMdLinks(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.MkdirAll(filepath.Join(vaultDir, "_inbox"), 0755)
+
+	// The note being moved
+	os.WriteFile(
+		filepath.Join(vaultDir, "_inbox", "Note.md"),
+		[]byte("# Note\n"),
+		0644,
+	)
+
+	// Another note referencing it via markdown link
+	os.WriteFile(
+		filepath.Join(vaultDir, "Referrer.md"),
+		[]byte("See [note](_inbox/Note.md) and [heading](_inbox/Note.md#section) here.\n"),
+		0644,
+	)
+
+	params := map[string]string{
+		"path": "_inbox/Note.md",
+		"to":   "decisions/Note.md",
+	}
+	if err := cmdMove(vaultDir, params); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(vaultDir, "Referrer.md"))
+	got := string(data)
+
+	if strings.Contains(got, "_inbox/Note.md") {
+		t.Error("old markdown link path still present")
+	}
+	if !strings.Contains(got, "decisions/Note.md") {
+		t.Error("new markdown link path not found")
+	}
+	if !strings.Contains(got, "decisions/Note.md#section") {
+		t.Error("markdown link fragment not preserved")
+	}
+}
+
 func TestCmdBacklinks(t *testing.T) {
 	vaultDir := t.TempDir()
 
@@ -369,7 +411,7 @@ func TestCmdBacklinks(t *testing.T) {
 
 	// Just verify no error (output goes to stdout)
 	params := map[string]string{"file": "Session Operating Mode"}
-	if err := cmdBacklinks(vaultDir, params); err != nil {
+	if err := cmdBacklinks(vaultDir, params, ""); err != nil {
 		t.Fatalf("backlinks: %v", err)
 	}
 }
@@ -395,7 +437,7 @@ func TestCmdLinks(t *testing.T) {
 
 	// Just verify no error (output goes to stdout)
 	params := map[string]string{"file": "Developer Agent"}
-	if err := cmdLinks(vaultDir, params); err != nil {
+	if err := cmdLinks(vaultDir, params, ""); err != nil {
 		t.Fatalf("links: %v", err)
 	}
 }
@@ -465,7 +507,7 @@ func TestCmdSearch(t *testing.T) {
 
 	params := map[string]string{"query": "paivot"}
 	// cmdSearch writes to stdout; just verify no error
-	if err := cmdSearch(vaultDir, params); err != nil {
+	if err := cmdSearch(vaultDir, params, ""); err != nil {
 		t.Fatalf("search: %v", err)
 	}
 }
@@ -568,7 +610,7 @@ func TestCmdProperties(t *testing.T) {
 
 	// Just verify no error (output goes to stdout)
 	params := map[string]string{"file": "Props"}
-	if err := cmdProperties(vaultDir, params); err != nil {
+	if err := cmdProperties(vaultDir, params, ""); err != nil {
 		t.Fatalf("properties: %v", err)
 	}
 }
@@ -616,7 +658,7 @@ func TestCmdOrphans(t *testing.T) {
 	)
 
 	// Just verify no error
-	if err := cmdOrphans(vaultDir); err != nil {
+	if err := cmdOrphans(vaultDir, ""); err != nil {
 		t.Fatalf("orphans: %v", err)
 	}
 }
@@ -643,7 +685,7 @@ func TestCmdOrphans_AliasAware(t *testing.T) {
 
 	// Just verify no error (A is orphaned since nothing links to it,
 	// B is NOT orphaned due to alias, C is orphaned)
-	if err := cmdOrphans(vaultDir); err != nil {
+	if err := cmdOrphans(vaultDir, ""); err != nil {
 		t.Fatalf("orphans: %v", err)
 	}
 }
@@ -663,7 +705,7 @@ func TestCmdUnresolved(t *testing.T) {
 	)
 
 	// Just verify no error
-	if err := cmdUnresolved(vaultDir); err != nil {
+	if err := cmdUnresolved(vaultDir, ""); err != nil {
 		t.Fatalf("unresolved: %v", err)
 	}
 }
@@ -679,18 +721,18 @@ func TestCmdFiles(t *testing.T) {
 
 	// List all
 	params := map[string]string{}
-	if err := cmdFiles(vaultDir, params, false); err != nil {
+	if err := cmdFiles(vaultDir, params, false, ""); err != nil {
 		t.Fatalf("files: %v", err)
 	}
 
 	// Total count
-	if err := cmdFiles(vaultDir, params, true); err != nil {
+	if err := cmdFiles(vaultDir, params, true, ""); err != nil {
 		t.Fatalf("files total: %v", err)
 	}
 
 	// Filter by folder
 	params = map[string]string{"folder": "sub"}
-	if err := cmdFiles(vaultDir, params, false); err != nil {
+	if err := cmdFiles(vaultDir, params, false, ""); err != nil {
 		t.Fatalf("files folder: %v", err)
 	}
 }

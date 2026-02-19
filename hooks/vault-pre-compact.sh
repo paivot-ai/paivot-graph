@@ -8,15 +8,19 @@
 set -euo pipefail
 
 VAULT_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
-TODAY="$(date +%Y-%m-%d)"
 
 # ---------------------------------------------------------------------------
-# Try to read the checklist from the vault
+# Try to read the checklist from the vault (prefer vlt, fallback to cat)
 # ---------------------------------------------------------------------------
 checklist=""
-checklist_file="$VAULT_DIR/conventions/Pre-Compact Checklist.md"
-if [ -f "$checklist_file" ]; then
-    checklist="$(cat "$checklist_file")"
+if command -v vlt >/dev/null 2>&1; then
+    checklist="$(vlt vault="Claude" read file="Pre-Compact Checklist" 2>/dev/null || echo "")"
+fi
+if [ -z "$checklist" ]; then
+    checklist_file="$VAULT_DIR/conventions/Pre-Compact Checklist.md"
+    if [ -f "$checklist_file" ]; then
+        checklist="$(cat "$checklist_file")"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -28,24 +32,24 @@ if [ -n "$checklist" ]; then
     echo "$checklist"
 else
     # Static fallback
-    cat <<EOF
+    cat <<'EOF'
 [VAULT] Context compaction imminent -- capture knowledge now.
 
 Before this context is compacted, save anything worth remembering:
 
 1. DECISIONS made this session (with rationale and alternatives considered):
-   Use Write tool to create: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Decision Title>.md
+   vlt vault="Claude" create name="<Decision Title>" path="_inbox/<Decision Title>.md" content="..." silent
 
 2. PATTERNS discovered (reusable solutions):
-   Use Write tool to create: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Pattern Name>.md
+   vlt vault="Claude" create name="<Pattern Name>" path="_inbox/<Pattern Name>.md" content="..." silent
 
 3. DEBUG INSIGHTS (problems solved):
-   Use Write tool to create: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Bug Title>.md
+   vlt vault="Claude" create name="<Bug Title>" path="_inbox/<Bug Title>.md" content="..." silent
 
 4. PROJECT UPDATES (progress, state changes):
-   Use Edit tool to append to: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/projects/<Project>.md
+   vlt vault="Claude" append file="<Project>" content="## Session update (<date>)\n- <what was accomplished>"
 
-All notes must have frontmatter: type, project, status, created ($TODAY).
+All notes must have frontmatter: type, project, status, created.
 
 Do this NOW -- after compaction, the details will be lost.
 EOF

@@ -161,19 +161,33 @@ created: $TODAY
 
 # Session Operating Mode
 
+CONCURRENCY LIMITS (HARD RULE -- unless user explicitly overrides):
+  - Maximum 2 developer agents running simultaneously
+  - Maximum 1 PM-Acceptor agent running simultaneously
+  - Total active subagents (all types) must not exceed 3
+  These limits prevent context exhaustion. Violating them risks losing the entire session.
+
 BEFORE STARTING: Read the vault notes listed above. Do not rediscover what is already known.
-  Use the Read tool on the vault file path.
+  vlt vault="Claude" read file="<note>"
 
 WHILE WORKING: Capture knowledge as it emerges -- do not wait for the end.
   - After making a decision (chose X over Y): create a decision note
   - After solving a non-obvious bug: create a debug note
   - After discovering a reusable pattern: create a pattern note
-  Use the Write tool to create files in the vault _inbox/ folder.
+  Use: vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
 
 BEFORE ENDING: Update the project index note with what was accomplished.
-  Use Edit to append to the project note in the vault projects/ folder.
+  vlt vault="Claude" append file="<Project>" content="## Session update (<date>)\n- <what was done>"
 
 This is not optional. Knowledge that is not captured is knowledge that will be rediscovered at cost.
+
+## Related
+
+- [[paivot-graph]] -- Plugin that reads this note at session start
+- [[Vault as runtime not reference]] -- Why this content lives in the vault
+- [[Vault Knowledge Skill]] -- How to interact with the vault
+- [[Pre-Compact Checklist]] -- Companion checklist before compaction
+- [[Stop Capture Checklist]] -- Companion checklist before stopping
 SOM_EOF
 
 cat <<PCL_EOF | write_note "conventions/Pre-Compact Checklist.md"
@@ -192,33 +206,31 @@ Context compaction is imminent. Save anything worth remembering NOW.
 
 ## 1. DECISIONS made this session
 
-Record any decisions with rationale and alternatives considered.
-Use Write tool to create a note in the vault _inbox/ folder with frontmatter:
-  type: decision, project: <project>, status: active, confidence: high, created: <YYYY-MM-DD>
+Record any decisions with rationale and alternatives considered:
+  vlt vault="Claude" create name="<Decision Title>" path="_inbox/<Decision Title>.md" content="..." silent
 
+Include frontmatter: type: decision, project: <project>, status: active, confidence: high, created: <YYYY-MM-DD>
 Include sections: Decision, Rationale, Alternatives considered.
 
 ## 2. PATTERNS discovered
 
-Record reusable solutions.
-Use Write tool to create a note in the vault _inbox/ folder with frontmatter:
-  type: pattern, project: <project>, stack: [], status: active, created: <YYYY-MM-DD>
+Record reusable solutions:
+  vlt vault="Claude" create name="<Pattern Name>" path="_inbox/<Pattern Name>.md" content="..." silent
 
+Include frontmatter: type: pattern, project: <project>, stack: [], status: active, created: <YYYY-MM-DD>
 Include sections: When to use, Implementation.
 
 ## 3. DEBUG INSIGHTS
 
-Record problems solved.
-Use Write tool to create a note in the vault _inbox/ folder with frontmatter:
-  type: debug, project: <project>, status: active, created: <YYYY-MM-DD>
+Record problems solved:
+  vlt vault="Claude" create name="<Bug Title>" path="_inbox/<Bug Title>.md" content="..." silent
 
+Include frontmatter: type: debug, project: <project>, status: active, created: <YYYY-MM-DD>
 Include sections: Symptoms, Root cause, Fix.
 
 ## 4. PROJECT UPDATES
 
-Use Edit tool to append to the project note in the vault projects/ folder:
-  ## Session update (<YYYY-MM-DD>)
-  <what was accomplished>
+  vlt vault="Claude" append file="<Project>" content="## Session update (<YYYY-MM-DD>)\n- <what was accomplished>"
 
 Do this NOW -- after compaction, the details will be lost.
 PCL_EOF
@@ -244,7 +256,7 @@ Before ending this session, confirm you have considered each of these:
 
 If none of the above apply (e.g., quick fix, trivial session), that is fine -- but confirm it was considered, not forgotten.
 
-Use Write tool to create notes in the vault _inbox/ folder with proper frontmatter.
+Use vlt to create notes: vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
 SCL_EOF
 
 # ---------------------------------------------------------------------------

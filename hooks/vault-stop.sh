@@ -12,12 +12,17 @@ set -euo pipefail
 VAULT_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
 
 # ---------------------------------------------------------------------------
-# Try to read the checklist from the vault
+# Try to read the checklist from the vault (prefer vlt, fallback to cat)
 # ---------------------------------------------------------------------------
 checklist=""
-checklist_file="$VAULT_DIR/conventions/Stop Capture Checklist.md"
-if [ -f "$checklist_file" ]; then
-    checklist="$(cat "$checklist_file")"
+if command -v vlt >/dev/null 2>&1; then
+    checklist="$(vlt vault="Claude" read file="Stop Capture Checklist" 2>/dev/null || echo "")"
+fi
+if [ -z "$checklist" ]; then
+    checklist_file="$VAULT_DIR/conventions/Stop Capture Checklist.md"
+    if [ -f "$checklist_file" ]; then
+        checklist="$(cat "$checklist_file")"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -40,7 +45,7 @@ Before ending this session, confirm you have considered each of these:
 
 If none apply (trivial session), that is fine -- but confirm it was considered.
 
-Use Write tool to create notes in: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/
+Use: vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
 FALLBACK
 fi
 

@@ -45,10 +45,12 @@ if [ ! -d "$VAULT_DIR" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Search vault for project context (grep for project name in .md files)
+# 4. Search vault for project context (prefer vlt > rg > grep)
 # ---------------------------------------------------------------------------
 search_results=""
-if command -v rg >/dev/null 2>&1; then
+if command -v vlt >/dev/null 2>&1; then
+    search_results="$(vlt vault="Claude" search query="$project" 2>/dev/null || echo "")"
+elif command -v rg >/dev/null 2>&1; then
     search_results="$(rg -l --type md "$project" "$VAULT_DIR" 2>/dev/null \
         | sed "s|$VAULT_DIR/||" \
         || echo "")"
@@ -79,10 +81,15 @@ CONTEXT
 # ---------------------------------------------------------------------------
 # 6. Read operating mode from vault (or use static fallback)
 # ---------------------------------------------------------------------------
-mode_file="$VAULT_DIR/conventions/Session Operating Mode.md"
 operating_mode=""
-if [ -f "$mode_file" ]; then
-    operating_mode="$(cat "$mode_file")"
+if command -v vlt >/dev/null 2>&1; then
+    operating_mode="$(vlt vault="Claude" read file="Session Operating Mode" 2>/dev/null || echo "")"
+fi
+if [ -z "$operating_mode" ]; then
+    mode_file="$VAULT_DIR/conventions/Session Operating Mode.md"
+    if [ -f "$mode_file" ]; then
+        operating_mode="$(cat "$mode_file")"
+    fi
 fi
 
 if [ -n "$operating_mode" ]; then
@@ -94,17 +101,23 @@ else
     cat <<'MODE'
 [VAULT] Operating mode for this session:
 
+CONCURRENCY LIMITS (HARD RULE -- unless user explicitly overrides):
+  - Maximum 2 developer agents running simultaneously
+  - Maximum 1 PM-Acceptor agent running simultaneously
+  - Total active subagents (all types) must not exceed 3
+  These limits prevent context exhaustion. Violating them risks losing the entire session.
+
 BEFORE STARTING: Read the vault notes listed above. Do not rediscover what is already known.
-  Use the Read tool on the vault file path shown above.
+  vlt vault="Claude" read file="<note>"
 
 WHILE WORKING: Capture knowledge as it emerges -- do not wait for the end.
   - After making a decision (chose X over Y): create a decision note
   - After solving a non-obvious bug: create a debug note
   - After discovering a reusable pattern: create a pattern note
-  Use the Write tool to create files in: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/
+  Use: vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
 
 BEFORE ENDING: Update the project index note with what was accomplished.
-  Append to the project note in: ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/projects/
+  vlt vault="Claude" append file="<Project>" content="## Session update (<date>)\n- <what was done>"
 
 This is not optional. Knowledge that is not captured is knowledge that will be rediscovered at cost.
 MODE

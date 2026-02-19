@@ -140,7 +140,7 @@ func TestCmdTags(t *testing.T) {
 
 	// Just verify no error
 	params := map[string]string{}
-	if err := cmdTags(vaultDir, params, true); err != nil {
+	if err := cmdTags(vaultDir, params, true, ""); err != nil {
 		t.Fatalf("tags: %v", err)
 	}
 }
@@ -163,13 +163,13 @@ func TestCmdTag(t *testing.T) {
 
 	// Exact match
 	params := map[string]string{"tag": "project/backend"}
-	if err := cmdTag(vaultDir, params); err != nil {
+	if err := cmdTag(vaultDir, params, ""); err != nil {
 		t.Fatalf("tag exact: %v", err)
 	}
 
 	// Hierarchical match: #project should find #project/backend
 	params = map[string]string{"tag": "project"}
-	if err := cmdTag(vaultDir, params); err != nil {
+	if err := cmdTag(vaultDir, params, ""); err != nil {
 		t.Fatalf("tag hierarchical: %v", err)
 	}
 }
@@ -185,7 +185,7 @@ func TestCmdTag_StripHash(t *testing.T) {
 
 	// User passes #meeting with hash prefix -- should still work
 	params := map[string]string{"tag": "#meeting"}
-	if err := cmdTag(vaultDir, params); err != nil {
+	if err := cmdTag(vaultDir, params, ""); err != nil {
 		t.Fatalf("tag with hash: %v", err)
 	}
 }

@@ -23,14 +23,15 @@ Perform a deliberate knowledge capture pass for the current session. This comman
 
 4. **Check existing vault knowledge** for this project:
 
-   Use Grep to search the vault:
-   ```
-   Grep: pattern="<project-name>" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
+   Search the vault (prefer vlt):
+   ```bash
+   vlt vault="Claude" search query="<project-name>"
    ```
    Read the project note if it exists to avoid duplicating knowledge:
+   ```bash
+   vlt vault="Claude" read file="<project-name>"
    ```
-   Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/projects/<project-name>.md
-   ```
+   Fallback if vlt unavailable: use Grep/Read tools directly on vault path.
 
 5. **For each piece of capturable knowledge**, create a vault note:
 
@@ -39,13 +40,9 @@ Perform a deliberate knowledge capture pass for the current session. This comman
    - Add `[[wikilinks]]` to related notes
    - Keep notes atomic -- one idea per note
 
-   Use Write tool to create:
-   ```
-   /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Note Title>.md
-   ```
-   With content:
-   ```markdown
-   ---
+   Preferred (via Bash):
+   ```bash
+   vlt vault="Claude" create name="<Note Title>" path="_inbox/<Note Title>.md" content="---
    type: <decision|pattern|debug>
    project: <project>
    status: active
@@ -54,29 +51,32 @@ Perform a deliberate knowledge capture pass for the current session. This comman
 
    # <Note Title>
 
-   <content>
+   <content>" silent
    ```
+
+   Fallback: use Write tool to create the file directly at the vault path.
 
 6. **Update the project index note** if it exists:
 
-   Use Edit tool to append to:
-   ```
-   /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/projects/<Project>.md
-   ```
-   Append:
-   ```markdown
+   Preferred (via Bash):
+   ```bash
+   vlt vault="Claude" append file="<Project>" content="
 
    ## Session update (<date>)
    - <what was accomplished>
-   - New notes: [[<Note 1>]], [[<Note 2>]]
+   - New notes: [[<Note 1>]], [[<Note 2>]]"
    ```
 
-   If no project note exists, create one in `projects/` using Write.
-
-7. **Triage inbox notes** to their proper folders:
+   If no project note exists, create one:
    ```bash
-   mv "/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Note>.md" \
-      "/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/decisions/<Note>.md"
+   vlt vault="Claude" create name="<Project>" path="projects/<Project>.md" content="..." silent
+   ```
+
+   Fallback: use Edit tool to append, or Write tool to create.
+
+7. **Triage inbox notes** to their proper folders (vlt updates wikilinks automatically):
+   ```bash
+   vlt vault="Claude" move path="_inbox/<Note>.md" to="decisions/<Note>.md"
    ```
 
 8. **Report what was captured** in a summary:

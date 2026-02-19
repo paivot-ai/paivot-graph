@@ -23,15 +23,17 @@ Check which vault-backed content could be improved:
 
 ### Agent prompts (methodology/)
 
-Use Glob to find agent notes:
-```
-Glob: pattern="methodology/*Agent*.md" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
+Find agent notes (prefer vlt):
+```bash
+vlt vault="Claude" files folder="methodology"
 ```
 
 Read any that need review:
+```bash
+vlt vault="Claude" read file="<Agent Name>"
 ```
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/<Agent Name>.md
-```
+
+Fallback: use Glob/Read tools directly on vault path.
 
 Look for:
 - Instructions that were unclear or missing (agent got confused or went off-track)
@@ -41,8 +43,8 @@ Look for:
 
 ### Skill content (conventions/)
 
-```
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Vault Knowledge Skill.md
+```bash
+vlt vault="Claude" read file="Vault Knowledge Skill"
 ```
 
 Look for:
@@ -52,10 +54,10 @@ Look for:
 
 ### Behavioral notes (conventions/)
 
-```
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Pre-Compact Checklist.md
-Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Stop Capture Checklist.md
+```bash
+vlt vault="Claude" read file="Session Operating Mode"
+vlt vault="Claude" read file="Pre-Compact Checklist"
+vlt vault="Claude" read file="Stop Capture Checklist"
 ```
 
 Look for:
