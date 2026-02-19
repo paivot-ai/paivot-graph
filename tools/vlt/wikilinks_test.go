@@ -308,3 +308,49 @@ func TestFindBacklinks_CaseInsensitive(t *testing.T) {
 		t.Errorf("got %d results, want 1 (case-insensitive match)", len(results))
 	}
 }
+
+func TestParseWikilinks_Embeds(t *testing.T) {
+	text := "See ![[Embedded Note]] and ![[Other#Section|alias]] here."
+
+	got := parseWikilinks(text)
+
+	if len(got) != 2 {
+		t.Fatalf("got %d links, want 2", len(got))
+	}
+
+	if !got[0].Embed || got[0].Title != "Embedded Note" {
+		t.Errorf("link[0] = embed:%v title:%q, want embed:true title:\"Embedded Note\"", got[0].Embed, got[0].Title)
+	}
+	if !got[1].Embed || got[1].Title != "Other" || got[1].Heading != "Section" || got[1].Display != "alias" {
+		t.Errorf("link[1] = %+v, want embed with heading and display", got[1])
+	}
+}
+
+func TestReplaceWikilinks_Embeds(t *testing.T) {
+	text := "See ![[Old Note]] and [[Old Note#Heading]] here."
+	got := replaceWikilinks(text, "Old Note", "New Note")
+	want := "See ![[New Note]] and [[New Note#Heading]] here."
+
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestFindBacklinks_IncludesEmbeds(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "embedder.md"),
+		[]byte("Content: ![[Target Note]]\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "Target Note")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("got %d results, want 1 (embed as backlink)", len(results))
+	}
+}

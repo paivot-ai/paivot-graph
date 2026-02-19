@@ -145,6 +145,47 @@ func TestResolveNote(t *testing.T) {
 	}
 }
 
+func TestResolveNote_Alias(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.MkdirAll(filepath.Join(vaultDir, "methodology"), 0755)
+	os.WriteFile(
+		filepath.Join(vaultDir, "methodology", "Sr PM Agent.md"),
+		[]byte("---\naliases: [PM, Senior PM]\n---\n\n# Sr PM Agent\n"),
+		0644,
+	)
+
+	// Resolve by alias
+	path, err := resolveNote(vaultDir, "PM")
+	if err != nil {
+		t.Fatalf("alias resolution failed: %v", err)
+	}
+	relPath, _ := filepath.Rel(vaultDir, path)
+	if relPath != "methodology/Sr PM Agent.md" {
+		t.Errorf("got %q, want methodology/Sr PM Agent.md", relPath)
+	}
+
+	// Resolve by alias (case insensitive)
+	path, err = resolveNote(vaultDir, "senior pm")
+	if err != nil {
+		t.Fatalf("case-insensitive alias failed: %v", err)
+	}
+	relPath, _ = filepath.Rel(vaultDir, path)
+	if relPath != "methodology/Sr PM Agent.md" {
+		t.Errorf("got %q, want methodology/Sr PM Agent.md", relPath)
+	}
+
+	// Filename match still takes priority
+	path, err = resolveNote(vaultDir, "Sr PM Agent")
+	if err != nil {
+		t.Fatalf("filename resolution failed: %v", err)
+	}
+	relPath, _ = filepath.Rel(vaultDir, path)
+	if relPath != "methodology/Sr PM Agent.md" {
+		t.Errorf("got %q, want methodology/Sr PM Agent.md", relPath)
+	}
+}
+
 func TestCmdCreateAndRead(t *testing.T) {
 	vaultDir := t.TempDir()
 
@@ -426,6 +467,231 @@ func TestCmdSearch(t *testing.T) {
 	// cmdSearch writes to stdout; just verify no error
 	if err := cmdSearch(vaultDir, params); err != nil {
 		t.Fatalf("search: %v", err)
+	}
+}
+
+func TestCmdPrepend(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// With frontmatter: should insert after ---
+	os.WriteFile(
+		filepath.Join(vaultDir, "WithFM.md"),
+		[]byte("---\ntype: note\n---\n\n# Existing Content\n"),
+		0644,
+	)
+
+	params := map[string]string{"file": "WithFM", "content": "PREPENDED\n"}
+	if err := cmdPrepend(vaultDir, params); err != nil {
+		t.Fatalf("prepend with FM: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(vaultDir, "WithFM.md"))
+	got := string(data)
+	want := "---\ntype: note\n---\nPREPENDED\n\n# Existing Content\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	// Without frontmatter: should insert at top
+	os.WriteFile(
+		filepath.Join(vaultDir, "NoFM.md"),
+		[]byte("# Existing Content\n"),
+		0644,
+	)
+
+	params = map[string]string{"file": "NoFM", "content": "TOP\n"}
+	if err := cmdPrepend(vaultDir, params); err != nil {
+		t.Fatalf("prepend without FM: %v", err)
+	}
+
+	data, _ = os.ReadFile(filepath.Join(vaultDir, "NoFM.md"))
+	got = string(data)
+	want = "TOP\n# Existing Content\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestCmdDelete_Trash(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	notePath := filepath.Join(vaultDir, "ToTrash.md")
+	os.WriteFile(notePath, []byte("# Delete me\n"), 0644)
+
+	params := map[string]string{"file": "ToTrash"}
+	if err := cmdDelete(vaultDir, params, false); err != nil {
+		t.Fatalf("delete (trash): %v", err)
+	}
+
+	// Original should be gone
+	if _, err := os.Stat(notePath); !os.IsNotExist(err) {
+		t.Error("original file still exists after trash")
+	}
+
+	// Should exist in .trash
+	trashPath := filepath.Join(vaultDir, ".trash", "ToTrash.md")
+	if _, err := os.Stat(trashPath); os.IsNotExist(err) {
+		t.Error("file not found in .trash")
+	}
+}
+
+func TestCmdDelete_Permanent(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	notePath := filepath.Join(vaultDir, "ToDelete.md")
+	os.WriteFile(notePath, []byte("# Delete me\n"), 0644)
+
+	params := map[string]string{"file": "ToDelete"}
+	if err := cmdDelete(vaultDir, params, true); err != nil {
+		t.Fatalf("delete (permanent): %v", err)
+	}
+
+	if _, err := os.Stat(notePath); !os.IsNotExist(err) {
+		t.Error("file still exists after permanent delete")
+	}
+
+	// Should NOT exist in .trash
+	trashPath := filepath.Join(vaultDir, ".trash", "ToDelete.md")
+	if _, err := os.Stat(trashPath); !os.IsNotExist(err) {
+		t.Error("file unexpectedly found in .trash after permanent delete")
+	}
+}
+
+func TestCmdProperties(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "Props.md"),
+		[]byte("---\ntype: decision\nstatus: active\n---\n\n# Note\n"),
+		0644,
+	)
+
+	// Just verify no error (output goes to stdout)
+	params := map[string]string{"file": "Props"}
+	if err := cmdProperties(vaultDir, params); err != nil {
+		t.Fatalf("properties: %v", err)
+	}
+}
+
+func TestCmdPropertyRemove(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	notePath := filepath.Join(vaultDir, "Note.md")
+	os.WriteFile(notePath, []byte("---\ntype: decision\nstatus: active\ncreated: 2024-01-15\n---\n\n# Note\n"), 0644)
+
+	params := map[string]string{"file": "Note", "name": "status"}
+	if err := cmdPropertyRemove(vaultDir, params); err != nil {
+		t.Fatalf("property:remove: %v", err)
+	}
+
+	data, _ := os.ReadFile(notePath)
+	got := string(data)
+
+	if contains(got, "status:") {
+		t.Error("property 'status' still present after removal")
+	}
+	if !contains(got, "type: decision") || !contains(got, "created: 2024-01-15") {
+		t.Error("other properties were affected by removal")
+	}
+}
+
+func TestCmdOrphans(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// A references B; C is orphaned
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSee [[B]] for details.\n"),
+		0644,
+	)
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("# B\n\nReferenced by A.\n"),
+		0644,
+	)
+	os.WriteFile(
+		filepath.Join(vaultDir, "C.md"),
+		[]byte("# C\n\nNobody links to me.\n"),
+		0644,
+	)
+
+	// Just verify no error
+	if err := cmdOrphans(vaultDir); err != nil {
+		t.Fatalf("orphans: %v", err)
+	}
+}
+
+func TestCmdOrphans_AliasAware(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// A references "Alt Name" which is an alias of B
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSee [[Alt Name]].\n"),
+		0644,
+	)
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("---\naliases: [Alt Name]\n---\n\n# B\n"),
+		0644,
+	)
+	os.WriteFile(
+		filepath.Join(vaultDir, "C.md"),
+		[]byte("# C\n\nOrphan.\n"),
+		0644,
+	)
+
+	// Just verify no error (A is orphaned since nothing links to it,
+	// B is NOT orphaned due to alias, C is orphaned)
+	if err := cmdOrphans(vaultDir); err != nil {
+		t.Fatalf("orphans: %v", err)
+	}
+}
+
+func TestCmdUnresolved(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "Existing.md"),
+		[]byte("# Existing\n"),
+		0644,
+	)
+	os.WriteFile(
+		filepath.Join(vaultDir, "Referrer.md"),
+		[]byte("# Referrer\n\n[[Existing]] and [[Ghost Note]] and ![[Missing Embed]].\n"),
+		0644,
+	)
+
+	// Just verify no error
+	if err := cmdUnresolved(vaultDir); err != nil {
+		t.Fatalf("unresolved: %v", err)
+	}
+}
+
+func TestCmdFiles(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.MkdirAll(filepath.Join(vaultDir, "sub"), 0755)
+	os.MkdirAll(filepath.Join(vaultDir, ".obsidian"), 0755)
+	os.WriteFile(filepath.Join(vaultDir, "root.md"), []byte("# Root\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "sub", "child.md"), []byte("# Child\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, ".obsidian", "config.md"), []byte("hidden\n"), 0644)
+
+	// List all
+	params := map[string]string{}
+	if err := cmdFiles(vaultDir, params, false); err != nil {
+		t.Fatalf("files: %v", err)
+	}
+
+	// Total count
+	if err := cmdFiles(vaultDir, params, true); err != nil {
+		t.Fatalf("files total: %v", err)
+	}
+
+	// Filter by folder
+	params = map[string]string{"folder": "sub"}
+	if err := cmdFiles(vaultDir, params, false); err != nil {
+		t.Fatalf("files folder: %v", err)
 	}
 }
 

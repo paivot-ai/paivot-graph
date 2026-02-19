@@ -102,37 +102,66 @@ func obsidianConfigPath() string {
 }
 
 // resolveNote finds a note by title within the vault.
-// It searches for <title>.md recursively, skipping hidden dirs and .trash.
-// Returns the absolute path to the first match.
+// First pass: exact filename match (<title>.md).
+// Second pass (if needed): checks frontmatter aliases.
+// Skips hidden dirs and .trash.
 func resolveNote(vaultDir, title string) (string, error) {
 	target := title + ".md"
 	var found string
 
-	err := filepath.WalkDir(vaultDir, func(path string, d os.DirEntry, err error) error {
+	// First pass: exact filename match (fast, no file reads)
+	filepath.WalkDir(vaultDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil // skip unreadable entries
+			return nil
 		}
-
 		name := d.Name()
 		if d.IsDir() && (strings.HasPrefix(name, ".") || name == ".trash") {
 			return filepath.SkipDir
 		}
-
 		if !d.IsDir() && name == target {
 			found = path
 			return filepath.SkipAll
 		}
-
 		return nil
 	})
 
-	if err != nil {
-		return "", err
+	if found != "" {
+		return found, nil
 	}
 
-	if found == "" {
-		return "", fmt.Errorf("note %q not found in vault", title)
+	// Second pass: check frontmatter aliases
+	filepath.WalkDir(vaultDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		name := d.Name()
+		if d.IsDir() && (strings.HasPrefix(name, ".") || name == ".trash") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(name, ".md") {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+
+		yaml, _, hasFM := extractFrontmatter(string(data))
+		if hasFM {
+			for _, alias := range frontmatterGetList(yaml, "aliases") {
+				if strings.EqualFold(alias, title) {
+					found = path
+					return filepath.SkipAll
+				}
+			}
+		}
+		return nil
+	})
+
+	if found != "" {
+		return found, nil
 	}
 
-	return found, nil
+	return "", fmt.Errorf("note %q not found in vault", title)
 }
