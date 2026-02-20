@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strings"
+	"time"
 )
 
 // extractFrontmatter returns the YAML content between --- delimiters,
@@ -173,4 +176,84 @@ func frontmatterReadAll(text string) string {
 		}
 	}
 	return ""
+}
+
+// timestampsEnabled returns true if timestamps should be applied,
+// based on the explicit flag or the VLT_TIMESTAMPS environment variable.
+func timestampsEnabled(flag bool) bool {
+	if flag {
+		return true
+	}
+	return os.Getenv("VLT_TIMESTAMPS") == "1"
+}
+
+// ensureTimestamps adds or updates created_at and updated_at frontmatter properties.
+// If isCreate is true, created_at is set (unless it already exists). updated_at is
+// always set. If the text has no frontmatter, it is added. The now parameter allows
+// callers (and tests) to inject a specific time.
+func ensureTimestamps(text string, isCreate bool, now time.Time) string {
+	ts := now.UTC().Format(time.RFC3339)
+
+	_, _, hasFM := extractFrontmatter(text)
+
+	if !hasFM {
+		// Add frontmatter with timestamps
+		var fm strings.Builder
+		fm.WriteString("---\n")
+		if isCreate {
+			fmt.Fprintf(&fm, "created_at: %s\n", ts)
+		}
+		fmt.Fprintf(&fm, "updated_at: %s\n", ts)
+		fm.WriteString("---\n")
+		return fm.String() + text
+	}
+
+	// Has frontmatter -- operate on lines
+	lines := strings.Split(text, "\n")
+
+	// Find frontmatter boundaries
+	fmStart, fmEnd := -1, -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "---" {
+			if fmStart == -1 {
+				fmStart = i
+			} else {
+				fmEnd = i
+				break
+			}
+		}
+	}
+
+	// Set or update properties within frontmatter
+	setProperty := func(key, value string, overwrite bool) {
+		prefix := key + ":"
+		found := false
+		for i := fmStart + 1; i < fmEnd; i++ {
+			trimmed := strings.TrimSpace(lines[i])
+			if strings.HasPrefix(trimmed, prefix) {
+				if overwrite {
+					lines[i] = fmt.Sprintf("%s: %s", key, value)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Insert before closing ---
+			newLine := fmt.Sprintf("%s: %s", key, value)
+			lines = append(lines[:fmEnd+1], lines[fmEnd:]...)
+			lines[fmEnd] = newLine
+			fmEnd++ // closing --- moved down by one
+		}
+	}
+
+	// On create, set created_at only if not already present (overwrite=false)
+	if isCreate {
+		setProperty("created_at", ts, false)
+	}
+
+	// Always set updated_at (overwrite=true)
+	setProperty("updated_at", ts, true)
+
+	return strings.Join(lines, "\n")
 }
