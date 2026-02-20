@@ -84,6 +84,41 @@ func maskFencedCodeBlocks(text string) string {
 	return string(buf)
 }
 
+// doubleBacktickPattern matches inline code spans delimited by ``.
+// Group 1 captures the content between the double-backtick delimiters.
+// Must be applied before singleBacktickPattern to avoid partial matches.
+var doubleBacktickPattern = regexp.MustCompile("``([^`\\n]+)``")
+
+// singleBacktickPattern matches inline code spans delimited by `.
+// Group 1 captures the content between the single-backtick delimiters.
+var singleBacktickPattern = regexp.MustCompile("`([^`\\n]+)`")
+
+// maskInlineCode masks the content inside inline code spans (` ... ` and `` ... ``).
+// The backtick delimiters themselves are NOT masked, only the content between them.
+// This pass runs AFTER fenced code blocks so that backticks already masked
+// inside fenced blocks (replaced with spaces) do not trigger false matches.
+// Double-backtick spans are processed first so that `` ` `` is handled correctly.
+func maskInlineCode(text string) string {
+	buf := []byte(text)
+
+	// Pass 1: mask double-backtick spans first.
+	for _, loc := range doubleBacktickPattern.FindAllSubmatchIndex(buf, -1) {
+		// loc[2], loc[3] = start, end of group 1 (content)
+		maskRegion(buf, loc[2], loc[3])
+	}
+
+	// Pass 2: mask single-backtick spans.
+	// After pass 1, content in double-backtick spans is spaces, so the
+	// single-backtick pass will not find backtick pairs inside them.
+	for _, loc := range singleBacktickPattern.FindAllSubmatchIndex(buf, -1) {
+		maskRegion(buf, loc[2], loc[3])
+	}
+
+	return string(buf)
+}
+
 func init() {
+	// Order matters: fenced code blocks first, then inline code.
 	registerMaskPass(maskFencedCodeBlocks)
+	registerMaskPass(maskInlineCode)
 }

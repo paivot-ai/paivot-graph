@@ -681,3 +681,561 @@ func TestE2EInertZoneFencedCode(t *testing.T) {
 		}
 	}
 }
+
+// =============================================================================
+// Inline Code Masking Tests (VLT-7fi)
+// =============================================================================
+
+// --- Unit Tests ---
+
+func TestMaskInlineCode(t *testing.T) {
+	input := "Text `[[Link]]` more text"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[Link]]") {
+		t.Error("wikilink inside inline code should be masked")
+	}
+	// Backtick delimiters should be preserved
+	if !strings.Contains(got, "`") {
+		t.Error("backtick delimiters should be preserved")
+	}
+	// Text outside inline code should be unchanged
+	if !strings.HasPrefix(got, "Text ") {
+		t.Error("text before inline code should be unchanged")
+	}
+	if !strings.HasSuffix(got, " more text") {
+		t.Error("text after inline code should be unchanged")
+	}
+}
+
+func TestMaskDoubleBacktickCode(t *testing.T) {
+	input := "Text ``[[Link]] `with` backtick`` more"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[Link]]") {
+		t.Error("wikilink inside double-backtick inline code should be masked")
+	}
+	// Text outside should be preserved
+	if !strings.HasPrefix(got, "Text ") {
+		t.Error("text before double-backtick code should be unchanged")
+	}
+	if !strings.HasSuffix(got, " more") {
+		t.Error("text after double-backtick code should be unchanged")
+	}
+}
+
+func TestMaskMultipleInlineCodePerLine(t *testing.T) {
+	input := "See `[[A]]` then `#tag` end"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[A]]") {
+		t.Error("first inline code span should be masked")
+	}
+	if strings.Contains(got, "#tag") {
+		t.Error("second inline code span should be masked")
+	}
+	if !strings.Contains(got, "See ") {
+		t.Error("text between spans should be preserved")
+	}
+	if !strings.Contains(got, " then ") {
+		t.Error("text between spans should be preserved")
+	}
+	if !strings.HasSuffix(got, " end") {
+		t.Error("text after spans should be preserved")
+	}
+}
+
+func TestMaskInlineCodePreservesLength(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "single backtick",
+			input: "Text `[[Link]]` end",
+		},
+		{
+			name:  "double backtick",
+			input: "Text ``code `with` backtick`` end",
+		},
+		{
+			name:  "multiple spans",
+			input: "`a` text `b` more `c`",
+		},
+		{
+			name:  "inline code with tag",
+			input: "See `#not-a-tag` here",
+		},
+		{
+			name:  "mixed fenced and inline",
+			input: "Before\n```\n[[A]]\n```\nMiddle `[[B]]` end",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := maskInertContent(tt.input)
+			if len(got) != len(tt.input) {
+				t.Errorf("length changed: input=%d, output=%d", len(tt.input), len(got))
+			}
+		})
+	}
+}
+
+func TestMaskInlineCodeNotInFencedBlock(t *testing.T) {
+	// Backticks inside an already-masked fenced code block should NOT be
+	// double-processed. The fenced block pass runs first and masks the
+	// content. The inline code pass should not find backtick pairs inside
+	// the already-masked (all-spaces) region.
+	input := "Before\n```\nSome `inline` with [[Link]]\n```\nAfter `[[Outside]]` end"
+	got := maskInertContent(input)
+
+	// The fenced block content is masked first, so [[Link]] should be gone
+	if strings.Contains(got, "[[Link]]") {
+		t.Error("wikilink inside fenced block should be masked by fenced pass")
+	}
+	// The inline code outside the fenced block should also be masked
+	if strings.Contains(got, "[[Outside]]") {
+		t.Error("wikilink inside inline code after fenced block should be masked")
+	}
+	// "Before" and "After" text outside both should be preserved
+	if !strings.HasPrefix(got, "Before\n") {
+		t.Error("text before fenced block should be preserved")
+	}
+	if !strings.HasSuffix(got, " end") {
+		t.Error("text after inline code should be preserved")
+	}
+}
+
+// --- Integration Tests ---
+
+func TestParseWikilinksIgnoresInlineCode(t *testing.T) {
+	text := "Normal [[Outside]] link and `[[Inside]]` should be ignored."
+	links := parseWikilinks(text)
+
+	titles := make(map[string]bool)
+	for _, l := range links {
+		titles[l.Title] = true
+	}
+
+	if !titles["Outside"] {
+		t.Error("expected to find [[Outside]]")
+	}
+	if titles["Inside"] {
+		t.Error("should NOT find [[Inside]] from inline code")
+	}
+	if len(links) != 1 {
+		t.Errorf("expected 1 link, got %d: %v", len(links), links)
+	}
+}
+
+func TestParseInlineTagsIgnoresInlineCode(t *testing.T) {
+	// Use a space before #inside so the tag pattern can match it
+	// (tag pattern requires whitespace or start-of-line before #)
+	text := "Normal #outside tag and ` #inside ` should be ignored."
+	tags := parseInlineTags(text)
+
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["outside"] {
+		t.Error("expected to find #outside")
+	}
+	if tagSet["inside"] {
+		t.Error("should NOT find #inside from inline code")
+	}
+}
+
+func TestFindBacklinksIgnoresInlineCode(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note A links to B only inside inline code
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSome text with `[[B]]` in inline code.\n"),
+		0644,
+	)
+
+	// Note B exists
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("# B\n\nContent.\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "B")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("expected 0 backlinks (link is inside inline code), got %d: %v", len(results), results)
+	}
+}
+
+func TestMixedFencedAndInlineCode(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note with links and tags in both fenced code, inline code, and normal text
+	content := `# Mixed Note
+
+Real link: [[RealTarget]]
+Real tag: #real-tag
+
+Inline code link: ` + "`[[FakeInline]]`" + `
+Inline code tag: ` + "`#fake-inline`" + `
+
+` + "```" + `
+[[FakeFenced]]
+#fake-fenced
+` + "```" + `
+
+Double backtick: ` + "``[[FakeDouble]]``" + `
+
+End.
+`
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "Mixed.md"),
+		[]byte(content),
+		0644,
+	)
+
+	// Read and parse
+	data, err := os.ReadFile(filepath.Join(vaultDir, "Mixed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test wikilinks
+	links := parseWikilinks(string(data))
+	linkTitles := make(map[string]bool)
+	for _, l := range links {
+		linkTitles[l.Title] = true
+	}
+
+	if !linkTitles["RealTarget"] {
+		t.Error("should find [[RealTarget]] from normal text")
+	}
+	if linkTitles["FakeInline"] {
+		t.Error("should NOT find [[FakeInline]] from inline code")
+	}
+	if linkTitles["FakeFenced"] {
+		t.Error("should NOT find [[FakeFenced]] from fenced code")
+	}
+	if linkTitles["FakeDouble"] {
+		t.Error("should NOT find [[FakeDouble]] from double-backtick inline code")
+	}
+
+	// Test tags
+	tags := allNoteTags(string(data))
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["real-tag"] {
+		t.Error("should find #real-tag from normal text")
+	}
+	if tagSet["fake-inline"] {
+		t.Error("should NOT find #fake-inline from inline code")
+	}
+	if tagSet["fake-fenced"] {
+		t.Error("should NOT find #fake-fenced from fenced code")
+	}
+
+	// Test backlinks for RealTarget
+	backlinks, err := findBacklinks(vaultDir, "RealTarget")
+	if err != nil {
+		t.Fatalf("findBacklinks: %v", err)
+	}
+	if len(backlinks) != 1 || backlinks[0] != "Mixed.md" {
+		t.Errorf("RealTarget backlinks: got %v, want [Mixed.md]", backlinks)
+	}
+
+	// Test backlinks for FakeInline -- should be zero
+	backlinks, err = findBacklinks(vaultDir, "FakeInline")
+	if err != nil {
+		t.Fatalf("findBacklinks FakeInline: %v", err)
+	}
+	if len(backlinks) != 0 {
+		t.Errorf("FakeInline should have 0 backlinks, got %v", backlinks)
+	}
+
+	// Test backlinks for FakeDouble -- should be zero
+	backlinks, err = findBacklinks(vaultDir, "FakeDouble")
+	if err != nil {
+		t.Fatalf("findBacklinks FakeDouble: %v", err)
+	}
+	if len(backlinks) != 0 {
+		t.Errorf("FakeDouble should have 0 backlinks, got %v", backlinks)
+	}
+}
+
+// =============================================================================
+// Obsidian Comment Masking Tests (%% ... %%) -- VLT-i6l
+// =============================================================================
+
+// --- Unit Tests ---
+
+func TestMaskObsidianCommentInline(t *testing.T) {
+	input := "text %% hidden %% more"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "hidden") {
+		t.Error("content inside inline %% comment should be masked")
+	}
+	if !strings.HasPrefix(got, "text ") {
+		t.Error("content before comment should be unchanged")
+	}
+	if !strings.HasSuffix(got, " more") {
+		t.Error("content after comment should be unchanged")
+	}
+	// The %% delimiters themselves should be preserved
+	if !strings.Contains(got, "%%") {
+		t.Error("%% delimiters should be preserved")
+	}
+}
+
+func TestMaskObsidianCommentMultiline(t *testing.T) {
+	input := "Before\n%%\nThis whole block\nis hidden in preview\n%%\nAfter"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "This whole block") {
+		t.Error("content inside multiline %% comment should be masked")
+	}
+	if strings.Contains(got, "is hidden in preview") {
+		t.Error("second line inside multiline %% comment should be masked")
+	}
+	if !strings.HasPrefix(got, "Before\n") {
+		t.Error("content before comment should be unchanged")
+	}
+	if !strings.HasSuffix(got, "\nAfter") {
+		t.Error("content after comment should be unchanged")
+	}
+}
+
+func TestMaskObsidianCommentPreservesLength(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "inline comment",
+			input: "text %% hidden %% more",
+		},
+		{
+			name:  "multiline comment",
+			input: "Before\n%%\nline1\nline2\n%%\nAfter",
+		},
+		{
+			name:  "multiple comments",
+			input: "a %% x %% b %% y %% c",
+		},
+		{
+			name:  "comment with wikilink",
+			input: "text %% [[Link]] %% end",
+		},
+		{
+			name:  "comment with tag",
+			input: "text %% #hidden-tag %% end",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := maskInertContent(tt.input)
+			if len(got) != len(tt.input) {
+				t.Errorf("length changed: input=%d, output=%d\ninput:  %q\noutput: %q",
+					len(tt.input), len(got), tt.input, got)
+			}
+		})
+	}
+}
+
+func TestMaskObsidianCommentPreservesNewlines(t *testing.T) {
+	input := "Before\n%%\nline1\nline2\nline3\n%%\nAfter"
+	got := maskInertContent(input)
+
+	inputNewlines := strings.Count(input, "\n")
+	gotNewlines := strings.Count(got, "\n")
+
+	if inputNewlines != gotNewlines {
+		t.Errorf("newline count changed: input=%d, output=%d", inputNewlines, gotNewlines)
+	}
+
+	// Verify that masked content lines become spaces (preserving newlines)
+	lines := strings.Split(got, "\n")
+	// lines: "Before", "%%", "     ", "     ", "     ", "%%", "After"
+	if len(lines) != 7 {
+		t.Fatalf("expected 7 lines, got %d: %v", len(lines), lines)
+	}
+	for i := 2; i <= 4; i++ {
+		if strings.TrimRight(lines[i], " ") != "" {
+			t.Errorf("line %d should be all spaces, got %q", i, lines[i])
+		}
+	}
+}
+
+func TestMaskMultipleObsidianComments(t *testing.T) {
+	input := "start %% first comment %% middle %% second comment %% end"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "first comment") {
+		t.Error("first comment should be masked")
+	}
+	if strings.Contains(got, "second comment") {
+		t.Error("second comment should be masked")
+	}
+	if !strings.HasPrefix(got, "start ") {
+		t.Error("text before first comment should be preserved")
+	}
+	if !strings.Contains(got, " middle ") {
+		t.Error("text between comments should be preserved")
+	}
+	if !strings.HasSuffix(got, " end") {
+		t.Error("text after last comment should be preserved")
+	}
+}
+
+func TestMaskObsidianCommentInsideFencedBlock(t *testing.T) {
+	// %% inside a code block should NOT be treated as a comment boundary
+	// because the fenced code block pass runs first and masks the %% characters
+	input := "Outside\n```\n%% not a comment %%\n```\nAlso outside"
+	got := maskInertContent(input)
+
+	// The code block content is masked, so %% should already be spaces.
+	// The key assertion: "Also outside" must remain intact (not masked as
+	// if a comment started inside the code block).
+	if !strings.Contains(got, "Also outside") {
+		t.Error("content after code block should be preserved; %% inside code block should not start a comment")
+	}
+	if !strings.Contains(got, "Outside") {
+		t.Error("content before code block should be preserved")
+	}
+}
+
+// --- Integration Tests ---
+
+func TestParseWikilinksIgnoresObsidianComments(t *testing.T) {
+	text := "Normal [[Outside]] link.\n%% [[Inside]] should be ignored. %%\nMore [[AlsoOutside]]."
+	masked := maskInertContent(text)
+	links := parseWikilinks(masked)
+
+	titles := make(map[string]bool)
+	for _, l := range links {
+		titles[l.Title] = true
+	}
+
+	if !titles["Outside"] {
+		t.Error("expected to find [[Outside]]")
+	}
+	if !titles["AlsoOutside"] {
+		t.Error("expected to find [[AlsoOutside]]")
+	}
+	if titles["Inside"] {
+		t.Error("should NOT find [[Inside]] from Obsidian comment")
+	}
+	if len(links) != 2 {
+		t.Errorf("expected 2 links, got %d: %v", len(links), links)
+	}
+}
+
+func TestParseInlineTagsIgnoresObsidianComments(t *testing.T) {
+	text := "Normal #outside tag.\n%% #inside should be ignored. %%\nMore #alsooutside."
+	masked := maskInertContent(text)
+	tags := parseInlineTags(masked)
+
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["outside"] {
+		t.Error("expected to find #outside")
+	}
+	if !tagSet["alsooutside"] {
+		t.Error("expected to find #alsooutside")
+	}
+	if tagSet["inside"] {
+		t.Error("should NOT find #inside from Obsidian comment")
+	}
+}
+
+func TestFindBacklinksIgnoresObsidianComments(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note A links to B only inside an Obsidian comment
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSome text.\n%% [[B]] in comment %%\n"),
+		0644,
+	)
+
+	// Note B exists
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("# B\n\nContent.\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "B")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("expected 0 backlinks (link is inside Obsidian comment), got %d: %v", len(results), results)
+	}
+}
+
+func TestMixedCodeAndComments(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note with links in code blocks, inline code, AND Obsidian comments.
+	// Only the plain-text link should be detected.
+	os.WriteFile(
+		filepath.Join(vaultDir, "Mixed.md"),
+		[]byte("# Mixed\n\n[[RealLink]]\n\n```\n[[CodeLink]] #code-tag\n```\n\n%% [[CommentLink]] #comment-tag %%\n\n#real-tag\n"),
+		0644,
+	)
+
+	data, err := os.ReadFile(filepath.Join(vaultDir, "Mixed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test wikilinks
+	links := parseWikilinks(string(data))
+	linkTitles := make(map[string]bool)
+	for _, l := range links {
+		linkTitles[l.Title] = true
+	}
+
+	if !linkTitles["RealLink"] {
+		t.Error("should find [[RealLink]] (plain text)")
+	}
+	if linkTitles["CodeLink"] {
+		t.Error("should NOT find [[CodeLink]] (inside code block)")
+	}
+	if linkTitles["CommentLink"] {
+		t.Error("should NOT find [[CommentLink]] (inside Obsidian comment)")
+	}
+
+	// Test tags
+	tags := allNoteTags(string(data))
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["real-tag"] {
+		t.Error("should find #real-tag (plain text)")
+	}
+	if tagSet["code-tag"] {
+		t.Error("should NOT find #code-tag (inside code block)")
+	}
+	if tagSet["comment-tag"] {
+		t.Error("should NOT find #comment-tag (inside Obsidian comment)")
+	}
+}
