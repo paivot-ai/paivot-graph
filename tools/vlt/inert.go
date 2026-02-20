@@ -138,9 +138,32 @@ func maskObsidianComments(text string) string {
 	return string(buf)
 }
 
+// htmlCommentPattern matches HTML comments: <!-- content -->.
+// Uses (?s) (DOTALL) so that . matches newlines, enabling multiline comments.
+// The match is non-greedy (*?) to handle multiple comments in the same text.
+var htmlCommentPattern = regexp.MustCompile(`(?s)<!--(.*?)-->`)
+
+// maskHTMLComments masks the content inside HTML comments (<!-- ... -->).
+// The <!-- and --> delimiters themselves are preserved; only the content
+// between them is replaced with spaces (newlines preserved). This pass runs
+// AFTER fenced code blocks, inline code, and Obsidian comments, so <!-- inside
+// already-masked zones will not trigger false comment boundaries.
+func maskHTMLComments(text string) string {
+	buf := []byte(text)
+
+	for _, loc := range htmlCommentPattern.FindAllSubmatchIndex(buf, -1) {
+		// loc[2], loc[3] = start, end of group 1 (content between <!-- and -->)
+		maskRegion(buf, loc[2], loc[3])
+	}
+
+	return string(buf)
+}
+
 func init() {
 	// Order matters: fenced code blocks first, then inline code, then comments.
+	// HTML comments run last so that <!-- inside code or %% is already masked.
 	registerMaskPass(maskFencedCodeBlocks)
 	registerMaskPass(maskInlineCode)
 	registerMaskPass(maskObsidianComments)
+	registerMaskPass(maskHTMLComments)
 }

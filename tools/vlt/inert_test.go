@@ -1239,3 +1239,294 @@ func TestMixedCodeAndComments(t *testing.T) {
 		t.Error("should NOT find #comment-tag (inside Obsidian comment)")
 	}
 }
+
+// =============================================================================
+// HTML Comment Masking Tests (<!-- ... -->) -- VLT-h6k
+// =============================================================================
+
+// --- Unit Tests ---
+
+func TestMaskHTMLCommentInline(t *testing.T) {
+	input := "text <!-- hidden --> more"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "hidden") {
+		t.Error("content inside inline HTML comment should be masked")
+	}
+	if !strings.HasPrefix(got, "text ") {
+		t.Error("content before HTML comment should be unchanged")
+	}
+	if !strings.HasSuffix(got, " more") {
+		t.Error("content after HTML comment should be unchanged")
+	}
+	// The <!-- and --> delimiters themselves should be preserved
+	if !strings.Contains(got, "<!--") {
+		t.Error("<!-- delimiter should be preserved")
+	}
+	if !strings.Contains(got, "-->") {
+		t.Error("--> delimiter should be preserved")
+	}
+}
+
+func TestMaskHTMLCommentMultiline(t *testing.T) {
+	input := "Before\n<!--\nThis whole block\nis hidden in preview\n-->\nAfter"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "This whole block") {
+		t.Error("content inside multiline HTML comment should be masked")
+	}
+	if strings.Contains(got, "is hidden in preview") {
+		t.Error("second line inside multiline HTML comment should be masked")
+	}
+	if !strings.HasPrefix(got, "Before\n") {
+		t.Error("content before HTML comment should be unchanged")
+	}
+	if !strings.HasSuffix(got, "\nAfter") {
+		t.Error("content after HTML comment should be unchanged")
+	}
+	// Newlines inside the comment should be preserved
+	inputNewlines := strings.Count(input, "\n")
+	gotNewlines := strings.Count(got, "\n")
+	if inputNewlines != gotNewlines {
+		t.Errorf("newline count changed: input=%d, output=%d", inputNewlines, gotNewlines)
+	}
+}
+
+func TestMaskHTMLCommentPreservesLength(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "inline comment",
+			input: "text <!-- hidden --> more",
+		},
+		{
+			name:  "multiline comment",
+			input: "Before\n<!--\nline1\nline2\n-->\nAfter",
+		},
+		{
+			name:  "multiple comments",
+			input: "a <!-- x --> b <!-- y --> c",
+		},
+		{
+			name:  "comment with wikilink",
+			input: "text <!-- [[Link]] --> end",
+		},
+		{
+			name:  "comment with tag",
+			input: "text <!-- #hidden-tag --> end",
+		},
+		{
+			name:  "empty comment",
+			input: "text <!----> end",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := maskInertContent(tt.input)
+			if len(got) != len(tt.input) {
+				t.Errorf("length changed: input=%d, output=%d\ninput:  %q\noutput: %q",
+					len(tt.input), len(got), tt.input, got)
+			}
+		})
+	}
+}
+
+func TestMaskMultipleHTMLComments(t *testing.T) {
+	input := "start <!-- first comment --> middle <!-- second comment --> end"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "first comment") {
+		t.Error("first HTML comment should be masked")
+	}
+	if strings.Contains(got, "second comment") {
+		t.Error("second HTML comment should be masked")
+	}
+	if !strings.HasPrefix(got, "start ") {
+		t.Error("text before first comment should be preserved")
+	}
+	if !strings.Contains(got, " middle ") {
+		t.Error("text between comments should be preserved")
+	}
+	if !strings.HasSuffix(got, " end") {
+		t.Error("text after last comment should be preserved")
+	}
+}
+
+func TestMaskHTMLCommentInsideFencedBlock(t *testing.T) {
+	// <!-- inside a code block should NOT be treated as an HTML comment boundary
+	// because the fenced code block pass runs first and masks the <!-- characters
+	input := "Outside\n```\n<!-- not a comment -->\n```\nAlso outside"
+	got := maskInertContent(input)
+
+	// The code block content is masked, so <!-- should already be spaces.
+	// The key assertion: "Also outside" must remain intact (not masked as
+	// if an HTML comment started inside the code block).
+	if !strings.Contains(got, "Also outside") {
+		t.Error("content after code block should be preserved; <!-- inside code block should not start an HTML comment")
+	}
+	if !strings.Contains(got, "Outside") {
+		t.Error("content before code block should be preserved")
+	}
+}
+
+// --- Integration Tests ---
+
+func TestParseWikilinksIgnoresHTMLComments(t *testing.T) {
+	text := "Normal [[Outside]] link.\n<!-- [[Inside]] should be ignored. -->\nMore [[AlsoOutside]]."
+	masked := maskInertContent(text)
+	links := parseWikilinks(masked)
+
+	titles := make(map[string]bool)
+	for _, l := range links {
+		titles[l.Title] = true
+	}
+
+	if !titles["Outside"] {
+		t.Error("expected to find [[Outside]]")
+	}
+	if !titles["AlsoOutside"] {
+		t.Error("expected to find [[AlsoOutside]]")
+	}
+	if titles["Inside"] {
+		t.Error("should NOT find [[Inside]] from HTML comment")
+	}
+	if len(links) != 2 {
+		t.Errorf("expected 2 links, got %d: %v", len(links), links)
+	}
+}
+
+func TestParseInlineTagsIgnoresHTMLComments(t *testing.T) {
+	text := "Normal #outside tag.\n<!-- #inside should be ignored. -->\nMore #alsooutside."
+	masked := maskInertContent(text)
+	tags := parseInlineTags(masked)
+
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["outside"] {
+		t.Error("expected to find #outside")
+	}
+	if !tagSet["alsooutside"] {
+		t.Error("expected to find #alsooutside")
+	}
+	if tagSet["inside"] {
+		t.Error("should NOT find #inside from HTML comment")
+	}
+}
+
+func TestFindBacklinksIgnoresHTMLComments(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note A links to B only inside an HTML comment
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSome text.\n<!-- [[B]] in HTML comment -->\n"),
+		0644,
+	)
+
+	// Note B exists
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("# B\n\nContent.\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "B")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("expected 0 backlinks (link is inside HTML comment), got %d: %v", len(results), results)
+	}
+}
+
+func TestMixedAllCommentTypes(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note with links and tags in code blocks, inline code, Obsidian comments,
+	// HTML comments, AND normal text. Only the plain-text link should be detected.
+	os.WriteFile(
+		filepath.Join(vaultDir, "AllTypes.md"),
+		[]byte("# All Types\n\n[[RealLink]]\n#real-tag\n\n```\n[[CodeLink]] #code-tag\n```\n\n`[[InlineCodeLink]]`\n\n%% [[ObsidianCommentLink]] #obsidian-tag %%\n\n<!-- [[HTMLCommentLink]] #html-tag -->\n\n<!--\n[[MultilineHTMLLink]]\n#multiline-html-tag\n-->\n"),
+		0644,
+	)
+
+	data, err := os.ReadFile(filepath.Join(vaultDir, "AllTypes.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test wikilinks -- only RealLink should be found
+	links := parseWikilinks(string(data))
+	linkTitles := make(map[string]bool)
+	for _, l := range links {
+		linkTitles[l.Title] = true
+	}
+
+	if !linkTitles["RealLink"] {
+		t.Error("should find [[RealLink]] (plain text)")
+	}
+	if linkTitles["CodeLink"] {
+		t.Error("should NOT find [[CodeLink]] (inside code block)")
+	}
+	if linkTitles["InlineCodeLink"] {
+		t.Error("should NOT find [[InlineCodeLink]] (inside inline code)")
+	}
+	if linkTitles["ObsidianCommentLink"] {
+		t.Error("should NOT find [[ObsidianCommentLink]] (inside Obsidian comment)")
+	}
+	if linkTitles["HTMLCommentLink"] {
+		t.Error("should NOT find [[HTMLCommentLink]] (inside HTML comment)")
+	}
+	if linkTitles["MultilineHTMLLink"] {
+		t.Error("should NOT find [[MultilineHTMLLink]] (inside multiline HTML comment)")
+	}
+
+	// Test tags -- only real-tag should be found
+	tags := allNoteTags(string(data))
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["real-tag"] {
+		t.Error("should find #real-tag (plain text)")
+	}
+	if tagSet["code-tag"] {
+		t.Error("should NOT find #code-tag (inside code block)")
+	}
+	if tagSet["obsidian-tag"] {
+		t.Error("should NOT find #obsidian-tag (inside Obsidian comment)")
+	}
+	if tagSet["html-tag"] {
+		t.Error("should NOT find #html-tag (inside HTML comment)")
+	}
+	if tagSet["multiline-html-tag"] {
+		t.Error("should NOT find #multiline-html-tag (inside multiline HTML comment)")
+	}
+
+	// Test backlinks -- only RealLink should generate backlinks
+	for _, name := range []string{"CodeLink", "InlineCodeLink", "ObsidianCommentLink", "HTMLCommentLink", "MultilineHTMLLink"} {
+		backlinks, err := findBacklinks(vaultDir, name)
+		if err != nil {
+			t.Fatalf("findBacklinks %s: %v", name, err)
+		}
+		if len(backlinks) != 0 {
+			t.Errorf("%s should have 0 backlinks (inside inert zone), got %v", name, backlinks)
+		}
+	}
+
+	// RealLink should have a backlink from AllTypes.md
+	backlinks, err := findBacklinks(vaultDir, "RealLink")
+	if err != nil {
+		t.Fatalf("findBacklinks RealLink: %v", err)
+	}
+	if len(backlinks) != 1 || backlinks[0] != "AllTypes.md" {
+		t.Errorf("RealLink backlinks: got %v, want [AllTypes.md]", backlinks)
+	}
+}
