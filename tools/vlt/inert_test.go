@@ -1530,3 +1530,368 @@ func TestMixedAllCommentTypes(t *testing.T) {
 		t.Errorf("RealLink backlinks: got %v, want [AllTypes.md]", backlinks)
 	}
 }
+
+// =============================================================================
+// Math Block Masking Tests ($$ ... $$ and $ ... $) -- VLT-m4j
+// =============================================================================
+
+// --- Unit Tests ---
+
+func TestMaskDisplayMath(t *testing.T) {
+	input := "Before $$ [[Link]] + #tag $$ After"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[Link]]") {
+		t.Error("wikilink inside display math should be masked")
+	}
+	if strings.Contains(got, "#tag") {
+		t.Error("tag inside display math should be masked")
+	}
+	if !strings.HasPrefix(got, "Before ") {
+		t.Error("content before display math should be unchanged")
+	}
+	if !strings.HasSuffix(got, " After") {
+		t.Error("content after display math should be unchanged")
+	}
+	// $$ delimiters should be preserved
+	if !strings.Contains(got, "$$") {
+		t.Error("$$ delimiters should be preserved")
+	}
+}
+
+func TestMaskDisplayMathMultiline(t *testing.T) {
+	input := "Before\n$$\n\\sum_{i=1}^{n} [[Link]]\nx_i #tag\n$$\nAfter"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[Link]]") {
+		t.Error("wikilink inside multiline display math should be masked")
+	}
+	if strings.Contains(got, "#tag") {
+		t.Error("tag inside multiline display math should be masked")
+	}
+	if !strings.HasPrefix(got, "Before\n") {
+		t.Error("content before multiline display math should be unchanged")
+	}
+	if !strings.HasSuffix(got, "\nAfter") {
+		t.Error("content after multiline display math should be unchanged")
+	}
+	// Newlines inside math block should be preserved
+	inputNewlines := strings.Count(input, "\n")
+	gotNewlines := strings.Count(got, "\n")
+	if inputNewlines != gotNewlines {
+		t.Errorf("newline count changed: input=%d, output=%d", inputNewlines, gotNewlines)
+	}
+}
+
+func TestMaskInlineMathSingle(t *testing.T) {
+	input := "The formula $x = [[y]]$ is important"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "[[y]]") {
+		t.Error("wikilink inside inline math should be masked")
+	}
+	if !strings.HasPrefix(got, "The formula ") {
+		t.Error("content before inline math should be unchanged")
+	}
+	if !strings.HasSuffix(got, " is important") {
+		t.Error("content after inline math should be unchanged")
+	}
+}
+
+func TestMaskMathPreservesLength(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "display math inline",
+			input: "text $$ x + y $$ end",
+		},
+		{
+			name:  "display math multiline",
+			input: "Before\n$$\n\\sum_{i=1}^{n} x_i\n$$\nAfter",
+		},
+		{
+			name:  "inline math",
+			input: "The $x + y$ formula",
+		},
+		{
+			name:  "multiple inline math",
+			input: "Both $x$ and $y + z$ here",
+		},
+		{
+			name:  "mixed display and inline",
+			input: "Inline $a$ then\n$$\nblock\n$$\nend",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := maskInertContent(tt.input)
+			if len(got) != len(tt.input) {
+				t.Errorf("length changed: input=%d, output=%d\ninput:  %q\noutput: %q",
+					len(tt.input), len(got), tt.input, got)
+			}
+		})
+	}
+}
+
+func TestMaskMathDoesNotMatchDollarAmounts(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "dollar amount",
+			input: "The cost is $50 per unit.",
+		},
+		{
+			name:  "dollar with space after",
+			input: "Pay $ 50 for it.",
+		},
+		{
+			name:  "two separate dollar amounts",
+			input: "Between $100 and $200 range.",
+		},
+		{
+			name:  "dollar at end of line",
+			input: "Total: $500",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := maskInertContent(tt.input)
+			if got != tt.input {
+				t.Errorf("dollar amount should not be masked:\ninput:  %q\noutput: %q", tt.input, got)
+			}
+		})
+	}
+}
+
+func TestMaskMathInsideCodeBlock(t *testing.T) {
+	// Math delimiters inside an already-masked fenced code block should NOT
+	// be double-processed. The fenced block pass runs first.
+	input := "Before\n```\n$x + y$ and $$ block $$\n```\nAfter $a + b$ end"
+	got := maskInertContent(input)
+
+	// The code block content is masked first
+	if !strings.Contains(got, "Before") {
+		t.Error("content before code block should be preserved")
+	}
+	if !strings.Contains(got, "After") {
+		t.Error("content after code block should be preserved")
+	}
+	// The inline math after the code block should be masked
+	if strings.Contains(got, "a + b") {
+		t.Error("inline math content outside code block should be masked")
+	}
+	// Length must be preserved
+	if len(got) != len(input) {
+		t.Errorf("length changed: input=%d, output=%d", len(input), len(got))
+	}
+}
+
+func TestMaskMultipleMathExpressions(t *testing.T) {
+	input := "First $x + 1$ then $y + 2$ and\n$$\n\\alpha + \\beta\n$$\nend"
+	got := maskInertContent(input)
+
+	if strings.Contains(got, "x + 1") {
+		t.Error("first inline math should be masked")
+	}
+	if strings.Contains(got, "y + 2") {
+		t.Error("second inline math should be masked")
+	}
+	if strings.Contains(got, "\\alpha") {
+		t.Error("display math should be masked")
+	}
+	if !strings.HasPrefix(got, "First ") {
+		t.Error("text before first inline math should be preserved")
+	}
+	if !strings.HasSuffix(got, "\nend") {
+		t.Error("text after display math should be preserved")
+	}
+}
+
+// --- Integration Tests ---
+
+func TestParseWikilinksIgnoresMathBlocks(t *testing.T) {
+	text := "Normal [[Outside]] link.\n$$ [[DisplayInside]] $$\nInline $x=[[InlineInside]]$ formula.\nMore [[AlsoOutside]]."
+	links := parseWikilinks(text)
+
+	titles := make(map[string]bool)
+	for _, l := range links {
+		titles[l.Title] = true
+	}
+
+	if !titles["Outside"] {
+		t.Error("expected to find [[Outside]]")
+	}
+	if !titles["AlsoOutside"] {
+		t.Error("expected to find [[AlsoOutside]]")
+	}
+	if titles["DisplayInside"] {
+		t.Error("should NOT find [[DisplayInside]] from display math block")
+	}
+	if titles["InlineInside"] {
+		t.Error("should NOT find [[InlineInside]] from inline math")
+	}
+	if len(links) != 2 {
+		t.Errorf("expected 2 links, got %d: %v", len(links), links)
+	}
+}
+
+func TestParseInlineTagsIgnoresMathBlocks(t *testing.T) {
+	text := "Normal #outside tag.\n$$ #displaytag inside $$\nInline $x #inlinetag$ here.\nMore #alsooutside."
+	tags := parseInlineTags(text)
+
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["outside"] {
+		t.Error("expected to find #outside")
+	}
+	if !tagSet["alsooutside"] {
+		t.Error("expected to find #alsooutside")
+	}
+	if tagSet["displaytag"] {
+		t.Error("should NOT find #displaytag from display math")
+	}
+	if tagSet["inlinetag"] {
+		t.Error("should NOT find #inlinetag from inline math")
+	}
+}
+
+func TestFindBacklinksIgnoresMathBlocks(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note A links to B only inside a display math block
+	os.WriteFile(
+		filepath.Join(vaultDir, "A.md"),
+		[]byte("# A\n\nSome text.\n$$\n[[B]] in math\n$$\n"),
+		0644,
+	)
+
+	// Note B exists
+	os.WriteFile(
+		filepath.Join(vaultDir, "B.md"),
+		[]byte("# B\n\nContent.\n"),
+		0644,
+	)
+
+	results, err := findBacklinks(vaultDir, "B")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(results) != 0 {
+		t.Errorf("expected 0 backlinks (link is inside math block), got %d: %v", len(results), results)
+	}
+}
+
+func TestAllInertZonesCombined(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Note with wikilinks and tags inside ALL zone types, plus real links outside.
+	// Zone types: fenced code, inline code, %% comments, HTML comments,
+	// display math, inline math.
+	content := "# Combined Test\n\nReal link: [[RealTarget]]\nReal tag: #real-tag\n\nFenced code:\n```\n[[FencedLink]] #fenced-tag\n```\n\nInline code: `[[InlineCodeLink]]` and `#inlinecode-tag`\n\nObsidian comment: %% [[CommentLink]] #comment-tag %%\n\nHTML comment: <!-- [[HTMLLink]] #html-tag -->\n\nDisplay math:\n$$\n[[DisplayMathLink]] #displaymath-tag\n$$\n\nInline math: $x=[[InlineMathLink]]$ and $y #inlinemath-tag$ here.\n\nEnd with another real link: [[AnotherReal]]\nAnd tag: #another-real-tag\n"
+
+	os.WriteFile(
+		filepath.Join(vaultDir, "AllZones.md"),
+		[]byte(content),
+		0644,
+	)
+
+	data, err := os.ReadFile(filepath.Join(vaultDir, "AllZones.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test wikilinks: only RealTarget and AnotherReal should be found
+	links := parseWikilinks(string(data))
+	linkTitles := make(map[string]bool)
+	for _, l := range links {
+		linkTitles[l.Title] = true
+	}
+
+	if !linkTitles["RealTarget"] {
+		t.Error("should find [[RealTarget]] (plain text)")
+	}
+	if !linkTitles["AnotherReal"] {
+		t.Error("should find [[AnotherReal]] (plain text)")
+	}
+	if linkTitles["FencedLink"] {
+		t.Error("should NOT find [[FencedLink]] (fenced code)")
+	}
+	if linkTitles["InlineCodeLink"] {
+		t.Error("should NOT find [[InlineCodeLink]] (inline code)")
+	}
+	if linkTitles["CommentLink"] {
+		t.Error("should NOT find [[CommentLink]] (Obsidian comment)")
+	}
+	if linkTitles["HTMLLink"] {
+		t.Error("should NOT find [[HTMLLink]] (HTML comment)")
+	}
+	if linkTitles["DisplayMathLink"] {
+		t.Error("should NOT find [[DisplayMathLink]] (display math)")
+	}
+	if linkTitles["InlineMathLink"] {
+		t.Error("should NOT find [[InlineMathLink]] (inline math)")
+	}
+	if len(links) != 2 {
+		t.Errorf("expected 2 links, got %d: %v", len(links), links)
+	}
+
+	// Test tags: only real-tag and another-real-tag should be found
+	tags := allNoteTags(string(data))
+	tagSet := make(map[string]bool)
+	for _, tag := range tags {
+		tagSet[tag] = true
+	}
+
+	if !tagSet["real-tag"] {
+		t.Error("should find #real-tag (plain text)")
+	}
+	if !tagSet["another-real-tag"] {
+		t.Error("should find #another-real-tag (plain text)")
+	}
+	if tagSet["fenced-tag"] {
+		t.Error("should NOT find #fenced-tag (fenced code)")
+	}
+	if tagSet["inlinecode-tag"] {
+		t.Error("should NOT find #inlinecode-tag (inline code)")
+	}
+	if tagSet["comment-tag"] {
+		t.Error("should NOT find #comment-tag (Obsidian comment)")
+	}
+	if tagSet["html-tag"] {
+		t.Error("should NOT find #html-tag (HTML comment)")
+	}
+	if tagSet["displaymath-tag"] {
+		t.Error("should NOT find #displaymath-tag (display math)")
+	}
+	if tagSet["inlinemath-tag"] {
+		t.Error("should NOT find #inlinemath-tag (inline math)")
+	}
+
+	// Test backlinks for RealTarget
+	backlinks, err := findBacklinks(vaultDir, "RealTarget")
+	if err != nil {
+		t.Fatalf("findBacklinks RealTarget: %v", err)
+	}
+	if len(backlinks) != 1 || backlinks[0] != "AllZones.md" {
+		t.Errorf("RealTarget backlinks: got %v, want [AllZones.md]", backlinks)
+	}
+
+	// Test backlinks for inert-zone links: should all be zero
+	for _, inertTitle := range []string{"FencedLink", "InlineCodeLink", "CommentLink", "HTMLLink", "DisplayMathLink", "InlineMathLink"} {
+		bl, err := findBacklinks(vaultDir, inertTitle)
+		if err != nil {
+			t.Fatalf("findBacklinks %s: %v", inertTitle, err)
+		}
+		if len(bl) != 0 {
+			t.Errorf("%s should have 0 backlinks (inside inert zone), got %v", inertTitle, bl)
+		}
+	}
+}

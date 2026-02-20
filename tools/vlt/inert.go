@@ -159,11 +159,59 @@ func maskHTMLComments(text string) string {
 	return string(buf)
 }
 
+// displayMathPattern matches display math blocks: $$ content $$.
+// Uses (?s) (DOTALL) so that . matches newlines, enabling multiline blocks.
+// The match is non-greedy (*?) to handle multiple display math blocks.
+// Group 1 captures the content between the $$ delimiters.
+var displayMathPattern = regexp.MustCompile(`(?s)\$\$(.+?)\$\$`)
+
+// maskDisplayMath masks the content inside display math blocks ($$ ... $$).
+// The $$ delimiters themselves are preserved; only the content between them is
+// replaced with spaces (newlines preserved). This pass runs AFTER code blocks,
+// inline code, and comments, so $$ inside already-masked zones will not
+// trigger false math boundaries.
+func maskDisplayMath(text string) string {
+	buf := []byte(text)
+
+	for _, loc := range displayMathPattern.FindAllSubmatchIndex(buf, -1) {
+		// loc[2], loc[3] = start, end of group 1 (content between $$ delimiters)
+		maskRegion(buf, loc[2], loc[3])
+	}
+
+	return string(buf)
+}
+
+// inlineMathPattern matches inline math: $content$.
+// Requires the character after the opening $ to be a non-space, non-$ character,
+// and the character before the closing $ to be a non-space, non-$ character.
+// This prevents matching dollar amounts like $50 (no closing $) or
+// spaced constructs like $ text $ (Obsidian also requires non-space).
+// Does not cross newlines (inline math is single-line).
+// Group 1 captures the content between the $ delimiters.
+var inlineMathPattern = regexp.MustCompile(`\$([^\s$][^$\n]*?[^\s$])\$`)
+
+// maskInlineMath masks the content inside inline math spans ($ ... $).
+// The $ delimiters themselves are preserved; only the content between them is
+// replaced with spaces. This pass runs AFTER display math so that $$ is not
+// partially consumed by the inline math pattern.
+func maskInlineMath(text string) string {
+	buf := []byte(text)
+
+	for _, loc := range inlineMathPattern.FindAllSubmatchIndex(buf, -1) {
+		// loc[2], loc[3] = start, end of group 1 (content between $ delimiters)
+		maskRegion(buf, loc[2], loc[3])
+	}
+
+	return string(buf)
+}
+
 func init() {
-	// Order matters: fenced code blocks first, then inline code, then comments.
-	// HTML comments run last so that <!-- inside code or %% is already masked.
+	// Order matters: fenced code blocks first, then inline code, then comments,
+	// then math. Display math before inline math so $$ is not consumed as $.
 	registerMaskPass(maskFencedCodeBlocks)
 	registerMaskPass(maskInlineCode)
 	registerMaskPass(maskObsidianComments)
 	registerMaskPass(maskHTMLComments)
+	registerMaskPass(maskDisplayMath)
+	registerMaskPass(maskInlineMath)
 }
