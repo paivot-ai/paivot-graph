@@ -1,13 +1,24 @@
 PLUGIN_DIR := $(shell pwd)
 PLUGIN_NAME := paivot-graph
 
-.PHONY: install update uninstall test lint seed reseed build-vlt install-vlt help
+.PHONY: install update uninstall test lint seed reseed check-deps help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
-install: ## Register marketplace and install plugin
+check-deps: ## Verify required dependencies are installed
+	@command -v vlt >/dev/null 2>&1 || \
+		(echo "ERROR: vlt is not installed." && \
+		 echo "       Install from https://github.com/RamXX/vlt" && \
+		 echo "       git clone https://github.com/RamXX/vlt.git && cd vlt && make install" && \
+		 exit 1)
+	@echo "OK: vlt $$(vlt version 2>&1)"
+	@command -v claude >/dev/null 2>&1 || \
+		(echo "ERROR: claude (Claude Code) is not installed." && exit 1)
+	@echo "OK: claude found"
+
+install: check-deps ## Register marketplace and install plugin
 	@claude plugin marketplace add "$(PLUGIN_DIR)" 2>/dev/null \
 		&& echo "Marketplace registered." \
 		|| echo "Marketplace already registered."
@@ -31,14 +42,6 @@ seed: ## Seed Obsidian vault with agent prompts and behavioral notes (idempotent
 
 reseed: ## Force-update all vault notes with latest plugin content
 	scripts/seed-vault.sh --force
-
-build-vlt: ## Build the vlt CLI (fast Obsidian vault tool)
-	cd tools/vlt && go build -o ../../bin/vlt .
-	@echo "Built: bin/vlt"
-
-install-vlt: ## Install vlt to GOPATH/bin
-	cd tools/vlt && go install .
-	@echo "Installed: $$(go env GOPATH)/bin/vlt"
 
 lint: ## Run shellcheck on all shell scripts
 	shellcheck hooks/*.sh scripts/*.sh
