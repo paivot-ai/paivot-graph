@@ -24,6 +24,22 @@ func captureStdout(fn func()) string {
 	return buf.String()
 }
 
+// captureStderr captures stderr output from a function call.
+func captureStderr(fn func()) string {
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	fn()
+
+	w.Close()
+	os.Stderr = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
+
 func TestOutputFormat(t *testing.T) {
 	tests := []struct {
 		flags map[string]bool

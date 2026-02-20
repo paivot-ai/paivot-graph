@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // searchResult holds a single search match.
@@ -36,6 +37,17 @@ func findMatchLines(lines []string, query string) []int {
 	var matches []int
 	for i, line := range lines {
 		if strings.Contains(strings.ToLower(line), queryLower) {
+			matches = append(matches, i)
+		}
+	}
+	return matches
+}
+
+// findMatchLinesRegex returns 0-based line indices where the compiled regex matches.
+func findMatchLinesRegex(lines []string, re *regexp.Regexp) []int {
+	var matches []int
+	for i, line := range lines {
+		if re.MatchString(line) {
 			matches = append(matches, i)
 		}
 	}
@@ -184,16 +196,47 @@ func parseSearchQuery(query string) (text string, filters map[string]string) {
 
 // cmdSearch finds notes whose title or content matches the query (case-insensitive).
 // Supports property filters: query="term [key:value] [key2:value2]"
+// Supports regex="pattern" for regexp-based search (case-insensitive by default).
+// When both query= and regex= are provided, regex takes precedence (with a warning).
 // When context="N" is provided, output switches to file:line:content format
 // showing N lines before and after each match (similar to grep -C).
 func cmdSearch(vaultDir string, params map[string]string, format string) error {
 	query := params["query"]
-	if query == "" {
-		return fmt.Errorf("search requires query=\"<term>\"")
+	regexParam := params["regex"]
+
+	if query == "" && regexParam == "" {
+		return fmt.Errorf("search requires query=\"<term>\" or regex=\"<pattern>\"")
 	}
 
-	textQuery, filters := parseSearchQuery(query)
+	// Compile regex if provided
+	var re *regexp.Regexp
+	useRegex := regexParam != ""
+
+	if useRegex {
+		var compileErr error
+		re, compileErr = regexp.Compile("(?i)" + regexParam)
+		if compileErr != nil {
+			return fmt.Errorf("invalid regex %q: %v", regexParam, compileErr)
+		}
+
+		// If both query and regex provided, warn and use regex for text matching
+		if query != "" {
+			fmt.Fprintf(os.Stderr, "vlt: both query= and regex= provided; regex takes precedence for text matching\n")
+		}
+	}
+
+	// Parse property filters from query (even when regex is primary text matcher)
+	var textQuery string
+	var filters map[string]string
+	if query != "" {
+		textQuery, filters = parseSearchQuery(query)
+	} else {
+		filters = make(map[string]string)
+	}
+
+	// When regex is used, the regex is the text matcher (not the textQuery)
 	queryLower := strings.ToLower(textQuery)
+
 	pathFilter := params["path"] // optional: limit to a subdirectory
 
 	// Parse optional context parameter
@@ -215,11 +258,11 @@ func cmdSearch(vaultDir string, params map[string]string, format string) error {
 		}
 	}
 
-	hasTextQuery := queryLower != ""
+	hasTextQuery := useRegex || queryLower != ""
 	hasFilters := len(filters) > 0
 
 	if !hasTextQuery && !hasFilters {
-		return fmt.Errorf("search requires query=\"<term>\"")
+		return fmt.Errorf("search requires query=\"<term>\" or regex=\"<pattern>\"")
 	}
 
 	var results []searchResult
@@ -269,8 +312,15 @@ func cmdSearch(vaultDir string, params map[string]string, format string) error {
 			return nil
 		}
 
-		titleMatches := strings.Contains(strings.ToLower(title), queryLower)
-		contentMatches := strings.Contains(strings.ToLower(content), queryLower)
+		// Determine matches based on regex or substring
+		var titleMatches, contentMatches bool
+		if useRegex {
+			titleMatches = re.MatchString(title)
+			contentMatches = re.MatchString(content)
+		} else {
+			titleMatches = strings.Contains(strings.ToLower(title), queryLower)
+			contentMatches = strings.Contains(strings.ToLower(content), queryLower)
+		}
 
 		if !titleMatches && !contentMatches {
 			return nil
@@ -284,7 +334,12 @@ func cmdSearch(vaultDir string, params map[string]string, format string) error {
 
 		// Context mode: find line-level matches in content
 		lines := strings.Split(content, "\n")
-		matchLineIdxs := findMatchLines(lines, textQuery)
+		var matchLineIdxs []int
+		if useRegex {
+			matchLineIdxs = findMatchLinesRegex(lines, re)
+		} else {
+			matchLineIdxs = findMatchLines(lines, textQuery)
+		}
 
 		if len(matchLineIdxs) > 0 {
 			// Expand and merge ranges
@@ -375,7 +430,9 @@ func parseInt0(s string) (int, error) {
 
 // cmdCreate creates a new note at the given path within the vault.
 // Content comes from the content= parameter or stdin.
-func cmdCreate(vaultDir string, params map[string]string, silent bool) error {
+// When timestamps is true (or VLT_TIMESTAMPS=1), created_at and updated_at
+// are added to frontmatter.
+func cmdCreate(vaultDir string, params map[string]string, silent bool, timestamps bool) error {
 	name := params["name"]
 	notePath := params["path"]
 
@@ -398,6 +455,10 @@ func cmdCreate(vaultDir string, params map[string]string, silent bool) error {
 		content = readStdinIfPiped()
 	}
 
+	if timestampsEnabled(timestamps) {
+		content = ensureTimestamps(content, true, time.Now())
+	}
+
 	// Ensure parent directory exists
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		return err
@@ -415,7 +476,8 @@ func cmdCreate(vaultDir string, params map[string]string, silent bool) error {
 
 // cmdAppend adds content to the end of an existing note.
 // Content comes from the content= parameter or stdin.
-func cmdAppend(vaultDir string, params map[string]string) error {
+// When timestamps is true (or VLT_TIMESTAMPS=1), updated_at is refreshed.
+func cmdAppend(vaultDir string, params map[string]string, timestamps bool) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("append requires file=\"<title>\"")
@@ -440,8 +502,20 @@ func cmdAppend(vaultDir string, params map[string]string) error {
 	}
 	defer f.Close()
 
-	_, err = fmt.Fprint(f, content)
-	return err
+	if _, err = fmt.Fprint(f, content); err != nil {
+		return err
+	}
+
+	if timestampsEnabled(timestamps) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		updated := ensureTimestamps(string(data), false, time.Now())
+		return os.WriteFile(path, []byte(updated), 0644)
+	}
+
+	return nil
 }
 
 // cmdMove moves a note from one path to another within the vault.
@@ -629,7 +703,8 @@ func cmdPropertySet(vaultDir string, params map[string]string) error {
 // cmdWrite replaces the body content of an existing note, preserving frontmatter.
 // Content comes from the content= parameter or stdin.
 // If the note has no frontmatter, the entire file content is replaced.
-func cmdWrite(vaultDir string, params map[string]string) error {
+// When timestamps is true (or VLT_TIMESTAMPS=1), updated_at is refreshed.
+func cmdWrite(vaultDir string, params map[string]string, timestamps bool) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("write requires file=\"<title>\"")
@@ -662,11 +737,16 @@ func cmdWrite(vaultDir string, params map[string]string) error {
 		result = content
 	}
 
+	if timestampsEnabled(timestamps) {
+		result = ensureTimestamps(result, false, time.Now())
+	}
+
 	return os.WriteFile(path, []byte(result), 0644)
 }
 
 // cmdPrepend inserts content at the top of a note, after frontmatter if present.
-func cmdPrepend(vaultDir string, params map[string]string) error {
+// When timestamps is true (or VLT_TIMESTAMPS=1), updated_at is refreshed.
+func cmdPrepend(vaultDir string, params map[string]string, timestamps bool) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("prepend requires file=\"<title>\"")
@@ -702,6 +782,10 @@ func cmdPrepend(vaultDir string, params map[string]string) error {
 		result = before + "\n" + content + after
 	} else {
 		result = content + text
+	}
+
+	if timestampsEnabled(timestamps) {
+		result = ensureTimestamps(result, false, time.Now())
 	}
 
 	return os.WriteFile(path, []byte(result), 0644)
@@ -1095,7 +1179,8 @@ func findSection(lines []string, heading string) (sectionBounds, bool) {
 // cmdPatch performs surgical edits to a note: heading-targeted or line-targeted
 // replace/delete. The delete parameter controls whether content is removed
 // (true) or replaced with new content (false).
-func cmdPatch(vaultDir string, params map[string]string, delete bool) error {
+// When timestamps is true (or VLT_TIMESTAMPS=1), updated_at is refreshed.
+func cmdPatch(vaultDir string, params map[string]string, delete bool, timestamps bool) error {
 	title := params["file"]
 	if title == "" {
 		return fmt.Errorf("patch requires file=\"<title>\"")
@@ -1179,6 +1264,11 @@ func cmdPatch(vaultDir string, params map[string]string, delete bool) error {
 	}
 
 	output := strings.Join(result, "\n")
+
+	if timestampsEnabled(timestamps) {
+		output = ensureTimestamps(output, false, time.Now())
+	}
+
 	return os.WriteFile(path, []byte(output), 0644)
 }
 

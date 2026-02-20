@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const version = "0.4.0"
+const version = "0.5.0"
 
 var knownCommands = map[string]bool{
 	"read": true, "search": true, "create": true,
@@ -67,6 +67,8 @@ func main() {
 		die("%v", err)
 	}
 
+	ts := flags["timestamps"]
+
 	// Dispatch
 	switch cmd {
 	case "read":
@@ -74,15 +76,15 @@ func main() {
 	case "search":
 		err = cmdSearch(vaultDir, params, format)
 	case "create":
-		err = cmdCreate(vaultDir, params, flags["silent"])
+		err = cmdCreate(vaultDir, params, flags["silent"], ts)
 	case "append":
-		err = cmdAppend(vaultDir, params)
+		err = cmdAppend(vaultDir, params, ts)
 	case "prepend":
-		err = cmdPrepend(vaultDir, params)
+		err = cmdPrepend(vaultDir, params, ts)
 	case "write":
-		err = cmdWrite(vaultDir, params)
+		err = cmdWrite(vaultDir, params, ts)
 	case "patch":
-		err = cmdPatch(vaultDir, params, flags["delete"])
+		err = cmdPatch(vaultDir, params, flags["delete"], ts)
 	case "move":
 		err = cmdMove(vaultDir, params)
 	case "delete":
@@ -158,13 +160,13 @@ Usage:
 
 File commands:
   read           file="<title>" [heading="<heading>"]         Read a note (or a specific section)
-  create         name="<title>" path="<path>" [content=...] [silent]  Create a note
-  append         file="<title>" [content="<text>"]           Append to end of note
-  prepend        file="<title>" [content="<text>"]           Prepend after frontmatter
-  write          file="<title>" [content="<text>"]           Replace body (preserve frontmatter)
-  patch          file="<title>" heading="<heading>" [content="<text>"] [delete]  Section-targeted edit
-  patch          file="<title>" line="<N>" [content="<text>"] [delete]           Line-targeted edit
-  patch          file="<title>" line="<N-M>" [content="<text>"] [delete]         Line range edit
+  create         name="<title>" path="<path>" [content=...] [silent] [timestamps]  Create a note
+  append         file="<title>" [content="<text>"] [timestamps]      Append to end of note
+  prepend        file="<title>" [content="<text>"] [timestamps]      Prepend after frontmatter
+  write          file="<title>" [content="<text>"] [timestamps]      Replace body (preserve frontmatter)
+  patch          file="<title>" heading="<heading>" [content="<text>"] [delete] [timestamps]  Section edit
+  patch          file="<title>" line="<N>" [content="<text>"] [delete] [timestamps]           Line edit
+  patch          file="<title>" line="<N-M>" [content="<text>"] [delete] [timestamps]         Line range edit
   move           path="<from>" to="<to>"                     Move/rename (updates wiki + md links)
   delete         file="<title>" [permanent]                  Trash (or permanently delete)
   files          [folder="<dir>"] [ext="<ext>"] [total]      List vault files
@@ -190,6 +192,7 @@ Task commands:
 
 Search:
   search         query="<term> [key:value]" [context="N"]    Search by title, content, properties
+  search         regex="<pattern>" [context="N"]              Search by regex (case-insensitive)
                                                               context=N shows N lines before/after each match
 
 Other:
@@ -200,6 +203,7 @@ Options:
   silent           Suppress output on create.
   permanent        Hard delete instead of .trash.
   delete           Remove heading+content or line(s) instead of replacing (patch).
+  timestamps       Auto-manage created_at/updated_at frontmatter (or set VLT_TIMESTAMPS=1).
   counts           Show note counts with tags.
   total            Show count instead of listing files.
   done             Show only completed tasks.
@@ -215,6 +219,9 @@ Search filters:
   Property filters can be embedded in search queries: query="term [key:value]"
   Multiple filters: query="architecture [status:active] [type:decision]"
   Filter-only: query="[status:active]"
+  Regex search: regex="arch\w+ure" (case-insensitive by default)
+  Regex + filters: regex="pattern" query="[status:active]"
+  If both query= and regex= provide text, regex takes precedence (with a warning).
 
 Wikilink support:
   [[Note]], [[Note#Heading]], [[Note#^block-id]], [[Note|Display]], ![[Embed]]
@@ -257,6 +264,12 @@ Examples:
   vlt vault="Claude" search query="architecture" --csv
   vlt vault="Claude" search query="architecture" context="2"
   vlt vault="Claude" search query="architecture [status:active]" context="1" --json
+  vlt vault="Claude" search regex="arch\w+ure"
+  vlt vault="Claude" search regex="\d{4}-\d{2}-\d{2}" context="2"
+  vlt vault="Claude" search regex="pattern" query="[status:active]"
+  vlt vault="Claude" create name="Note" path="_inbox/Note.md" content="# Note" timestamps
+  vlt vault="Claude" append file="Note" content="more" timestamps
+  VLT_TIMESTAMPS=1 vlt vault="Claude" write file="Note" content="# New Body"
   vlt vaults
 `)
 }

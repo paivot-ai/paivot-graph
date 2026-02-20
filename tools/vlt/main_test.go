@@ -200,7 +200,7 @@ func TestCmdCreateAndRead(t *testing.T) {
 		"path":    "_inbox/Test Note.md",
 		"content": "---\ntype: test\n---\n\n# Test Note\n\nHello world.\n",
 	}
-	if err := cmdCreate(vaultDir, params, false); err != nil {
+	if err := cmdCreate(vaultDir, params, false, false); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
@@ -216,7 +216,7 @@ func TestCmdCreateAndRead(t *testing.T) {
 
 	// Create again (should be a no-op, not overwrite)
 	params["content"] = "overwritten"
-	if err := cmdCreate(vaultDir, params, true); err != nil {
+	if err := cmdCreate(vaultDir, params, true, false); err != nil {
 		t.Fatalf("create (duplicate): %v", err)
 	}
 	data, _ = os.ReadFile(fullPath)
@@ -236,7 +236,7 @@ func TestCmdAppend(t *testing.T) {
 		"file":    "Test Append",
 		"content": "\n## Added section\n",
 	}
-	if err := cmdAppend(vaultDir, params); err != nil {
+	if err := cmdAppend(vaultDir, params, false); err != nil {
 		t.Fatalf("append: %v", err)
 	}
 
@@ -625,7 +625,7 @@ func TestCmdPrepend(t *testing.T) {
 	)
 
 	params := map[string]string{"file": "WithFM", "content": "PREPENDED\n"}
-	if err := cmdPrepend(vaultDir, params); err != nil {
+	if err := cmdPrepend(vaultDir, params, false); err != nil {
 		t.Fatalf("prepend with FM: %v", err)
 	}
 
@@ -644,7 +644,7 @@ func TestCmdPrepend(t *testing.T) {
 	)
 
 	params = map[string]string{"file": "NoFM", "content": "TOP\n"}
-	if err := cmdPrepend(vaultDir, params); err != nil {
+	if err := cmdPrepend(vaultDir, params, false); err != nil {
 		t.Fatalf("prepend without FM: %v", err)
 	}
 
@@ -855,7 +855,7 @@ func TestCmdWriteReplacesBody(t *testing.T) {
 		"file":    "Note",
 		"content": "# New Body\n\nCompletely replaced.\n",
 	}
-	if err := cmdWrite(vaultDir, params); err != nil {
+	if err := cmdWrite(vaultDir, params, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -891,7 +891,7 @@ func TestCmdWriteNoFrontmatter(t *testing.T) {
 		"file":    "Plain",
 		"content": "# New Title\n\nNew content.\n",
 	}
-	if err := cmdWrite(vaultDir, params); err != nil {
+	if err := cmdWrite(vaultDir, params, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -918,7 +918,7 @@ func TestCmdWriteEmptyBody(t *testing.T) {
 		"file":    "EmptyBody",
 		"content": "",
 	}
-	if err := cmdWrite(vaultDir, params); err != nil {
+	if err := cmdWrite(vaultDir, params, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -941,7 +941,7 @@ func TestCmdWriteRequiresFile(t *testing.T) {
 	params := map[string]string{
 		"content": "some content",
 	}
-	err := cmdWrite(vaultDir, params)
+	err := cmdWrite(vaultDir, params, false)
 	if err == nil {
 		t.Fatal("expected error when file= not provided")
 	}
@@ -958,7 +958,7 @@ func TestCmdWriteNoteNotFound(t *testing.T) {
 		"file":    "Nonexistent",
 		"content": "some content",
 	}
-	err := cmdWrite(vaultDir, params)
+	err := cmdWrite(vaultDir, params, false)
 	if err == nil {
 		t.Fatal("expected error for nonexistent note")
 	}
@@ -981,7 +981,7 @@ func TestWritePreservesFrontmatter(t *testing.T) {
 		"file":    "My Decision",
 		"content": "# Updated Decision\n\nNew body with different content.\n",
 	}
-	if err := cmdWrite(vaultDir, params); err != nil {
+	if err := cmdWrite(vaultDir, params, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -1037,7 +1037,7 @@ func TestWriteViaContentParam(t *testing.T) {
 		"file":    "StdinNote",
 		"content": "Body from content param.\n",
 	}
-	if err := cmdWrite(vaultDir, params); err != nil {
+	if err := cmdWrite(vaultDir, params, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -1064,7 +1064,7 @@ func TestWriteThenRead(t *testing.T) {
 		"file":    "RoundTrip",
 		"content": newBody,
 	}
-	if err := cmdWrite(vaultDir, writeParams); err != nil {
+	if err := cmdWrite(vaultDir, writeParams, false); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -1098,7 +1098,7 @@ func TestWriteDoesNotCreateFile(t *testing.T) {
 		"file":    "Ghost Note",
 		"content": "Should not be created",
 	}
-	err := cmdWrite(vaultDir, params)
+	err := cmdWrite(vaultDir, params, false)
 	if err == nil {
 		t.Fatal("expected error for nonexistent note")
 	}
@@ -1127,7 +1127,7 @@ func TestE2EWriteCommand(t *testing.T) {
 		"file":    "Test Method",
 		"content": newBody,
 	}
-	if err := cmdWrite(vaultDir, writeParams); err != nil {
+	if err := cmdWrite(vaultDir, writeParams, false); err != nil {
 		t.Fatalf("E2E write: %v", err)
 	}
 
@@ -1207,7 +1207,7 @@ func TestPatchByHeadingReplace(t *testing.T) {
 		"heading": "## Section A",
 		"content": "replaced content\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1238,7 +1238,7 @@ func TestPatchByHeadingPreservesOtherSections(t *testing.T) {
 		"heading": "## Second",
 		"content": "new second\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1269,7 +1269,7 @@ func TestPatchByHeadingCaseInsensitive(t *testing.T) {
 		"heading": "## my section",
 		"content": "patched\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1297,7 +1297,7 @@ func TestPatchByHeadingScopeToNextEqualLevel(t *testing.T) {
 		"heading": "## Section A",
 		"content": "all new\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1332,7 +1332,7 @@ func TestPatchByHeadingAtEOF(t *testing.T) {
 		"heading": "## Last Section",
 		"content": "replaced last\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1359,7 +1359,7 @@ func TestPatchByHeadingDelete(t *testing.T) {
 		"file":    "Del",
 		"heading": "## Remove",
 	}
-	if err := cmdPatch(vaultDir, params, true); err != nil {
+	if err := cmdPatch(vaultDir, params, true, false); err != nil {
 		t.Fatalf("patch delete: %v", err)
 	}
 
@@ -1393,7 +1393,7 @@ func TestPatchByLineReplace(t *testing.T) {
 		"line":    "2",
 		"content": "REPLACED",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch line: %v", err)
 	}
 
@@ -1429,7 +1429,7 @@ func TestPatchByLineRangeReplace(t *testing.T) {
 		"line":    "3-5",
 		"content": "REPLACED BLOCK",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch line range: %v", err)
 	}
 
@@ -1462,7 +1462,7 @@ func TestPatchByLineDelete(t *testing.T) {
 		"file": "DelLine",
 		"line": "3",
 	}
-	if err := cmdPatch(vaultDir, params, true); err != nil {
+	if err := cmdPatch(vaultDir, params, true, false); err != nil {
 		t.Fatalf("patch delete line: %v", err)
 	}
 
@@ -1490,7 +1490,7 @@ func TestPatchByLineRangeDelete(t *testing.T) {
 		"file": "DelRange",
 		"line": "2-4",
 	}
-	if err := cmdPatch(vaultDir, params, true); err != nil {
+	if err := cmdPatch(vaultDir, params, true, false); err != nil {
 		t.Fatalf("patch delete range: %v", err)
 	}
 
@@ -1522,7 +1522,7 @@ func TestPatchLineOutOfRange(t *testing.T) {
 		"line":    "10",
 		"content": "nope",
 	}
-	err := cmdPatch(vaultDir, params, false)
+	err := cmdPatch(vaultDir, params, false, false)
 	if err == nil {
 		t.Fatal("expected error for out-of-range line")
 	}
@@ -1544,7 +1544,7 @@ func TestPatchHeadingNotFound(t *testing.T) {
 		"heading": "## Nonexistent",
 		"content": "nope",
 	}
-	err := cmdPatch(vaultDir, params, false)
+	err := cmdPatch(vaultDir, params, false, false)
 	if err == nil {
 		t.Fatal("expected error for nonexistent heading")
 	}
@@ -1561,7 +1561,7 @@ func TestPatchRequiresFile(t *testing.T) {
 		"heading": "## Heading",
 		"content": "content",
 	}
-	err := cmdPatch(vaultDir, params, false)
+	err := cmdPatch(vaultDir, params, false, false)
 	if err == nil {
 		t.Fatal("expected error when file= not provided")
 	}
@@ -1588,7 +1588,7 @@ func TestPatchByHeadingIntegration(t *testing.T) {
 		"heading": "## Architecture",
 		"content": "Completely revised architecture.\nNew approach.\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("integration patch: %v", err)
 	}
 
@@ -1635,7 +1635,7 @@ func TestPatchByLineIntegration(t *testing.T) {
 		"line":    "7",
 		"content": "PATCHED A",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("integration line patch: %v", err)
 	}
 
@@ -1669,7 +1669,7 @@ func TestPatchDeleteSectionIntegration(t *testing.T) {
 		"file":    "Sections",
 		"heading": "## Delete This",
 	}
-	if err := cmdPatch(vaultDir, params, true); err != nil {
+	if err := cmdPatch(vaultDir, params, true, false); err != nil {
 		t.Fatalf("integration delete: %v", err)
 	}
 
@@ -1710,7 +1710,7 @@ func TestPatchPreservesFrontmatter(t *testing.T) {
 		"heading": "## Summary",
 		"content": "New summary.\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -1763,7 +1763,7 @@ func TestPatchThenBacklinks(t *testing.T) {
 		"heading": "## Links",
 		"content": "No links here anymore.\n",
 	}
-	if err := cmdPatch(vaultDir, params, false); err != nil {
+	if err := cmdPatch(vaultDir, params, false, false); err != nil {
 		t.Fatalf("patch: %v", err)
 	}
 
@@ -2484,6 +2484,344 @@ func TestSearchContextWithYAMLFormat(t *testing.T) {
 	}
 	if !strings.Contains(out, "architecture here") {
 		t.Errorf("YAML output missing match text, got: %q", out)
+	}
+}
+
+// === Regex search tests (VLT-aca) ===
+
+// Unit test 1: regex search finds matches with a pattern
+func TestSearchRegexBasic(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"),
+		[]byte("The architecture is modular.\nDesign uses microservices.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "Other.md"),
+		[]byte("Nothing relevant here.\n"), 0644)
+
+	params := map[string]string{"regex": `arch\w+ure`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex basic search: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "Note") {
+		t.Errorf("expected Note in output, got: %q", out)
+	}
+	if strings.Contains(out, "Other") {
+		t.Errorf("Other should not appear, got: %q", out)
+	}
+}
+
+// Unit test 2: invalid regex returns clear error with compilation message
+func TestSearchRegexInvalid(t *testing.T) {
+	vaultDir := t.TempDir()
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"), []byte("content"), 0644)
+
+	params := map[string]string{"regex": `[invalid`}
+	err := cmdSearch(vaultDir, params, "")
+
+	if err == nil {
+		t.Fatal("expected error for invalid regex, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid regex") {
+		t.Errorf("error should mention 'invalid regex', got: %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "[invalid") {
+		t.Errorf("error should include the bad pattern, got: %q", err.Error())
+	}
+}
+
+// Unit test 3: regex matching is case-insensitive by default
+func TestSearchRegexCaseInsensitive(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "Upper.md"),
+		[]byte("The ARCHITECTURE is here.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "Lower.md"),
+		[]byte("The architecture is here.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "Mixed.md"),
+		[]byte("The Architecture Is Here.\n"), 0644)
+
+	params := map[string]string{"regex": `architecture`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex case insensitive: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "Upper") {
+		t.Errorf("should match uppercase, got: %q", out)
+	}
+	if !strings.Contains(out, "Lower") {
+		t.Errorf("should match lowercase, got: %q", out)
+	}
+	if !strings.Contains(out, "Mixed") {
+		t.Errorf("should match mixed case, got: %q", out)
+	}
+}
+
+// Unit test 4: regex + [key:value] property filter works together
+func TestSearchRegexWithPropertyFilter(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "Active.md"),
+		[]byte("---\nstatus: active\n---\n\nThe architecture is modular.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "Archived.md"),
+		[]byte("---\nstatus: archived\n---\n\nThe architecture is legacy.\n"), 0644)
+
+	// regex with property filter embedded in query -- but regex uses a separate param
+	// Property filters come from the query= param, so we pass query with filter only
+	params := map[string]string{"regex": `arch\w+ure`, "query": "[status:active]"}
+	out := captureStdout(func() {
+		// When both regex and query are provided, regex takes precedence for text matching
+		// but property filters from query should still apply
+		stderr := captureStderr(func() {
+			if err := cmdSearch(vaultDir, params, ""); err != nil {
+				t.Fatalf("regex with property filter: %v", err)
+			}
+		})
+		_ = stderr // warning expected
+	})
+
+	if !strings.Contains(out, "Active") {
+		t.Errorf("expected Active in output, got: %q", out)
+	}
+	if strings.Contains(out, "Archived") {
+		t.Errorf("Archived should be filtered out, got: %q", out)
+	}
+}
+
+// Unit test 5: both query= and regex= provided: regex takes precedence with warning
+func TestSearchRegexAndQueryPrecedence(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"),
+		[]byte("The architecture is modular.\nDesign pattern here.\n"), 0644)
+
+	params := map[string]string{"query": "design", "regex": `arch\w+ure`}
+	var stderr string
+	out := captureStdout(func() {
+		stderr = captureStderr(func() {
+			if err := cmdSearch(vaultDir, params, ""); err != nil {
+				t.Fatalf("regex and query precedence: %v", err)
+			}
+		})
+	})
+
+	// Regex should match "architecture", not query "design"
+	if !strings.Contains(out, "Note") {
+		t.Errorf("expected Note in output, got: %q", out)
+	}
+	// Should have a warning on stderr about regex taking precedence
+	if !strings.Contains(stderr, "regex") {
+		t.Errorf("expected warning about regex on stderr, got: %q", stderr)
+	}
+}
+
+// Unit test 6: regex matches against note title too
+func TestSearchRegexMatchesTitle(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	// Title matches, content does not
+	os.WriteFile(filepath.Join(vaultDir, "Architecture Overview.md"),
+		[]byte("Nothing matching in content.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "Unrelated.md"),
+		[]byte("Also nothing matching.\n"), 0644)
+
+	params := map[string]string{"regex": `arch\w+ure`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex title match: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "Architecture Overview") {
+		t.Errorf("should match title, got: %q", out)
+	}
+	if strings.Contains(out, "Unrelated") {
+		t.Errorf("unrelated should not appear, got: %q", out)
+	}
+}
+
+// Unit test 7: regex with no matches returns empty/silent
+func TestSearchRegexNoMatch(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"),
+		[]byte("Nothing interesting here.\n"), 0644)
+
+	params := map[string]string{"regex": `zzz\d{4}qqq`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex no match: %v", err)
+		}
+	})
+
+	if strings.TrimSpace(out) != "" {
+		t.Errorf("expected empty output for no matches, got: %q", out)
+	}
+}
+
+// Integration test 8: create notes in t.TempDir(), search with regex, verify correct matches
+func TestSearchRegexIntegration(t *testing.T) {
+	vaultDir := t.TempDir()
+	os.MkdirAll(filepath.Join(vaultDir, "decisions"), 0755)
+	os.MkdirAll(filepath.Join(vaultDir, "patterns"), 0755)
+
+	os.WriteFile(filepath.Join(vaultDir, "decisions", "ADR-001.md"),
+		[]byte("---\ntype: decision\nstatus: active\n---\n\n# Architecture Decision\n\nWe chose microservices architecture.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "decisions", "ADR-002.md"),
+		[]byte("---\ntype: decision\nstatus: active\n---\n\n# Database Choice\n\nWe selected PostgreSQL for storage.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "patterns", "Observer.md"),
+		[]byte("# Observer Pattern\n\nThe observer pattern is used for event-driven architecture.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "patterns", "Singleton.md"),
+		[]byte("# Singleton Pattern\n\nSingleton ensures one instance.\n"), 0644)
+
+	// Search for architecture using regex
+	params := map[string]string{"regex": `architect\w+`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex integration: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "ADR-001") {
+		t.Errorf("ADR-001 should match, got: %q", out)
+	}
+	if !strings.Contains(out, "Observer") {
+		t.Errorf("Observer should match, got: %q", out)
+	}
+	if strings.Contains(out, "ADR-002") {
+		t.Errorf("ADR-002 should not match, got: %q", out)
+	}
+	if strings.Contains(out, "Singleton") {
+		t.Errorf("Singleton should not match, got: %q", out)
+	}
+}
+
+// Integration test 9: complex regex pattern (date pattern)
+func TestSearchRegexComplexPattern(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "WithDate.md"),
+		[]byte("Created on 2025-01-15 for the project.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "WithBadDate.md"),
+		[]byte("Created on 25-1-5 for the project.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "NoDate.md"),
+		[]byte("No date information here.\n"), 0644)
+
+	params := map[string]string{"regex": `\d{4}-\d{2}-\d{2}`}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex complex pattern: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "WithDate") {
+		t.Errorf("WithDate should match date pattern, got: %q", out)
+	}
+	if strings.Contains(out, "WithBadDate") {
+		t.Errorf("WithBadDate should not match strict date pattern, got: %q", out)
+	}
+	if strings.Contains(out, "NoDate") {
+		t.Errorf("NoDate should not match, got: %q", out)
+	}
+}
+
+// Integration test 10: regex search combined with context= parameter
+func TestSearchRegexWithContext(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	content := "line one\nline two\nthe architecture is key\nline four\nline five\n"
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"), []byte(content), 0644)
+
+	params := map[string]string{"regex": `arch\w+ure`, "context": "1"}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex with context: %v", err)
+		}
+	})
+
+	// Should contain file:line format
+	if !strings.Contains(out, "Note.md:") {
+		t.Errorf("output should contain file:line format, got: %q", out)
+	}
+	// Should contain the match line
+	if !strings.Contains(out, "the architecture is key") {
+		t.Errorf("output should contain match line, got: %q", out)
+	}
+	// Should contain context lines
+	if !strings.Contains(out, "line two") {
+		t.Errorf("output should contain line before match, got: %q", out)
+	}
+	if !strings.Contains(out, "line four") {
+		t.Errorf("output should contain line after match, got: %q", out)
+	}
+	// Should NOT contain lines outside context
+	if strings.Contains(out, "line one") {
+		t.Errorf("output should not contain lines outside context range, got: %q", out)
+	}
+	if strings.Contains(out, "line five") {
+		t.Errorf("output should not contain lines outside context range, got: %q", out)
+	}
+}
+
+// Unit test 11: regex with neither query nor regex errors
+func TestSearchRegexRequiresParam(t *testing.T) {
+	vaultDir := t.TempDir()
+	os.WriteFile(filepath.Join(vaultDir, "Note.md"), []byte("content"), 0644)
+
+	params := map[string]string{}
+	err := cmdSearch(vaultDir, params, "")
+
+	if err == nil {
+		t.Fatal("expected error when neither query nor regex is provided")
+	}
+}
+
+// Unit test 12: existing search behavior unchanged when regex= not provided
+func TestSearchRegexBackwardCompatible(t *testing.T) {
+	vaultDir := t.TempDir()
+
+	os.WriteFile(filepath.Join(vaultDir, "TestNote.md"),
+		[]byte("# Test\nSome architecture content.\n"), 0644)
+
+	params := map[string]string{"query": "architecture"}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("backward compat: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "TestNote") {
+		t.Errorf("expected title in output, got: %q", out)
+	}
+}
+
+// Unit test 13: regex with path filter
+func TestSearchRegexWithPathFilter(t *testing.T) {
+	vaultDir := t.TempDir()
+	os.MkdirAll(filepath.Join(vaultDir, "decisions"), 0755)
+	os.MkdirAll(filepath.Join(vaultDir, "patterns"), 0755)
+
+	os.WriteFile(filepath.Join(vaultDir, "decisions", "ADR.md"),
+		[]byte("Architecture here.\n"), 0644)
+	os.WriteFile(filepath.Join(vaultDir, "patterns", "Pattern.md"),
+		[]byte("Architecture there.\n"), 0644)
+
+	params := map[string]string{"regex": `architecture`, "path": "decisions"}
+	out := captureStdout(func() {
+		if err := cmdSearch(vaultDir, params, ""); err != nil {
+			t.Fatalf("regex with path filter: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "ADR") {
+		t.Errorf("ADR should match, got: %q", out)
+	}
+	if strings.Contains(out, "Pattern") {
+		t.Errorf("Pattern should be filtered by path, got: %q", out)
 	}
 }
 
