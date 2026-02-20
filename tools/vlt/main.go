@@ -211,6 +211,8 @@ Options:
   --json           Output in JSON format.
   --yaml           Output in YAML format.
   --csv            Output in CSV format.
+  --tsv            Output in TSV (tab-separated values) format.
+  --tree           Output file lists as a hierarchical directory tree.
 
 Content from stdin:
   If content= is omitted for create/append/prepend/write, content is read from stdin.

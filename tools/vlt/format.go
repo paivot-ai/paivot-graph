@@ -10,7 +10,7 @@ import (
 )
 
 // outputFormat extracts the output format from flags.
-// Returns "json", "csv", "yaml", or "" for plain text.
+// Returns "json", "csv", "yaml", "tsv", "tree", or "" for plain text.
 func outputFormat(flags map[string]bool) string {
 	if flags["--json"] {
 		return "json"
@@ -20,6 +20,12 @@ func outputFormat(flags map[string]bool) string {
 	}
 	if flags["--yaml"] {
 		return "yaml"
+	}
+	if flags["--tsv"] {
+		return "tsv"
+	}
+	if flags["--tree"] {
+		return "tree"
 	}
 	return ""
 }
@@ -41,6 +47,13 @@ func formatList(items []string, format string) {
 		for _, item := range items {
 			fmt.Printf("- %s\n", item)
 		}
+	case "tsv":
+		fmt.Println("file")
+		for _, item := range items {
+			fmt.Println(item)
+		}
+	case "tree":
+		renderTree(items)
 	default:
 		for _, item := range items {
 			fmt.Println(item)
@@ -66,6 +79,15 @@ func formatTable(rows []map[string]string, fields []string, format string) {
 			w.Write(record)
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println(strings.Join(fields, "\t"))
+		for _, row := range rows {
+			record := make([]string, len(fields))
+			for i, f := range fields {
+				record[i] = row[f]
+			}
+			fmt.Println(strings.Join(record, "\t"))
+		}
 	case "yaml":
 		for i, row := range rows {
 			if i > 0 {
@@ -107,6 +129,13 @@ func formatMap(m map[string]string, keys []string, format string) {
 		}
 		w.Write(record)
 		w.Flush()
+	case "tsv":
+		fmt.Println(strings.Join(keys, "\t"))
+		record := make([]string, len(keys))
+		for i, k := range keys {
+			record[i] = m[k]
+		}
+		fmt.Println(strings.Join(record, "\t"))
 	case "yaml":
 		for _, k := range keys {
 			if v, ok := m[k]; ok {
@@ -143,6 +172,11 @@ func formatTagCounts(tags []string, counts map[string]int, format string) {
 			w.Write([]string{t, fmt.Sprintf("%d", counts[t])})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("tag\tcount")
+		for _, t := range tags {
+			fmt.Printf("%s\t%d\n", t, counts[t])
+		}
 	case "yaml":
 		for _, t := range tags {
 			fmt.Printf("- tag: %s\n  count: %d\n", t, counts[t])
@@ -175,6 +209,11 @@ func formatVaults(names []string, vaults map[string]string, format string) {
 			w.Write([]string{n, vaults[n]})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("name\tpath")
+		for _, n := range names {
+			fmt.Printf("%s\t%s\n", n, vaults[n])
+		}
 	case "yaml":
 		for _, n := range names {
 			fmt.Printf("- name: %s\n  path: %s\n", n, vaults[n])
@@ -207,6 +246,11 @@ func formatSearchResults(results []searchResult, format string) {
 			w.Write([]string{r.title, r.relPath})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("title\tpath")
+		for _, r := range results {
+			fmt.Printf("%s\t%s\n", r.title, r.relPath)
+		}
 	case "yaml":
 		for _, r := range results {
 			fmt.Printf("- title: %s\n  path: %s\n", yamlEscapeValue(r.title), r.relPath)
@@ -271,6 +315,25 @@ func formatSearchWithContext(matches []contextMatch, format string) {
 			}
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("file\tline\tcontent")
+		for _, m := range matches {
+			if m.Context == nil {
+				fmt.Printf("%s\t%d\t%s\n", m.File, m.Line, m.Match)
+				continue
+			}
+			ctxBefore := 0
+			for j, c := range m.Context {
+				if c == m.Match && j <= m.Line-1 {
+					ctxBefore = j
+					break
+				}
+			}
+			baseLineNum := m.Line - ctxBefore
+			for j, c := range m.Context {
+				fmt.Printf("%s\t%d\t%s\n", m.File, baseLineNum+j, c)
+			}
+		}
 	case "yaml":
 		for i, m := range matches {
 			if i > 0 {
@@ -350,6 +413,15 @@ func formatLinks(links []linkInfo, format string) {
 			w.Write([]string{l.Target, l.Path, broken})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("target\tpath\tbroken")
+		for _, l := range links {
+			broken := "false"
+			if l.Broken {
+				broken = "true"
+			}
+			fmt.Printf("%s\t%s\t%s\n", l.Target, l.Path, broken)
+		}
 	case "yaml":
 		for _, l := range links {
 			fmt.Printf("- target: %s\n  path: %s\n  broken: %v\n", yamlEscapeValue(l.Target), l.Path, l.Broken)
@@ -378,6 +450,11 @@ func formatUnresolved(results []unresolvedResult, format string) {
 			w.Write([]string{r.Target, r.Source})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("target\tsource")
+		for _, r := range results {
+			fmt.Printf("%s\t%s\n", r.Target, r.Source)
+		}
 	case "yaml":
 		for _, r := range results {
 			fmt.Printf("- target: %s\n  source: %s\n", yamlEscapeValue(r.Target), r.Source)
@@ -426,10 +503,105 @@ func formatProperties(text string, format string) {
 			w.Write([]string{k, props[k]})
 		}
 		w.Flush()
+	case "tsv":
+		fmt.Println("key\tvalue")
+		for _, k := range keys {
+			fmt.Printf("%s\t%s\n", k, props[k])
+		}
 	case "yaml":
 		for _, k := range keys {
 			fmt.Printf("%s: %s\n", k, props[k])
 		}
+	}
+}
+
+// treeNode represents a node in a directory tree for tree-format rendering.
+type treeNode struct {
+	name     string
+	isDir    bool
+	children []*treeNode
+}
+
+// renderTree outputs paths as a hierarchical directory tree using Unicode
+// box-drawing characters. Directories are sorted before files at each level.
+func renderTree(items []string) {
+	if len(items) == 0 {
+		return
+	}
+
+	// Build tree structure
+	root := &treeNode{name: ".", isDir: true}
+
+	for _, item := range items {
+		parts := strings.Split(item, "/")
+		current := root
+		for i, part := range parts {
+			isDir := i < len(parts)-1
+			// Find existing child
+			var child *treeNode
+			for _, c := range current.children {
+				if c.name == part && c.isDir == isDir {
+					child = c
+					break
+				}
+			}
+			if child == nil {
+				child = &treeNode{name: part, isDir: isDir}
+				current.children = append(current.children, child)
+			}
+			current = child
+		}
+	}
+
+	// Sort children at each level: directories first, then files, both alphabetically
+	sortTree(root)
+
+	// Render tree from root's children (skip the root "." node)
+	for i, child := range root.children {
+		isLast := i == len(root.children)-1
+		printTreeNode(child, "", isLast)
+	}
+}
+
+// sortTree recursively sorts children at each level: directories first, then
+// files, both groups sorted alphabetically.
+func sortTree(node *treeNode) {
+	sort.Slice(node.children, func(i, j int) bool {
+		a, b := node.children[i], node.children[j]
+		if a.isDir != b.isDir {
+			return a.isDir // directories first
+		}
+		return a.name < b.name
+	})
+	for _, child := range node.children {
+		sortTree(child)
+	}
+}
+
+// printTreeNode recursively renders a tree node with proper indentation and
+// Unicode box-drawing connectors.
+func printTreeNode(node *treeNode, prefix string, isLast bool) {
+	connector := "\u251c\u2500\u2500 " // "--- "
+	if isLast {
+		connector = "\u2514\u2500\u2500 " // "--- "
+	}
+
+	displayName := node.name
+	if node.isDir {
+		displayName += "/"
+	}
+
+	fmt.Printf("%s%s%s\n", prefix, connector, displayName)
+
+	// Determine the prefix for children
+	childPrefix := prefix + "\u2502   " // "    "
+	if isLast {
+		childPrefix = prefix + "    "
+	}
+
+	for i, child := range node.children {
+		childIsLast := i == len(node.children)-1
+		printTreeNode(child, childPrefix, childIsLast)
 	}
 }
 
