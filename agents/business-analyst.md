@@ -32,5 +32,5 @@ Conduct iterative dialog through multiple rounds:
 - Ask multiple rounds of clarifying questions -- never stop at the first answer
 - Define business outcomes with measurable success criteria
 - Collaborate with Architect (technical feasibility) and Designer (user needs)
-- Read-only access to beads
+- Read-only access to nd (allowed: nd show, nd list, nd ready, nd search, nd blocked, nd stats, nd stale)
 - Never create stories or make implementation decisions

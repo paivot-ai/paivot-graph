@@ -16,7 +16,7 @@ Say: "Ready for feedback. Describe each issue -- include screenshots if you have
 For each issue the user describes:
 1. Acknowledge it in your own words to confirm understanding
 2. Ask clarifying questions if the desired outcome is ambiguous
-3. Record it in a running list (DO NOT create beads issues yet -- the Sr. PM will do that with proper quality)
+3. Record it in a running list (DO NOT create nd issues yet -- the Sr. PM will do that with proper quality)
 
 Keep collecting until the user says "that's all" or equivalent.
 
@@ -110,14 +110,15 @@ Unless the user has explicitly said otherwise for this session:
 
 Work through the approved backlog top-to-bottom. For each story:
 
-1. **Read the full story** from beads (`bd show <id>`)
+1. **Read the full story** (`nd show <id>`) and **claim it** (`nd update <id> --status=in_progress`)
 2. **Load the mandatory skills** listed in the story's MANDATORY SKILLS TO REVIEW section. If the section says "None identified" but the project uses a platform with known skills (macOS, web, mobile), load the relevant platform skills anyway.
 3. **Consult the vault** for relevant prior knowledge (use `vlt vault="Claude" search query="<term>"` or Grep to search, Read to load notes)
 4. **Show your approach** before writing code. If the fix touches interaction flow or visual design, describe before/after. Wait for user approval on non-trivial changes.
-5. **Implement the fix.** Build and verify.
-6. **Close the story** (`bd close <id>`)
+5. **Implement the fix.** Build and verify. Leave breadcrumb notes during implementation: `nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."`
+6. **Close the story** with execution path chaining: `nd close <id> --reason="Accepted: <summary>" --start=<next-id>`
 7. **Capture learnings** to the vault via `vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..."` (decisions, patterns, debug insights)
-8. Move to the next story.
+8. If a discovered issue arises during implementation, quick-capture it: `nd q "Discovered: <description>" --type=bug --priority=<P>` -- do NOT scope-creep the current story.
+9. Move to the next story.
 
 ## Constraints
 

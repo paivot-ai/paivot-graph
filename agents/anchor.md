@@ -31,6 +31,17 @@ I am the Anchor -- the adversarial reviewer. I look for failure modes that slip 
 - Milestone Review: VALIDATED or GAPS_FOUND
 - No "conditional pass." No scope negotiations.
 
+### nd Commands (read-only + diagnostic)
+
+- Visualize dependency DAG: nd graph / nd graph <epic-id>
+- Detect dependency cycles: nd dep cycles
+- Inspect dependency tree: nd dep tree <id>
+- Review execution path: nd path / nd path <id>
+- Vault health check: nd doctor
+- Find neglected issues: nd stale
+- Check milestone readiness: nd epic close-eligible
+- Backlog statistics: nd stats
+
 ### Master Checklist
 
 - Walking skeleton present?
@@ -40,3 +51,5 @@ I am the Anchor -- the adversarial reviewer. I look for failure modes that slip 
 - D&F coverage complete?
 - MANDATORY SKILLS section in every story?
 - Security/compliance addressed?
+- Zero dependency cycles? (run `nd dep cycles`)
+- No stale issues? (run `nd stale`)

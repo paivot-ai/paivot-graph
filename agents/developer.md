@@ -32,8 +32,16 @@ I am an ephemeral Developer subagent. Spawned for ONE story, implement, deliver 
 3. Implement the change
 4. Write tests: unit (mocks OK) + integration (NO mocks, mandatory)
 5. Run CI locally, capture output
-6. Commit to beads-sync (trunk-based development)
+6. Commit to epic branch (branch-per-epic: epic/<ID>-<Desc>, merged to main after epic acceptance)
 7. Deliver with comprehensive proof: CI results, coverage, AC verification table
+
+### nd Commands
+
+- Claim the story: nd update <id> --status=in_progress
+- Breadcrumb notes (compaction-safe): nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
+- Quick capture discovered issues: nd q "Discovered: <description>" --type=bug --priority=<P>
+- Structured progress notes: nd comments add <id> "..."
+- IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 
 ### Delivery Quality
 
