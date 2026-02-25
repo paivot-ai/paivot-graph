@@ -78,6 +78,23 @@ When `/vault-evolve` identifies an improvement to a system-scoped note:
 4. Each proposal can be: accepted (applied + moved to decisions/), rejected (kept as record in decisions/), or modified
 5. Accepted proposals append to the target note's `## Changelog` section
 
+## Emergency Edits
+
+The scope guard blocks Edit and Write tool calls to protected vault directories. However, **vlt commands via Bash are allowed through** because vlt is the intended mechanism for the proposal workflow.
+
+If a system note has a critical issue that must be fixed immediately (e.g., a typo breaking every session), you can use vlt directly:
+
+```bash
+vlt vault="Claude" read file="<Note Title>"          # verify the issue
+vlt vault="Claude" patch file="<Note Title>" section="<Section>" content="<fixed content>"
+```
+
+This bypasses the proposal workflow. Use it sparingly -- the proposal workflow exists to ensure cross-project awareness. After an emergency edit, append to the note's `## Changelog`:
+
+```bash
+vlt vault="Claude" append file="<Note Title>" content="\n- <YYYY-MM-DD>: Emergency fix -- <what was changed and why> (bypassed proposal workflow)"
+```
+
 ## Fallback: Core Vault Interaction Patterns
 
 The Obsidian vault ("Claude") is your persistent knowledge layer. It survives across sessions, projects, and context compactions.

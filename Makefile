@@ -1,7 +1,7 @@
 PLUGIN_DIR := $(shell pwd)
 PLUGIN_NAME := paivot-graph
 
-.PHONY: install update uninstall test lint seed reseed check-deps fetch-vlt-skill update-vlt-skill help
+.PHONY: install update uninstall test lint seed reseed check-deps fetch-vlt-skill update-vlt-skill help build-pvg test-pvg
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -49,10 +49,16 @@ seed: ## Seed Obsidian vault with agent prompts and behavioral notes (idempotent
 reseed: ## Force-update all vault notes with latest plugin content
 	scripts/seed-vault.sh --force
 
+build-pvg: ## Build the pvg Go CLI
+	cd pvg-cli && go build -ldflags "-X main.version=$$(cat ../VERSION)" -o ../bin/pvg ./cmd/pvg/
+
+test-pvg: ## Run pvg Go tests
+	cd pvg-cli && go test ./... -v
+
 lint: ## Run shellcheck on all shell scripts
 	shellcheck hooks/*.sh scripts/*.sh
 
-test: lint ## Run all checks (shellcheck + functional)
+test: lint test-pvg ## Run all checks (shellcheck + Go tests + functional)
 	@echo "--- Functional checks ---"
 	@echo "Checking hook scripts are executable..."
 	@test -x hooks/vault-session-start.sh || (echo "FAIL: vault-session-start.sh not executable" && exit 1)

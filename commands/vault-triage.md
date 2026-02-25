@@ -24,6 +24,8 @@ Grep: pattern="type: proposal" path="/Users/ramirosalas/Library/Mobile Documents
 
 For each match, read the note and check that `status: pending` is in the frontmatter. Skip any that are already `accepted` or `rejected`.
 
+**Sort proposals by `created:` date (oldest first).** This ensures chronological processing.
+
 If no pending proposals are found, report:
 ```
 ## Vault Triage
@@ -42,6 +44,7 @@ For each pending proposal, read its full content and present to the user:
 
 **From project:** <originating project>
 **Created:** <date>
+**Age:** N days
 **Target:** <full path of target note>
 
 **Motivation:**
@@ -58,7 +61,16 @@ After:
 **Impact:** <what this affects>
 ```
 
-Before presenting, **check for staleness**: read the current target note and compare it to the snapshot in the proposal. If the target has been modified since the proposal was created (content differs from snapshot), warn the user:
+Before presenting, perform two staleness checks:
+
+**Age check:** Calculate the number of days since the `created:` date. If the proposal is older than 30 days, warn:
+
+```
+WARNING: This proposal is N days old (created <date>).
+It may no longer be relevant. Consider whether the motivation still applies.
+```
+
+**Content check:** Read the current target note and compare it to the snapshot in the proposal. If the target has been modified since the proposal was created (content differs from snapshot), warn:
 
 ```
 WARNING: The target note has been modified since this proposal was created.

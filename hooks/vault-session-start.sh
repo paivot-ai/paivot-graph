@@ -93,25 +93,46 @@ $search_results
 
 CONTEXT
 
-# Output project-local knowledge if present
+# Read max notes setting (default 10 per subfolder)
+max_notes=10
+if [ -f "$cwd/.vault/knowledge/.settings.yaml" ]; then
+    setting="$(grep '^session_start_max_notes:' "$cwd/.vault/knowledge/.settings.yaml" 2>/dev/null | awk '{print $2}')"
+    if [ -n "$setting" ]; then
+        max_notes="$setting"
+    fi
+fi
+
+# Output project-local knowledge as summaries (title + date + first content line)
 if [ -n "$project_knowledge" ]; then
     echo "Project-local knowledge (.vault/knowledge/):"
     echo ""
-    echo "$project_knowledge"
-    echo ""
 
-    # Read and output all knowledge subfolders (conventions, decisions, patterns, debug)
     for subfolder in conventions decisions patterns debug; do
         if [ -d "$project_vault_dir/$subfolder" ]; then
+            count=0
+            total="$(find "$project_vault_dir/$subfolder" -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')"
             for note_file in "$project_vault_dir/$subfolder"/*.md; do
-                if [ -f "$note_file" ]; then
-                    echo "--- ${subfolder}/$(basename "$note_file") ---"
-                    cat "$note_file"
-                    echo ""
+                if [ -f "$note_file" ] && [ "$count" -lt "$max_notes" ]; then
+                    # Extract created date from frontmatter
+                    note_date="$(grep '^created:' "$note_file" 2>/dev/null | head -1 | awk '{print $2}')"
+                    note_date="${note_date:-unknown}"
+                    # Extract first non-frontmatter, non-empty, non-heading content line
+                    first_line="$(awk 'BEGIN{fm=0} /^---/{fm++; next} fm>=2 && /^[^#]/ && /[a-zA-Z]/{print; exit}' "$note_file" 2>/dev/null)"
+                    first_line="${first_line:-(no summary)}"
+                    printf "  %s/%s [%s] %s\n" "$subfolder" "$(basename "$note_file" .md)" "$note_date" "$first_line"
+                    count=$((count + 1))
                 fi
             done
+            if [ "$total" -gt "$max_notes" ]; then
+                echo "  ... and $((total - max_notes)) more in $subfolder/"
+            fi
         fi
     done
+
+    echo ""
+    echo "To read a project note in full, use: Read .vault/knowledge/<subfolder>/<note>.md"
+    echo "For deeper assessment, spawn an Explore agent to review project knowledge."
+    echo ""
 fi
 
 # ---------------------------------------------------------------------------
