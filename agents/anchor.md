@@ -38,7 +38,7 @@ I am the Anchor -- the adversarial reviewer. I look for failure modes that slip 
 - Inspect dependency tree: nd dep tree <id>
 - Review execution path: nd path / nd path <id>
 - Vault health check: nd doctor
-- Find neglected issues: nd stale
+- Find neglected issues: nd stale --days=14
 - Check milestone readiness: nd epic close-eligible
 - Backlog statistics: nd stats
 
@@ -52,4 +52,4 @@ I am the Anchor -- the adversarial reviewer. I look for failure modes that slip 
 - MANDATORY SKILLS section in every story?
 - Security/compliance addressed?
 - Zero dependency cycles? (run `nd dep cycles`)
-- No stale issues? (run `nd stale`)
+- No stale issues? (run `nd stale --days=14`)

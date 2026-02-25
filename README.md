@@ -22,14 +22,33 @@ Pre-built binaries are available at [vlt releases](https://github.com/RamXX/vlt/
 
 Without vlt, the plugin falls back to direct filesystem operations (grep, cat) which are slower, lack vault-aware features (alias resolution, wikilink repair, backlink tracking), and miss the inert zone masking that prevents false positives.
 
-### 2. Obsidian vault
+### 2. nd (recommended for execution)
+
+**[nd](https://github.com/RamXX/nd) is the git-native issue tracker** that agents use to manage backlogs, stories, dependencies, and execution paths during development. If you plan to use the Paivot execution workflow (developer, PM-Acceptor, Sr PM, anchor, retro agents), nd is required.
+
+```bash
+# From source (requires Go 1.22+)
+git clone https://github.com/RamXX/nd.git
+cd nd
+make build
+make install    # Installs to ~/.local/bin/nd
+
+# Verify
+nd --help
+```
+
+Pre-built binaries are available at [nd releases](https://github.com/RamXX/nd/releases).
+
+Without nd, the vault-knowledge and vault-lifecycle features still work (hooks, commands, skills), but the execution agents (developer, PM, Sr PM, anchor, retro) cannot manage work items.
+
+### 3. Obsidian vault
 
 You need an Obsidian vault that vlt can discover. The plugin expects a vault named "Claude" by default. If you don't have one:
 
 1. Open Obsidian and create a new vault named "Claude"
 2. Verify vlt can see it: `vlt vaults`
 
-### 3. Claude Code
+### 4. Claude Code
 
 This is a Claude Code plugin. You need [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) installed.
 
