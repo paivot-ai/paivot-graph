@@ -117,18 +117,37 @@ assert v_file == v_plugin == v_market, \
 	@echo '{}' | hooks/vault-session-end.sh >/dev/null 2>&1; \
 		test $$? -eq 0 && echo "OK: session-end exits 0" || echo "FAIL: session-end did not exit 0"
 	@echo ""
-	@echo "Checking scope-guard allows non-vault paths..."
-	@echo '{"tool_input":{"file_path":"/tmp/safe.md"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: scope-guard allows non-vault paths" || echo "FAIL: scope-guard blocked a safe path"
+	@echo "Checking scope-guard allows non-vault Edit..."
+	@echo '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/safe.md"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: scope-guard allows non-vault Edit" || echo "FAIL: scope-guard blocked a safe Edit"
 	@echo ""
-	@echo "Checking scope-guard blocks vault methodology/ writes..."
-	@echo '{"tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Developer Agent.md"}}' \
+	@echo "Checking scope-guard blocks vault methodology/ Edit..."
+	@echo '{"tool_name":"Edit","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Developer Agent.md"}}' \
 		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 2 && echo "OK: scope-guard blocks methodology/ writes" || echo "FAIL: scope-guard did not block methodology/"
+		test $$? -eq 2 && echo "OK: scope-guard blocks methodology/ Edit" || echo "FAIL: scope-guard did not block methodology/ Edit"
 	@echo ""
-	@echo "Checking scope-guard blocks vault conventions/ writes..."
-	@echo '{"tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md"}}' \
+	@echo "Checking scope-guard blocks vault conventions/ Write..."
+	@echo '{"tool_name":"Write","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md"}}' \
 		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 2 && echo "OK: scope-guard blocks conventions/ writes" || echo "FAIL: scope-guard did not block conventions/"
+		test $$? -eq 2 && echo "OK: scope-guard blocks conventions/ Write" || echo "FAIL: scope-guard did not block conventions/ Write"
+	@echo ""
+	@echo "Checking scope-guard blocks vault decisions/ Edit..."
+	@echo '{"tool_name":"Edit","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/decisions/Some Decision.md"}}' \
+		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: scope-guard blocks decisions/ Edit" || echo "FAIL: scope-guard did not block decisions/ Edit"
+	@echo ""
+	@echo "Checking scope-guard allows vault _inbox/ Write..."
+	@echo '{"tool_name":"Write","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/Proposal.md"}}' \
+		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: scope-guard allows _inbox/ Write" || echo "FAIL: scope-guard blocked _inbox/ Write"
+	@echo ""
+	@echo "Checking scope-guard allows safe Bash commands..."
+	@echo '{"tool_name":"Bash","tool_input":{"command":"ls /tmp"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: scope-guard allows safe Bash" || echo "FAIL: scope-guard blocked safe Bash"
+	@echo ""
+	@echo "Checking scope-guard allows vlt Bash commands..."
+	@echo '{"tool_name":"Bash","tool_input":{"command":"vlt vault=\"Claude\" append file=\"Sr PM Agent\" content=\"test\""}}' \
+		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: scope-guard allows vlt commands" || echo "FAIL: scope-guard blocked vlt"
 	@echo ""
 	@echo "All checks passed."

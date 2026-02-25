@@ -82,22 +82,24 @@ This is idempotent -- it creates missing notes and skips existing ones. Use `mak
 
 ### Hooks (automatic)
 
-Four lifecycle hooks fire automatically during Claude Code sessions:
+Five hooks fire automatically during Claude Code sessions:
 
-| Hook | When | What it does |
-|------|------|--------------|
-| **SessionStart** | Session begins | Searches the vault for project context, loads the operating mode |
-| **PreCompact** | Before context compaction | Reminds Claude to capture decisions, patterns, and debug insights before memory is lost |
-| **Stop** | When Claude tries to stop | Soft reminder to check the knowledge capture checklist |
-| **SessionEnd** | Session ends | Appends a session log entry to the project's vault note |
+| Hook | Event | What it does |
+|------|-------|--------------|
+| **Scope Guard** | PreToolUse (Edit/Write/Bash) | Blocks direct writes to system-scoped vault notes -- enforces the proposal workflow |
+| **Session Start** | SessionStart | Searches the vault for project context, loads project-local knowledge, loads operating mode |
+| **Pre-Compact** | PreCompact | Reminds Claude to capture decisions, patterns, and debug insights before memory is lost |
+| **Stop** | Stop | Soft reminder to check the knowledge capture checklist |
+| **Session End** | SessionEnd | Appends a session log entry to the project's vault note |
 
 ### Commands (user-invoked)
 
 | Command | What it does |
 |---------|--------------|
-| `/vault-capture` | Deliberate knowledge capture pass -- reviews the session and saves decisions, patterns, and debug insights to the vault |
-| `/vault-evolve` | Refines vault-backed content (agent prompts, skill content, operating mode) based on session experience |
-| `/vault-status` | Shows vault health -- note counts by folder, orphans, broken links, inbox triage needs |
+| `/vault-capture` | Deliberate knowledge capture pass -- routes knowledge to the global vault or project vault based on scope |
+| `/vault-evolve` | Identifies improvements to vault content; creates proposals for system notes, edits project notes directly |
+| `/vault-triage` | Reviews and accepts/rejects pending proposals for system-scoped vault notes |
+| `/vault-status` | Shows vault health -- note counts, project vault status, pending proposals |
 | `/intake` | Collects user feedback and delegates to the Sr. PM agent to create a prioritized story backlog |
 
 ### Agents
@@ -121,6 +123,18 @@ Eight specialized agents that read their full instructions from the vault at run
 |-------|--------------|
 | **vault-knowledge** | Teaches agents how to interact with the vault -- when to capture, what to capture, how to format notes |
 | **vlt-skill** | Complete vlt command reference, agentic patterns, and advanced techniques (fetched from GitHub at install time) |
+
+## Knowledge governance
+
+Knowledge lives in three tiers with different governance rules:
+
+| Tier | Location | Scope | How changes are made |
+|------|----------|-------|---------------------|
+| **System** | Global Obsidian vault ("Claude") | All projects | Proposal workflow: `/vault-evolve` creates proposals, `/vault-triage` reviews them |
+| **Project** | `.vault/knowledge/` in each repo | One project | Direct edits, no approval needed |
+| **Session** | `~/.claude/projects/*/memory/` | One session | Ephemeral, managed by Claude Code |
+
+The scope guard hook structurally enforces system-scope protection. Direct writes (via Edit, Write, or Bash redirects) to the vault's protected directories are blocked with a message directing the user to the proposal workflow.
 
 ## How the vault-as-runtime works
 
