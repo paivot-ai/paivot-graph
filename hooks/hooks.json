@@ -1,6 +1,18 @@
 {
-  "description": "paivot-graph hooks -- vault consultation, knowledge capture, stop reminder, session logging",
+  "description": "paivot-graph hooks -- vault consultation, knowledge capture, stop reminder, session logging, scope guard",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-scope-guard.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",

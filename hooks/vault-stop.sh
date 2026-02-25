@@ -50,12 +50,14 @@ Use: vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="
 FALLBACK
 fi
 
-# Two-tier reminder
-cat <<'TIER'
+# Two-tier reminder (only if project vault exists)
+if [ -d ".vault/knowledge" ]; then
+    cat <<'TIER'
 
 [VAULT] Remember: save to the right tier.
   - Universal insights -> global vault (_inbox/)
   - Project-specific insights -> .vault/knowledge/ (local)
 TIER
+fi
 
 exit 0

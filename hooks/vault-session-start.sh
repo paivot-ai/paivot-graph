@@ -100,16 +100,18 @@ if [ -n "$project_knowledge" ]; then
     echo "$project_knowledge"
     echo ""
 
-    # Read and output conventions (these affect behavior)
-    if [ -d "$project_vault_dir/conventions" ]; then
-        for conv_file in "$project_vault_dir/conventions"/*.md; do
-            if [ -f "$conv_file" ]; then
-                echo "--- $(basename "$conv_file") ---"
-                cat "$conv_file"
-                echo ""
-            fi
-        done
-    fi
+    # Read and output all knowledge subfolders (conventions, decisions, patterns, debug)
+    for subfolder in conventions decisions patterns debug; do
+        if [ -d "$project_vault_dir/$subfolder" ]; then
+            for note_file in "$project_vault_dir/$subfolder"/*.md; do
+                if [ -f "$note_file" ]; then
+                    echo "--- ${subfolder}/$(basename "$note_file") ---"
+                    cat "$note_file"
+                    echo ""
+                fi
+            done
+        fi
+    done
 fi
 
 # ---------------------------------------------------------------------------

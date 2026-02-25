@@ -55,8 +55,9 @@ Do this NOW -- after compaction, the details will be lost.
 EOF
 fi
 
-# Two-tier capture guidance
-cat <<'TIER'
+# Two-tier capture guidance (only if project vault exists)
+if [ -d ".vault/knowledge" ]; then
+    cat <<'TIER'
 
 [VAULT] Where to save knowledge:
   - Universal insights (applicable to ANY project) -> global vault _inbox/
@@ -64,5 +65,6 @@ cat <<'TIER'
   - Project-specific insights (only relevant HERE) -> .vault/knowledge/ locally
       Create files directly in .vault/knowledge/decisions/, patterns/, debug/, or conventions/
 TIER
+fi
 
 exit 0

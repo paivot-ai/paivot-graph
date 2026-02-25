@@ -18,7 +18,16 @@ fi
 
 # Vault on disk
 VAULT_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
-AGENT_SRC="${AGENT_SRC:-$HOME/.claude/plugins/cache/paivot-claude/paivot/1.38.0/agents}"
+# Resolve AGENT_SRC dynamically: find the latest paivot-claude cache with agents/
+if [ -z "${AGENT_SRC:-}" ]; then
+    AGENT_SRC="$(find "$HOME/.claude/plugins/cache/paivot-claude" -maxdepth 3 -type d -name agents 2>/dev/null \
+        | sort -V | tail -1 || echo "")"
+    if [ -z "$AGENT_SRC" ]; then
+        echo "ERROR: Could not find paivot-claude agents directory in plugin cache."
+        echo "       Set AGENT_SRC=/path/to/agents manually, or install paivot-claude first."
+        exit 1
+    fi
+fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_DIR="$(dirname "$SCRIPT_DIR")"
 

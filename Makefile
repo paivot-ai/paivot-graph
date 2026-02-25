@@ -59,6 +59,7 @@ test: lint ## Run all checks (shellcheck + functional)
 	@test -x hooks/vault-pre-compact.sh || (echo "FAIL: vault-pre-compact.sh not executable" && exit 1)
 	@test -x hooks/vault-stop.sh || (echo "FAIL: vault-stop.sh not executable" && exit 1)
 	@test -x hooks/vault-session-end.sh || (echo "FAIL: vault-session-end.sh not executable" && exit 1)
+	@test -x hooks/vault-scope-guard.sh || (echo "FAIL: vault-scope-guard.sh not executable" && exit 1)
 	@test -x scripts/seed-vault.sh || (echo "FAIL: seed-vault.sh not executable" && exit 1)
 	@test -x scripts/fetch-vlt-skill.sh || (echo "FAIL: fetch-vlt-skill.sh not executable" && exit 1)
 	@echo "OK: All scripts are executable"
@@ -71,10 +72,21 @@ test: lint ## Run all checks (shellcheck + functional)
 	@python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))" || (echo "FAIL: plugin.json is not valid JSON" && exit 1)
 	@echo "OK: plugin.json is valid JSON"
 	@echo ""
-	@echo "Checking hooks.json registers all 4 hook events..."
-	@python3 -c "import json; h=json.load(open('hooks/hooks.json'))['hooks']; assert all(k in h for k in ['SessionStart','PreCompact','Stop','SessionEnd']), 'missing hook events'" \
+	@echo "Checking version sync (VERSION, plugin.json, marketplace.json)..."
+	@python3 -c "\
+v_file = open('VERSION').read().strip(); \
+import json; \
+v_plugin = json.load(open('.claude-plugin/plugin.json'))['version']; \
+v_market = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version']; \
+assert v_file == v_plugin == v_market, \
+    f'Version mismatch: VERSION={v_file}, plugin.json={v_plugin}, marketplace.json={v_market}'" \
+		|| (echo "FAIL: version mismatch across VERSION, plugin.json, marketplace.json" && exit 1)
+	@echo "OK: All versions in sync ($$(cat VERSION))"
+	@echo ""
+	@echo "Checking hooks.json registers all 5 hook events..."
+	@python3 -c "import json; h=json.load(open('hooks/hooks.json'))['hooks']; assert all(k in h for k in ['PreToolUse','SessionStart','PreCompact','Stop','SessionEnd']), 'missing hook events'" \
 		|| (echo "FAIL: hooks.json missing required events" && exit 1)
-	@echo "OK: All 4 hook events registered"
+	@echo "OK: All 5 hook events registered"
 	@echo ""
 	@echo "Checking all 8 agent vault loaders exist..."
 	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
@@ -104,5 +116,19 @@ test: lint ## Run all checks (shellcheck + functional)
 	@echo "Checking session-end hook exits 0..."
 	@echo '{}' | hooks/vault-session-end.sh >/dev/null 2>&1; \
 		test $$? -eq 0 && echo "OK: session-end exits 0" || echo "FAIL: session-end did not exit 0"
+	@echo ""
+	@echo "Checking scope-guard allows non-vault paths..."
+	@echo '{"tool_input":{"file_path":"/tmp/safe.md"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: scope-guard allows non-vault paths" || echo "FAIL: scope-guard blocked a safe path"
+	@echo ""
+	@echo "Checking scope-guard blocks vault methodology/ writes..."
+	@echo '{"tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Developer Agent.md"}}' \
+		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: scope-guard blocks methodology/ writes" || echo "FAIL: scope-guard did not block methodology/"
+	@echo ""
+	@echo "Checking scope-guard blocks vault conventions/ writes..."
+	@echo '{"tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md"}}' \
+		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: scope-guard blocks conventions/ writes" || echo "FAIL: scope-guard did not block conventions/"
 	@echo ""
 	@echo "All checks passed."
