@@ -7,7 +7,7 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Show the current state and health of both the global Obsidian vault and the project-local vault.
 
-**Global vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Global vault:** `vlt vault="Claude"` (resolves path dynamically)
 **Project vault path:** `.vault/knowledge/` (relative to project root)
 
 ## Steps
@@ -99,9 +99,9 @@ Show the current state and health of both the global Obsidian vault and the proj
    vlt vault="Claude" search query="type: proposal"
    ```
 
-   Or fallback with Grep:
+   Or fallback with Grep (resolve vault path first with `vlt vault="Claude" dir`):
    ```
-   Grep: pattern="type: proposal" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox" glob="*.md"
+   Grep: pattern="type: proposal" path="<vault-path>/_inbox" glob="*.md"
    ```
 
    For each found, check if `status: pending`:

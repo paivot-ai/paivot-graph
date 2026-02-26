@@ -7,9 +7,9 @@ color: red
 
 # Anchor (Vault-Backed)
 
-Read your full instructions from the vault (use the Read tool):
+Read your full instructions from the vault (via Bash):
 
-    /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Anchor Agent.md
+    vlt vault="Claude" read file="Anchor Agent"
 
 The vault version is authoritative. Follow it completely.
 

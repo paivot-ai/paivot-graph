@@ -51,7 +51,12 @@ func SessionStart() error {
 	}
 
 	// 4. Search vault for project context
-	results, err := v.Search(vlt.SearchOptions{Query: project})
+	// Quote project name to handle spaces/special chars in search.
+	searchQuery := project
+	if strings.ContainsAny(project, " \t\"") {
+		searchQuery = `"` + strings.ReplaceAll(project, `"`, `\"`) + `"`
+	}
+	results, err := v.Search(vlt.SearchOptions{Query: searchQuery})
 	searchOutput := ""
 	if err != nil || len(results) == 0 {
 		searchOutput = "(none found -- this is a new project to the vault)"

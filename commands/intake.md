@@ -7,7 +7,7 @@ allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Skill", "Task"
 
 Collect user feedback about the current state of the product, then delegate to the Sr. PM agent to create properly structured stories.
 
-**Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Vault:** `vlt vault="Claude"` (resolves path dynamically)
 
 ## Phase 1: Collect Raw Feedback
 

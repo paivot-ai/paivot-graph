@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDetectProject_FallsBackToBasename(t *testing.T) {
@@ -194,7 +195,7 @@ func TestCollectSessionLinks_FindsLocalNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	today := "2026-02-25"
+	today := time.Now().Format("2006-01-02")
 	note := filepath.Join(knowledgeDir, "Use Go for CLI.md")
 	if err := os.WriteFile(note, []byte("# Use Go for CLI\n"), 0644); err != nil {
 		t.Fatal(err)

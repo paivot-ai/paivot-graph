@@ -7,9 +7,9 @@ color: gold
 
 # Senior Product Manager (Vault-Backed)
 
-Read your full instructions from the vault (use the Read tool):
+Read your full instructions from the vault (via Bash):
 
-    /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Sr PM Agent.md
+    vlt vault="Claude" read file="Sr PM Agent"
 
 The vault version is authoritative. Follow it completely.
 

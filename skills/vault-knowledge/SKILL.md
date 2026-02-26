@@ -8,11 +8,11 @@ version: 0.4.0
 
 The Obsidian vault ("Claude") lives on disk. Interact with it using `vlt` (the fast vault CLI) via Bash, or directly using Read, Write, Grep, and Glob tools. Prefer `vlt` for vault-aware operations (search, create, move with wikilink repair, backlinks, tags). Use Read/Write/Grep/Glob when you need Claude Code tool integration or vlt is unavailable.
 
-**Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Vault path:** Resolve dynamically with `vlt vault="Claude" dir` (never hardcode).
 
-Read the full skill content from the vault:
+Read the full skill content from the vault (via Bash):
 
-    /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Vault Knowledge Skill.md
+    vlt vault="Claude" read file="Vault Knowledge Skill"
 
 The vault version is authoritative. Follow it completely.
 
@@ -129,7 +129,7 @@ vlt vault="Claude" append file="<Note Title>" content="\n- <YYYY-MM-DD>: Emergen
 
 The Obsidian vault ("Claude") is your persistent knowledge layer. It survives across sessions, projects, and context compactions.
 
-**Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Vault path:** Resolve dynamically with `vlt vault="Claude" dir` (never hardcode).
 
 ### Vault Structure
 
@@ -169,9 +169,9 @@ To read a note plus all notes that link TO it:
 
 Use `follow` when you need related context (e.g., a project note that links to its decisions and patterns). Use `backlinks` when you need to understand what depends on a note.
 
-Fallback (Read tool):
+Fallback (Read tool -- resolve vault path first with `vlt vault="Claude" dir`):
 
-    Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/<folder>/<Note Title>.md
+    Read: <vault-path>/<folder>/<Note Title>.md
 
 ### How to Search
 
@@ -179,9 +179,9 @@ Preferred (via Bash -- vault-aware, searches titles and content):
 
     vlt vault="Claude" search query="<term>"
 
-Fallback (Grep tool):
+Fallback (Grep tool -- resolve vault path first with `vlt vault="Claude" dir`):
 
-    Grep: pattern="<term>" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude"
+    Grep: pattern="<term>" path="<vault-path>"
 
 ### How to Create Notes
 
@@ -199,9 +199,9 @@ Fallback (Grep tool):
     mkdir -p .vault/knowledge/decisions
     Write: .vault/knowledge/decisions/<Title>.md
 
-Fallback (Write tool):
+Fallback (Write tool -- resolve vault path first with `vlt vault="Claude" dir`):
 
-    Write: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/<Title>.md
+    Write: <vault-path>/_inbox/<Title>.md
 
 Every note needs frontmatter: type, scope, project, status, created.
 
@@ -219,7 +219,7 @@ Preferred (via Bash -- updates all wikilinks across the vault):
 
     vlt vault="Claude" move path="_inbox/<Note>.md" to="decisions/<Note>.md"
 
-Fallback (Bash mv -- wikilinks will NOT be updated):
+Fallback (Bash mv -- wikilinks will NOT be updated; resolve vault path first with `vlt vault="Claude" dir`):
 
     mv "<vault-path>/_inbox/<Note>.md" "<vault-path>/decisions/<Note>.md"
 

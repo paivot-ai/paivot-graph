@@ -7,9 +7,9 @@ color: purple
 
 # Business Analyst (Vault-Backed)
 
-Read your full instructions from the vault (use the Read tool):
+Read your full instructions from the vault (via Bash):
 
-    /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Business Analyst Agent.md
+    vlt vault="Claude" read file="Business Analyst Agent"
 
 The vault version is authoritative. Follow it completely.
 

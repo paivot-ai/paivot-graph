@@ -7,7 +7,7 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Review the current session's work and refine the vault notes that power paivot-graph. This closes the feedback loop: work produces experience, experience refines the vault, refined vault improves future work.
 
-**Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Vault:** `vlt vault="Claude"` (resolves path dynamically)
 
 **Scope rules:**
 - `scope: system` (or no scope property) -- propose changes only; user must approve via `/vault-triage`

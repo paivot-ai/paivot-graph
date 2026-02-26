@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RamXX/vlt"
+
 	"github.com/RamXX/paivot-graph/pvg-cli/internal/vaultcfg"
 )
 
@@ -18,7 +20,9 @@ type Counters struct {
 	Skipped int
 }
 
-// Seed writes vault notes directly to disk. Obsidian picks them up via iCloud sync.
+// Seed writes vault notes to disk under an exclusive vlt lock. This prevents
+// data corruption if an active Claude Code session has agents writing through
+// vlt concurrently. Obsidian picks up the files via iCloud sync.
 func Seed(force bool, pluginDir string) error {
 	today := time.Now().Format("2006-01-02")
 
@@ -28,6 +32,14 @@ func Seed(force bool, pluginDir string) error {
 		return fmt.Errorf("cannot open vault: %w", err)
 	}
 	vaultDir := v.Dir()
+
+	// Acquire exclusive vault lock so we don't race with active sessions.
+	unlock, lockErr := vlt.LockVault(vaultDir, true)
+	if lockErr != nil {
+		fmt.Printf("WARNING: Could not acquire vault lock (%v). Proceeding without lock.\n", lockErr)
+	} else {
+		defer unlock()
+	}
 
 	// Resolve agent source
 	agentSrc, err := resolveAgentSrc()
@@ -109,7 +121,7 @@ func resolveAgentSrc() (string, error) {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
 
-	// Walk the paivot-claude cache to find the agents/ directory
+	// Walk the paivot-claude cache to find agents/ directories.
 	cacheBase := filepath.Join(home, ".claude", "plugins", "cache", "paivot-claude")
 	var candidates []string
 
@@ -127,8 +139,30 @@ func resolveAgentSrc() (string, error) {
 		return "", fmt.Errorf("could not find paivot-claude agents directory in plugin cache.\nSet AGENT_SRC=/path/to/agents manually, or install paivot-claude first")
 	}
 
-	// Return the last one (sort order matches the newest version)
-	return candidates[len(candidates)-1], nil
+	// Pick the newest candidate by directory modification time.
+	// WalkDir returns lexicographic order which breaks for semver
+	// (e.g. 1.10.0 < 1.9.0 lexicographically). Mtime is reliable
+	// because the newest plugin version was installed most recently.
+	best := candidates[0]
+	bestTime := modTime(best)
+	for _, c := range candidates[1:] {
+		t := modTime(c)
+		if t.After(bestTime) {
+			best = c
+			bestTime = t
+		}
+	}
+
+	return best, nil
+}
+
+// modTime returns the modification time of a path, or zero time on error.
+func modTime(path string) time.Time {
+	info, err := os.Stat(path)
+	if err != nil {
+		return time.Time{}
+	}
+	return info.ModTime()
 }
 
 func writeNote(vaultDir, relPath, content string, force bool, counters *Counters) {

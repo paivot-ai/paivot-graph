@@ -7,7 +7,7 @@ allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 
 Perform a deliberate knowledge capture pass for the current session. This command reviews what has happened in the conversation and creates/updates vault notes, routing each piece of knowledge to the correct tier.
 
-**Global vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Global vault:** `vlt vault="Claude"` (resolves path dynamically)
 **Project vault path:** `.vault/knowledge/` (relative to project root)
 
 ## Steps

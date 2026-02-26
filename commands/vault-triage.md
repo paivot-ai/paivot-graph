@@ -7,7 +7,7 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Review pending proposals created by `/vault-evolve` or `/vault-capture`. System-scoped vault notes (agent prompts, conventions, methodology) are never modified directly -- changes go through this approval gate.
 
-**Vault path:** `/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude`
+**Vault:** `vlt vault="Claude"` (resolves path dynamically)
 
 ## Step 1: Find Pending Proposals
 
@@ -17,9 +17,9 @@ Search the vault for notes with `type: proposal` and `status: pending`:
 vlt vault="Claude" search query="type: proposal"
 ```
 
-Fallback: use Grep to find proposal notes:
+Fallback: use Grep to find proposal notes (resolve vault path first with `vlt vault="Claude" dir`):
 ```
-Grep: pattern="type: proposal" path="/Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude" glob="*.md"
+Grep: pattern="type: proposal" path="<vault-path>" glob="*.md"
 ```
 
 For each match, read the note and check that `status: pending` is in the frontmatter. Skip any that are already `accepted` or `rejected`.

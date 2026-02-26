@@ -98,8 +98,13 @@ func collectSessionLinks(cwd, project, today string) []string {
 	if err != nil {
 		return titles
 	}
+	// Quote project name to handle spaces/special chars in search.
+	q := project
+	if strings.ContainsAny(project, " \t\"") {
+		q = `"` + strings.ReplaceAll(project, `"`, `\"`) + `"`
+	}
 	results, err := v.Search(vlt.SearchOptions{
-		Query: fmt.Sprintf("project:%s created:%s", project, today),
+		Query: fmt.Sprintf("project:%s created:%s", q, today),
 	})
 	if err != nil {
 		return titles

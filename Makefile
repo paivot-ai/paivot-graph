@@ -159,12 +159,12 @@ assert v_file == v_plugin == v_market, \
 	done
 	@echo "OK: All 8 agent vault loaders present"
 	@echo ""
-	@echo "Checking vault loaders reference vault paths..."
+	@echo "Checking vault loaders use vlt commands (not hardcoded paths)..."
 	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
-		grep -q 'iCloud~md~obsidian/Documents/Claude/methodology/' agents/$$agent.md || (echo "FAIL: agents/$$agent.md missing vault path" && exit 1); \
+		grep -q 'vlt vault="Claude" read file=' agents/$$agent.md || (echo "FAIL: agents/$$agent.md missing vlt read command" && exit 1); \
 	done
-	@grep -q 'iCloud~md~obsidian/Documents/Claude' skills/vault-knowledge/SKILL.md || (echo "FAIL: SKILL.md missing vault path" && exit 1)
-	@echo "OK: All vault loaders reference vault paths"
+	@grep -q 'vlt vault="Claude" read file=' skills/vault-knowledge/SKILL.md || (echo "FAIL: SKILL.md missing vlt read command" && exit 1)
+	@echo "OK: All vault loaders use dynamic vlt commands"
 	@echo ""
 	@echo "Checking pvg guard allows non-vault Edit..."
 	@echo '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/safe.md"}}' | bin/pvg guard >/dev/null 2>&1; \

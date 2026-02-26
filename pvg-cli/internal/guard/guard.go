@@ -92,24 +92,56 @@ func ParseInput() (HookInput, error) {
 	return input, nil
 }
 
+// normalizePath resolves symlinks and cleans a file path for reliable prefix
+// comparison. Falls back to filepath.Clean if symlink resolution fails (e.g.
+// the path does not exist yet).
+func normalizePath(p string) string {
+	if p == "" {
+		return ""
+	}
+	resolved, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		// Path may not exist yet (Write to a new file). Clean it at least.
+		return filepath.Clean(p)
+	}
+	return resolved
+}
+
+func systemBlockMsg(folder string) string {
+	return fmt.Sprintf(
+		"BLOCKED: Direct modification of system-scoped vault content in %s/.\n\n"+
+			"System vault directories are protected by knowledge governance.\n"+
+			"To change system notes:\n"+
+			"  1. Run /vault-evolve to create a proposal\n"+
+			"  2. Run /vault-triage to review and apply it\n\n"+
+			"Only _inbox/ is writable directly (for proposals and new captures).",
+		folder)
+}
+
 func checkFilePath(vaultDir, filePath string) Result {
 	if filePath == "" {
 		return Result{Allowed: true}
 	}
 
+	// Normalize both paths so symlinks and case tricks don't bypass the guard.
+	normVault := normalizePath(vaultDir)
+	normFile := normalizePath(filePath)
+
 	for _, folder := range ProtectedFolders {
-		protected := filepath.Join(vaultDir, folder) + "/"
-		if strings.HasPrefix(filePath, protected) {
-			return Result{
-				Allowed: false,
-				Reason: fmt.Sprintf(
-					"BLOCKED: Direct modification of system-scoped vault content in %s/.\n\n"+
-						"System vault directories are protected by knowledge governance.\n"+
-						"To change system notes:\n"+
-						"  1. Run /vault-evolve to create a proposal\n"+
-						"  2. Run /vault-triage to review and apply it\n\n"+
-						"Only _inbox/ is writable directly (for proposals and new captures).",
-					folder),
+		protected := filepath.Join(normVault, folder) + "/"
+		if strings.HasPrefix(normFile, protected) {
+			return Result{Allowed: false, Reason: systemBlockMsg(folder)}
+		}
+	}
+
+	// Also check the raw (non-resolved) path in case the file doesn't exist yet
+	// and EvalSymlinks fell back to Clean -- the vault dir itself may resolve.
+	if normFile != filePath {
+		cleanFile := filepath.Clean(filePath)
+		for _, folder := range ProtectedFolders {
+			protected := filepath.Join(normVault, folder) + "/"
+			if strings.HasPrefix(cleanFile, protected) {
+				return Result{Allowed: false, Reason: systemBlockMsg(folder)}
 			}
 		}
 	}
@@ -128,28 +160,39 @@ func checkBashCommand(vaultDir, command string) Result {
 		return Result{Allowed: true}
 	}
 
-	// Check for shell redirects and file operations targeting protected dirs
+	normVault := normalizePath(vaultDir)
+
+	// Check for write operations targeting protected dirs.
+	// Key improvement: verify the protected path appears in the write
+	// *destination* (after the redirect operator or as a later argument),
+	// not just anywhere in the command string.
 	for _, folder := range ProtectedFolders {
-		protected := filepath.Join(vaultDir, folder)
+		protected := filepath.Join(normVault, folder)
+
 		if !strings.Contains(command, protected) {
 			continue
 		}
 
-		// Check for write-like patterns
-		writePatterns := []string{">", ">>", "tee ", "cp ", "mv ", "cat >"}
-		for _, pattern := range writePatterns {
-			if strings.Contains(command, pattern) {
-				return Result{
-					Allowed: false,
-					Reason: fmt.Sprintf(
-						"BLOCKED: Bash command targets protected vault directory %s/.\n\n"+
-							"System vault directories are protected by knowledge governance.\n"+
-							"To change system notes:\n"+
-							"  1. Run /vault-evolve to create a proposal\n"+
-							"  2. Run /vault-triage to review and apply it\n\n"+
-							"Only _inbox/ is writable directly (for proposals and new captures).",
-						folder),
+		// Check redirect operators: the protected path must appear
+		// AFTER the operator to be a write destination.
+		for _, op := range []string{">>", ">"} {
+			if idx := strings.Index(command, op); idx >= 0 {
+				afterOp := command[idx:]
+				if strings.Contains(afterOp, protected) {
+					return Result{Allowed: false, Reason: systemBlockMsg(folder)}
 				}
+			}
+		}
+
+		// Check file operation commands where protected path is the
+		// destination (typically the last path argument).
+		destPatterns := []string{
+			"tee ", "cp ", "mv ", "cat >",
+			"sed -i", "perl -pi", "install ", "rsync ", "dd ", "patch ",
+		}
+		for _, pattern := range destPatterns {
+			if strings.Contains(command, pattern) && strings.Contains(command, protected) {
+				return Result{Allowed: false, Reason: systemBlockMsg(folder)}
 			}
 		}
 	}
@@ -169,9 +212,16 @@ func checkProjectVault(projectRoot, filePath string) Result {
 		return Result{Allowed: true}
 	}
 
-	vaultPrefix := projectRoot + projectVaultPath
-	if !strings.HasPrefix(filePath, vaultPrefix) {
-		return Result{Allowed: true}
+	normRoot := normalizePath(projectRoot)
+	normFile := normalizePath(filePath)
+
+	vaultPrefix := normRoot + projectVaultPath
+	if !strings.HasPrefix(normFile, vaultPrefix) {
+		// Also check cleaned but non-resolved path (file may not exist)
+		cleanFile := filepath.Clean(filePath)
+		if !strings.HasPrefix(cleanFile, vaultPrefix) {
+			return Result{Allowed: true}
+		}
 	}
 
 	// Allow .settings.yaml -- managed by pvg settings (our own binary)
@@ -192,12 +242,27 @@ func checkBashProjectVault(projectRoot, command string) Result {
 		return Result{Allowed: true}
 	}
 
-	vaultSegment := projectRoot + projectVaultPath
+	normRoot := normalizePath(projectRoot)
+	vaultSegment := normRoot + projectVaultPath
+
 	if !strings.Contains(command, vaultSegment) {
 		return Result{Allowed: true}
 	}
 
-	writePatterns := []string{">", ">>", "tee ", "cp ", "mv ", "cat >", "mkdir "}
+	// Check redirect operators: protected path must be after the operator.
+	for _, op := range []string{">>", ">"} {
+		if idx := strings.Index(command, op); idx >= 0 {
+			if strings.Contains(command[idx:], vaultSegment) {
+				return Result{Allowed: false, Reason: projectVaultBlockMsg}
+			}
+		}
+	}
+
+	// Check write commands with protected path.
+	writePatterns := []string{
+		"tee ", "cp ", "mv ", "cat >", "mkdir ",
+		"sed -i", "perl -pi", "install ", "rsync ", "dd ", "patch ",
+	}
 	for _, pattern := range writePatterns {
 		if strings.Contains(command, pattern) {
 			return Result{Allowed: false, Reason: projectVaultBlockMsg}

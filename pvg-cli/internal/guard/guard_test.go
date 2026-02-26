@@ -99,6 +99,42 @@ func TestCheckBash_AllowsReadFromProtectedDir(t *testing.T) {
 	}
 }
 
+func TestCheckBash_AllowsGrepWithProtectedDirInOutput(t *testing.T) {
+	// A grep that reads from a protected dir should NOT be blocked.
+	// The old guard would false-positive on this because ">" appears in the command
+	// before the protected path (as part of the grep output).
+	input := HookInput{
+		ToolName:  "Bash",
+		ToolInput: ToolInput{Command: `grep "pattern" /tmp/file.txt > /tmp/output.txt`},
+	}
+	result := Check(testVaultDir, testProjectRoot, input)
+	if !result.Allowed {
+		t.Errorf("expected grep with redirect to non-vault path allowed, got blocked: %s", result.Reason)
+	}
+}
+
+func TestCheckBash_BlocksSedInPlace(t *testing.T) {
+	input := HookInput{
+		ToolName:  "Bash",
+		ToolInput: ToolInput{Command: `sed -i 's/old/new/' "` + testVaultDir + `/conventions/Mode.md"`},
+	}
+	result := Check(testVaultDir, testProjectRoot, input)
+	if result.Allowed {
+		t.Errorf("expected blocked for sed -i on conventions/, got allowed")
+	}
+}
+
+func TestCheckBash_BlocksAppendRedirect(t *testing.T) {
+	input := HookInput{
+		ToolName:  "Bash",
+		ToolInput: ToolInput{Command: `echo "new content" >> "` + testVaultDir + `/methodology/Agent.md"`},
+	}
+	result := Check(testVaultDir, testProjectRoot, input)
+	if result.Allowed {
+		t.Errorf("expected blocked for >> to methodology/, got allowed")
+	}
+}
+
 func TestCheckFilePath_EmptyPath(t *testing.T) {
 	input := HookInput{
 		ToolName:  "Edit",
@@ -118,6 +154,18 @@ func TestCheckUnknownTool_Allowed(t *testing.T) {
 	result := Check(testVaultDir, testProjectRoot, input)
 	if !result.Allowed {
 		t.Errorf("expected unknown tool allowed, got blocked")
+	}
+}
+
+func TestCheckFilePath_BlocksTrailingDotDot(t *testing.T) {
+	// Path traversal: go up from _inbox and back into protected dir.
+	input := HookInput{
+		ToolName:  "Edit",
+		ToolInput: ToolInput{FilePath: testVaultDir + "/_inbox/../methodology/Hack.md"},
+	}
+	result := Check(testVaultDir, testProjectRoot, input)
+	if result.Allowed {
+		t.Errorf("expected blocked for path traversal via .., got allowed")
 	}
 }
 
@@ -172,5 +220,16 @@ func TestCheckBash_AllowsProjectVaultVlt(t *testing.T) {
 	result := Check(testVaultDir, testProjectRoot, input)
 	if !result.Allowed {
 		t.Errorf("expected vlt command for project vault allowed, got blocked: %s", result.Reason)
+	}
+}
+
+func TestCheckBash_BlocksProjectVaultSedInPlace(t *testing.T) {
+	input := HookInput{
+		ToolName:  "Bash",
+		ToolInput: ToolInput{Command: `sed -i 's/old/new/' ` + testProjectRoot + `/.vault/knowledge/patterns/test.md`},
+	}
+	result := Check(testVaultDir, testProjectRoot, input)
+	if result.Allowed {
+		t.Errorf("expected blocked for sed -i on .vault/knowledge/, got allowed")
 	}
 }
