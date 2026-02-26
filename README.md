@@ -15,7 +15,7 @@ cd vlt
 make install
 
 # Verify
-vlt version   # should print vlt 0.5.0+
+vlt version   # should print vlt 0.8.0+
 ```
 
 Pre-built binaries are available at [vlt releases](https://github.com/RamXX/vlt/releases) if you don't have Go installed.
@@ -86,7 +86,7 @@ Five hooks fire automatically during Claude Code sessions:
 
 | Hook | Event | What it does |
 |------|-------|--------------|
-| **Scope Guard** | PreToolUse (Edit/Write/Bash) | Blocks direct writes to system-scoped vault notes -- enforces the proposal workflow |
+| **Scope Guard** | PreToolUse (Edit/Write/Bash) | Blocks direct writes to system vault and project vault -- enforces vlt-only access |
 | **Session Start** | SessionStart | Searches the vault for project context, loads project-local knowledge, loads operating mode |
 | **Pre-Compact** | PreCompact | Reminds Claude to capture decisions, patterns, and debug insights before memory is lost |
 | **Stop** | Stop | Soft reminder to check the knowledge capture checklist |
@@ -99,6 +99,7 @@ Five hooks fire automatically during Claude Code sessions:
 | `/vault-capture` | Deliberate knowledge capture pass -- routes knowledge to the global vault or project vault based on scope |
 | `/vault-evolve` | Identifies improvements to vault content; creates proposals for system notes, edits project notes directly |
 | `/vault-triage` | Reviews and accepts/rejects pending proposals for system-scoped vault notes |
+| `/vault-settings` | View and configure project-level settings (scope defaults, proposal expiry, git tracking) |
 | `/vault-status` | Shows vault health -- note counts, project vault status, pending proposals |
 | `/intake` | Collects user feedback and delegates to the Sr. PM agent to create a prioritized story backlog |
 
@@ -131,10 +132,56 @@ Knowledge lives in three tiers with different governance rules:
 | Tier | Location | Scope | How changes are made |
 |------|----------|-------|---------------------|
 | **System** | Global Obsidian vault ("Claude") | All projects | Proposal workflow: `/vault-evolve` creates proposals, `/vault-triage` reviews them |
-| **Project** | `.vault/knowledge/` in each repo | One project | Direct edits, no approval needed |
+| **Project** | `.vault/knowledge/` in each repo | One project | Via `vlt` commands only (locking enforced) |
 | **Session** | `~/.claude/projects/*/memory/` | One session | Ephemeral, managed by Claude Code |
 
-The scope guard hook structurally enforces system-scope protection. Direct writes (via Edit, Write, or Bash redirects) to the vault's protected directories are blocked with a message directing the user to the proposal workflow.
+### Why vlt-only access matters
+
+When dozens of agents run concurrently -- developers implementing stories, PM-Acceptors reviewing deliveries, the retro agent extracting learnings -- they all read and write vault notes. vlt uses advisory file locking (`.vlt.lock`) to serialize these operations. Direct file I/O (Edit, Write, `cat >`) bypasses that lock, creating race conditions where one agent's write silently overwrites another's.
+
+Advisory instructions ("please use vlt") don't work -- subagents routinely bypass them (see the vault note "Subagents do not follow advisory instructions"). The enforcement must be structural.
+
+### How the scope guard works
+
+The `pvg guard` binary runs as a PreToolUse hook on every Edit, Write, and Bash call. It enforces two layers of protection:
+
+**Layer 1 -- System vault** (global Obsidian vault):
+
+| Directory | Protected? | Rationale |
+|-----------|-----------|-----------|
+| `methodology/` | Yes | Agent prompts -- changes affect all projects |
+| `conventions/` | Yes | Operating mode, checklists -- shared across projects |
+| `decisions/` | Yes | Accepted proposals live here |
+| `patterns/`, `debug/`, `concepts/`, `projects/`, `people/` | Yes | Curated knowledge |
+| `_inbox/` | No | Where proposals and captures land before triage |
+| `_templates/` | No | Templates are read-only by convention |
+
+Changes to protected system directories require the proposal workflow: `/vault-evolve` creates a proposal in `_inbox/`, then `/vault-triage` presents it for human review.
+
+**Layer 2 -- Project vault** (`.vault/knowledge/` in the repo):
+
+All files under `.vault/knowledge/` are protected, with one exception: `.settings.yaml` is writable because it's managed by `pvg settings` (our own binary, not an agent).
+
+The guard checks:
+- **Edit/Write** -- blocks if `file_path` targets `.vault/knowledge/` (except `.settings.yaml`)
+- **Bash** -- blocks shell write patterns (`>`, `>>`, `cat >`, `cp`, `mv`, `mkdir`) targeting `.vault/knowledge/`
+- **Bash with vlt** -- always allowed (vlt is the intended mechanism, provides locking)
+
+### Graph-aware retrieval with vlt
+
+Vault notes link to each other extensively via `[[wikilinks]]`. vlt 0.8.0 added `follow` and `backlinks` flags to the `read` command, enabling agents to retrieve a note's entire link neighborhood in a single call:
+
+```bash
+# Read a project note + everything it links to (decisions, patterns, debug notes)
+vlt vault="Claude" read file="paivot-graph" follow
+
+# Read a note + everything that links TO it (what depends on this note?)
+vlt vault="Claude" read file="Testing Philosophy" backlinks
+```
+
+Without these flags, an agent would need N+1 calls: read the note, parse links, read each linked note. With `follow`, it's one call. This is especially important for subagents, which tend to skip multi-step link traversal when given advisory instructions.
+
+All vault commands (`/vault-capture`, `/vault-evolve`, `/vault-triage`, `/vault-status`, `/vault-settings`) use vlt exclusively for reads and writes. Edit and Write tools are not in their allowed-tools lists.
 
 ## How the vault-as-runtime works
 
@@ -143,6 +190,7 @@ Traditional plugins ship static prompts. paivot-graph ships vault loaders -- thi
 1. **Agent prompts live in the vault**, not in plugin files. Edit them with Obsidian or vlt, and the next session picks up changes automatically.
 2. **Knowledge compounds** across sessions. Every decision, pattern, and debug insight captured during work is available to future sessions.
 3. **The feedback loop closes**. `/vault-evolve` lets agents refine their own instructions based on what worked and what didn't.
+4. **Access is structurally enforced**. The scope guard blocks direct file writes; all vault operations go through vlt, which provides concurrent-access locking. This is mechanism, not policy -- subagents can't bypass it.
 
 The vault structure:
 

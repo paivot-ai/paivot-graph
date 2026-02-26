@@ -159,6 +159,16 @@ Preferred (via Bash):
 
     vlt vault="Claude" read file="<Note Title>"
 
+To read a note plus all notes it links to (graph-aware, one call):
+
+    vlt vault="Claude" read file="<Note Title>" follow
+
+To read a note plus all notes that link TO it:
+
+    vlt vault="Claude" read file="<Note Title>" backlinks
+
+Use `follow` when you need related context (e.g., a project note that links to its decisions and patterns). Use `backlinks` when you need to understand what depends on a note.
+
 Fallback (Read tool):
 
     Read: /Users/ramirosalas/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/<folder>/<Note Title>.md

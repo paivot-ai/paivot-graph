@@ -1,6 +1,6 @@
 ---
 description: Trigger a deliberate knowledge capture pass -- review the current session and save decisions, patterns, and debug insights to the appropriate vault tier (global or project-local)
-allowed-tools: ["Bash", "Read", "Write", "Edit", "Grep", "Glob"]
+allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 ---
 
 # Vault Capture
@@ -24,15 +24,11 @@ Perform a deliberate knowledge capture pass for the current session. This comman
 
 4. **Check existing vault knowledge** for this project:
 
-   Search the vault (prefer vlt):
+   Read the project note and all linked knowledge in one call:
    ```bash
-   vlt vault="Claude" search query="<project-name>"
+   vlt vault="Claude" read file="<project-name>" follow
    ```
-   Read the project note if it exists to avoid duplicating knowledge:
-   ```bash
-   vlt vault="Claude" read file="<project-name>"
-   ```
-   Fallback if vlt unavailable: use Grep/Read tools directly on vault path.
+   This returns the project note plus every note it links to (decisions, patterns, debug insights). Use it to avoid duplicating knowledge that already exists.
 
 5. **For each piece of capturable knowledge**, decide which tier it belongs to:
 
@@ -58,16 +54,8 @@ Perform a deliberate knowledge capture pass for the current session. This comman
    Examples: project architecture decisions, project-specific patterns, local debug insights, project conventions.
 
    Route to `.vault/knowledge/` with `scope: project`:
-
-   First, create the directory structure if needed:
    ```bash
-   mkdir -p .vault/knowledge/decisions .vault/knowledge/patterns .vault/knowledge/debug .vault/knowledge/conventions
-   ```
-
-   Then create the note directly:
-   ```bash
-   cat > .vault/knowledge/<subfolder>/<Note Title>.md << 'EOF'
-   ---
+   vlt vault=".vault/knowledge" create name="<Note Title>" path="<subfolder>/<Note Title>.md" content="---
    type: <decision|pattern|debug|convention>
    scope: project
    project: <project>
@@ -77,8 +65,7 @@ Perform a deliberate knowledge capture pass for the current session. This comman
 
    # <Note Title>
 
-   <content>
-   EOF
+   <content>" silent
    ```
 
    Subfolder mapping: decisions/ for decisions, patterns/ for patterns, debug/ for debug insights, conventions/ for conventions.
@@ -87,7 +74,6 @@ Perform a deliberate knowledge capture pass for the current session. This comman
 
 6. **Update the project index note** if it exists:
 
-   Preferred (via Bash):
    ```bash
    vlt vault="Claude" append file="<Project>" content="
 
@@ -102,8 +88,8 @@ Perform a deliberate knowledge capture pass for the current session. This comman
    ```
 
    Also create/update `.vault/knowledge/README.md` if project-local notes were created:
-   ```
-   # Project Knowledge
+   ```bash
+   vlt vault=".vault/knowledge" write file="README" content="# Project Knowledge
 
    Local knowledge for <project>. See also the global vault for cross-project knowledge.
 
@@ -113,10 +99,8 @@ Perform a deliberate knowledge capture pass for the current session. This comman
    - debug/: N notes
    - conventions/: N notes
 
-   Last updated: <YYYY-MM-DD>
+   Last updated: <YYYY-MM-DD>"
    ```
-
-   Fallback: use Edit tool to append, or Write tool to create.
 
 7. **Triage inbox notes** to their proper folders (vlt updates wikilinks automatically):
    ```bash

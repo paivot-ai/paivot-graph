@@ -213,6 +213,141 @@ func TestCollectSessionLinks_FindsLocalNotes(t *testing.T) {
 	}
 }
 
+// --- detectStack tests ---
+
+func TestDetectStack_EmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	stacks := detectStack(dir)
+	if len(stacks) != 0 {
+		t.Errorf("expected empty stacks, got %v", stacks)
+	}
+}
+
+func TestDetectStack_GoProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "go" {
+		t.Errorf("expected [go], got %v", stacks)
+	}
+}
+
+func TestDetectStack_RustProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "Cargo.toml"), []byte("[package]\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "rust" {
+		t.Errorf("expected [rust], got %v", stacks)
+	}
+}
+
+func TestDetectStack_NodeProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name":"test"}`), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "node" {
+		t.Errorf("expected [node], got %v", stacks)
+	}
+}
+
+func TestDetectStack_TypeScriptProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"devDependencies":{"typescript":"^5.0"}}`), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 2 || stacks[0] != "node" || stacks[1] != "typescript" {
+		t.Errorf("expected [node, typescript], got %v", stacks)
+	}
+}
+
+func TestDetectStack_PythonPyproject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "pyproject.toml"), []byte("[project]\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "python" {
+		t.Errorf("expected [python], got %v", stacks)
+	}
+}
+
+func TestDetectStack_PythonRequirements(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "requirements.txt"), []byte("flask\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "python" {
+		t.Errorf("expected [python], got %v", stacks)
+	}
+}
+
+func TestDetectStack_ElixirProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "mix.exs"), []byte("defmodule Test do\nend\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "elixir" {
+		t.Errorf("expected [elixir], got %v", stacks)
+	}
+}
+
+func TestDetectStack_CSharpProject_Csproj(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "MyApp.csproj"), []byte("<Project />\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "csharp" {
+		t.Errorf("expected [csharp], got %v", stacks)
+	}
+}
+
+func TestDetectStack_CSharpProject_Sln(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "MyApp.sln"), []byte("Solution\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "csharp" {
+		t.Errorf("expected [csharp], got %v", stacks)
+	}
+}
+
+func TestDetectStack_MonorepoMultipleStacks(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"devDependencies":{"typescript":"^5"}}`), 0644)
+	os.WriteFile(filepath.Join(dir, "pyproject.toml"), []byte("[project]\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 4 {
+		t.Errorf("expected 4 stacks (go, node, typescript, python), got %v", stacks)
+	}
+}
+
+func TestDetectStack_JavaProject(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "pom.xml"), []byte("<project />\n"), 0644)
+	stacks := detectStack(dir)
+	if len(stacks) != 1 || stacks[0] != "java" {
+		t.Errorf("expected [java], got %v", stacks)
+	}
+}
+
+// --- readStackDetectionSetting tests ---
+
+func TestReadStackDetectionSetting_Default(t *testing.T) {
+	dir := t.TempDir()
+	if readStackDetectionSetting(dir) {
+		t.Error("expected false when no settings file exists")
+	}
+}
+
+func TestReadStackDetectionSetting_Enabled(t *testing.T) {
+	dir := t.TempDir()
+	settingsDir := filepath.Join(dir, ".vault", "knowledge")
+	if err := os.MkdirAll(settingsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	settingsFile := filepath.Join(settingsDir, ".settings.yaml")
+	if err := os.WriteFile(settingsFile, []byte("stack_detection: true\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if !readStackDetectionSetting(dir) {
+		t.Error("expected true when stack_detection is set to true")
+	}
+}
+
 func TestOutputProjectKnowledge_EmptyDir(t *testing.T) {
 	dir := t.TempDir()
 	knowledgeDir := filepath.Join(dir, ".vault", "knowledge")

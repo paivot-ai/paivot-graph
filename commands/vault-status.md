@@ -12,7 +12,7 @@ Show the current state and health of both the global Obsidian vault and the proj
 
 ## Steps
 
-1. **Check vault accessibility** (prefer vlt):
+1. **Check vault accessibility**:
    ```bash
    vlt vault="Claude" files total
    ```
@@ -24,7 +24,6 @@ Show the current state and health of both the global Obsidian vault and the proj
 
 2. **Gather global vault statistics** by counting files per folder:
 
-   Preferred (via Bash -- fast counts):
    ```bash
    vlt vault="Claude" files folder="methodology" total
    vlt vault="Claude" files folder="conventions" total
@@ -36,8 +35,6 @@ Show the current state and health of both the global Obsidian vault and the proj
    vlt vault="Claude" files folder="people" total
    vlt vault="Claude" files folder="_inbox" total
    ```
-
-   Fallback: use Glob to count notes in each folder.
 
    Also check vault health:
    ```bash
@@ -72,27 +69,27 @@ Show the current state and health of both the global Obsidian vault and the proj
 
    If it exists, count notes per subfolder:
    ```bash
-   find .vault/knowledge/decisions -name '*.md' -type f 2>/dev/null | wc -l
-   find .vault/knowledge/patterns -name '*.md' -type f 2>/dev/null | wc -l
-   find .vault/knowledge/debug -name '*.md' -type f 2>/dev/null | wc -l
-   find .vault/knowledge/conventions -name '*.md' -type f 2>/dev/null | wc -l
+   vlt vault=".vault/knowledge" files folder="decisions" total
+   vlt vault=".vault/knowledge" files folder="patterns" total
+   vlt vault=".vault/knowledge" files folder="debug" total
+   vlt vault=".vault/knowledge" files folder="conventions" total
    ```
 
    List recent project notes:
    ```bash
-   find .vault/knowledge -name '*.md' -type f -not -name 'README.md' -not -name 'changelog.md' 2>/dev/null | head -10
+   vlt vault=".vault/knowledge" files
    ```
 
 5. **Check for actionable knowledge** (retro insights awaiting incorporation):
 
    Search the project vault for notes with `actionable: pending`:
    ```bash
-   grep -rl 'actionable: pending' .vault/knowledge/ 2>/dev/null
+   vlt vault=".vault/knowledge" search query="actionable: pending"
    ```
 
-   For each found, extract the title and type:
+   For each found, read the note and its linked context:
    ```bash
-   head -20 <file> | grep -E '^(title|type):'
+   vlt vault=".vault/knowledge" read file="<note>" follow
    ```
 
 6. **Check for pending proposals**:

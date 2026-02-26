@@ -26,29 +26,24 @@ Before spawning the Sr. PM agent, YOU must gather context and pass it in the pro
 
 ### 2a. Fetch vault knowledge
 
-First, read the vault-backed operating mode:
+First, read the vault-backed operating mode and everything it links to:
 ```bash
-vlt vault="Claude" read file="Session Operating Mode"
+vlt vault="Claude" read file="Session Operating Mode" follow
 ```
 
-Then check for any prior session logs for this project:
+Then read the project note with all linked context (decisions, patterns, session logs):
 ```bash
-vlt vault="Claude" read file="<project-name>"
+vlt vault="Claude" read file="<project-name>" follow
 ```
 
-Then search for all relevant knowledge:
+This gives you the project note plus the full content of every note it references -- typically decisions, patterns, debug insights, and prior session logs -- in a single call.
+
+If you need additional context not linked from the project note:
 ```bash
 vlt vault="Claude" search query="<project-name>"
 ```
 
-For each relevant note found, read it:
-```bash
-vlt vault="Claude" read file="<note title>"
-```
-
 Fallback if vlt unavailable: use Read/Grep tools directly on the vault path.
-
-Collect all vault content (decisions, patterns, debug notes, prior session logs) relevant to this project.
 
 ### 2b. Detect the project's tech stack
 

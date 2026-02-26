@@ -16,6 +16,7 @@ var defaults = map[string]string{
 	"session_start_max_notes": "10",
 	"auto_capture":            "true",
 	"staleness_days":          "30",
+	"stack_detection":         "false",
 }
 
 // Run handles the `pvg settings` command.

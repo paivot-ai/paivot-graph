@@ -35,6 +35,14 @@ func SessionStart() error {
 	// 2. Detect project name
 	project := detectProject(input.CWD)
 
+	// 2b. Stack detection (opt-in)
+	if readStackDetectionSetting(input.CWD) {
+		if stacks := detectStack(input.CWD); len(stacks) > 0 {
+			fmt.Printf("[STACK] Detected: %s\n", strings.Join(stacks, ", "))
+			fmt.Printf("  Suggested vault search: vlt vault=\"Claude\" search query=\"%s\"\n\n", stacks[0])
+		}
+	}
+
 	// 3. Open vault
 	v, err := vaultcfg.OpenVault()
 	if err != nil {
@@ -92,7 +100,7 @@ func detectProject(cwd string) string {
 // outputProjectKnowledge prints summaries of project-local knowledge notes.
 func outputProjectKnowledge(projectVaultDir, cwd string) {
 	maxNotes := readMaxNotesSetting(cwd)
-	subfolders := []string{"conventions", "decisions", "patterns", "debug"}
+	subfolders := []string{"conventions", "decisions", "patterns", "debug", "skills"}
 
 	fmt.Println("Project-local knowledge (.vault/knowledge/):")
 	fmt.Println()
@@ -197,6 +205,76 @@ func extractNoteSummary(filePath string) (date, firstLine string) {
 	}
 
 	return date, firstLine
+}
+
+// detectStack checks for common project marker files and returns detected stacks.
+func detectStack(cwd string) []string {
+	type marker struct {
+		file  string
+		stack string
+	}
+	markers := []marker{
+		{"go.mod", "go"},
+		{"Cargo.toml", "rust"},
+		{"Gemfile", "ruby"},
+		{"pom.xml", "java"},
+		{"build.gradle", "java"},
+		{"package.json", "node"},
+		{"pyproject.toml", "python"},
+		{"requirements.txt", "python"},
+		{"mix.exs", "elixir"},
+	}
+
+	seen := make(map[string]bool)
+	var stacks []string
+
+	for _, m := range markers {
+		path := filepath.Join(cwd, m.file)
+		if _, err := os.Stat(path); err == nil {
+			if !seen[m.stack] {
+				seen[m.stack] = true
+				stacks = append(stacks, m.stack)
+			}
+			// Check for typescript in package.json
+			if m.file == "package.json" {
+				data, err := os.ReadFile(path)
+				if err == nil && strings.Contains(string(data), "typescript") {
+					if !seen["typescript"] {
+						seen["typescript"] = true
+						stacks = append(stacks, "typescript")
+					}
+				}
+			}
+		}
+	}
+
+	// Check for C# projects (glob patterns, no single canonical filename)
+	csMatches, _ := filepath.Glob(filepath.Join(cwd, "*.csproj"))
+	if len(csMatches) == 0 {
+		csMatches, _ = filepath.Glob(filepath.Join(cwd, "*.sln"))
+	}
+	if len(csMatches) > 0 && !seen["csharp"] {
+		seen["csharp"] = true
+		stacks = append(stacks, "csharp")
+	}
+
+	return stacks
+}
+
+// readStackDetectionSetting checks .vault/knowledge/.settings.yaml for stack_detection: true.
+func readStackDetectionSetting(cwd string) bool {
+	settingsFile := filepath.Join(cwd, ".vault", "knowledge", ".settings.yaml")
+	data, err := os.ReadFile(settingsFile)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "stack_detection:") {
+			val := strings.TrimSpace(strings.TrimPrefix(line, "stack_detection:"))
+			return val == "true"
+		}
+	}
+	return false
 }
 
 func staticOperatingMode() string {

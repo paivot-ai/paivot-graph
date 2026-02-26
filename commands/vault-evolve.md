@@ -1,6 +1,6 @@
 ---
 description: Refine vault-backed content based on session experience. Review what happened, identify improvements to agent prompts, skill content, or operating mode, and update the relevant vault notes. System-scoped notes get proposals; project-scoped notes get direct edits.
-allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 ---
 
 # Vault Evolve -- Refine Vault Content from Experience
@@ -27,17 +27,15 @@ Check which vault-backed content could be improved:
 
 ### Agent prompts (methodology/)
 
-Find agent notes (prefer vlt):
+Find agent notes:
 ```bash
 vlt vault="Claude" files folder="methodology"
 ```
 
-Read any that need review:
+Read any that need review, including all notes they link to:
 ```bash
-vlt vault="Claude" read file="<Agent Name>"
+vlt vault="Claude" read file="<Agent Name>" follow
 ```
-
-Fallback: use Glob/Read tools directly on vault path.
 
 Look for:
 - Instructions that were unclear or missing (agent got confused or went off-track)
@@ -48,7 +46,7 @@ Look for:
 ### Skill content (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Vault Knowledge Skill"
+vlt vault="Claude" read file="Vault Knowledge Skill" follow
 ```
 
 Look for:
@@ -59,10 +57,9 @@ Look for:
 ### Behavioral notes (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Session Operating Mode"
-vlt vault="Claude" read file="Pre-Compact Checklist"
-vlt vault="Claude" read file="Stop Capture Checklist"
+vlt vault="Claude" read file="Session Operating Mode" follow
 ```
+This returns Session Operating Mode plus all linked notes (Pre-Compact Checklist, Stop Capture Checklist, etc.) in a single call.
 
 Look for:
 - Operating mode instructions that were ignored (make them more explicit)
@@ -73,7 +70,7 @@ Look for:
 
 Check if the project has local knowledge:
 ```bash
-find .vault/knowledge -name '*.md' -type f 2>/dev/null | sort
+vlt vault=".vault/knowledge" files
 ```
 
 Look for project-specific conventions, patterns, or decisions that need updating.
@@ -89,12 +86,35 @@ Criteria for promotion:
 
 To find candidates:
 ```bash
-find .vault/knowledge -name '*.md' -type f 2>/dev/null | while read f; do
-  grep -l 'scope: project' "$f" 2>/dev/null
-done
+vlt vault=".vault/knowledge" search query="scope: project"
 ```
 
 Read each candidate and evaluate whether it should be promoted. If yes, create a **promotion proposal** in Step 3.
+
+### Skill synthesis candidates
+
+Scan `patterns/`, `decisions/`, and `debug/` in both the project vault (`.vault/knowledge/`) and the system vault for clusters of related notes that could be distilled into a reusable skill.
+
+Criteria:
+- 3+ related notes on the same topic within a single vault, OR
+- 2+ notes on the same topic from different projects
+- The notes must describe HOW to do something (process, technique, workflow), not just WHAT was decided
+
+To find candidates in the system vault:
+```bash
+vlt vault="Claude" files folder="patterns"
+vlt vault="Claude" files folder="decisions"
+vlt vault="Claude" files folder="debug"
+```
+
+To find candidates in the project vault:
+```bash
+vlt vault=".vault/knowledge" files folder="patterns"
+vlt vault=".vault/knowledge" files folder="decisions"
+vlt vault=".vault/knowledge" files folder="debug"
+```
+
+Read the notes and look for clusters -- multiple notes that share a common theme and together describe a repeatable process.
 
 ## Step 3: Determine Scope and Apply
 
@@ -140,18 +160,27 @@ Affects all projects using <Target Note>." silent
 
 ### If `scope: project`:
 
-Apply changes directly to `.vault/knowledge/` in the project:
+Apply changes directly to `.vault/knowledge/` via vlt:
 
-1. Create the directory structure if needed:
+1. For targeted section updates:
 ```bash
-mkdir -p .vault/knowledge/decisions .vault/knowledge/patterns .vault/knowledge/debug .vault/knowledge/conventions
+vlt vault=".vault/knowledge" patch file="<Note>" heading="<heading>" content="<new section content>"
 ```
 
-2. Use Edit to make targeted changes, or Write to create/replace the note.
-
-3. Append to `.vault/knowledge/changelog.md`:
+2. For full note replacement:
+```bash
+vlt vault=".vault/knowledge" write file="<Note>" content="<full new content>"
 ```
-- <YYYY-MM-DD>: Updated <note> -- <what changed and why>
+
+3. For new notes:
+```bash
+vlt vault=".vault/knowledge" create name="<Note Title>" path="<subfolder>/<Note Title>.md" content="..." silent
+```
+
+4. Append to changelog:
+```bash
+vlt vault=".vault/knowledge" append file="changelog" content="
+- <YYYY-MM-DD>: Updated <note> -- <what changed and why>"
 ```
 
 When updating any note, be conservative:
@@ -198,6 +227,83 @@ Tell the user: "Created promotion proposal for <note>. Run /vault-triage to revi
 
 **Do NOT delete the project-local note.** It stays in the project vault regardless of whether the promotion is accepted. The system vault gets its own copy.
 
+### Skill synthesis
+
+For each cluster of related notes identified in Step 2 as a skill synthesis candidate:
+
+**Project-scope skills** (all source notes are from this project):
+
+Create the skill via vlt:
+```bash
+vlt vault=".vault/knowledge" create name="<Skill Name>" path="skills/<skill-name>.md" content="---
+type: skill
+scope: project
+project: <project-name>
+source_notes:
+  - \"<subfolder>/<Note A>.md\"
+  - \"<subfolder>/<Note B>.md\"
+  - \"<subfolder>/<Note C>.md\"
+status: active
+created: <YYYY-MM-DD>
+---
+
+# <Skill Name>
+
+<Synthesized how-to content distilled from the source notes. Should be actionable and self-contained.>
+
+## When to use
+
+<Conditions under which this skill applies>
+
+## Steps
+
+<Step-by-step process>
+
+## Source
+
+Synthesized from:
+- [[<Note A>]]
+- [[<Note B>]]
+- [[<Note C>]]" silent
+```
+
+**System-scope skills** (source notes span multiple projects):
+
+Create a proposal in the system vault `_inbox/`:
+```bash
+vlt vault="Claude" create name="Skill Proposal -- <Name>" path="_inbox/Skill Proposal -- <Name>.md" content="---
+type: skill-proposal
+scope: system
+source_notes:
+  - \"<project-a>/<subfolder>/<Note>.md\"
+  - \"<project-b>/<subfolder>/<Note>.md\"
+source_projects:
+  - <project-a>
+  - <project-b>
+status: pending
+created: <YYYY-MM-DD>
+---
+
+# Skill Proposal: <Name>
+
+## Motivation
+<Why these notes should become a skill>
+
+## Synthesized Skill Content
+<The distilled how-to content>
+
+## When to use
+<Conditions under which this skill applies>
+
+## Steps
+<Step-by-step process>
+
+## Source Notes
+<Full list of notes that informed this skill, with project context>" silent
+```
+
+Tell the user: "Created skill proposal for <Name>. Run /vault-triage to review and apply."
+
 ## Step 4: Report Changes
 
 Separate the report into three sections:
@@ -211,6 +317,12 @@ Separate the report into three sections:
 
 ### Promotions Proposed (project -> system -- requires /vault-triage)
 - Promotion for <Note C>: <why it's universally useful>
+
+### Skills Proposed (system scope -- requires /vault-triage)
+- Skill Proposal for <Name>: <what it synthesizes and from which notes>
+
+### Skills Created (project scope -- applied directly)
+- Created .vault/knowledge/skills/<name>.md: <what it synthesizes>
 
 ### Changes Applied (project scope -- applied directly)
 - Updated .vault/knowledge/<path>: <what changed>

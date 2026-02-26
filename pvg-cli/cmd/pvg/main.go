@@ -117,8 +117,11 @@ func runGuard() error {
 		return nil
 	}
 
+	// Get project root (CWD) for project vault checks
+	cwd, _ := os.Getwd()
+
 	// Check the operation
-	result := guard.Check(vaultDir, input)
+	result := guard.Check(vaultDir, cwd, input)
 	if !result.Allowed {
 		fmt.Println(result.Reason)
 		os.Exit(2)

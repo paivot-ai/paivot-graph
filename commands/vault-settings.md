@@ -1,6 +1,6 @@
 ---
 description: View and configure paivot-graph settings for the current project -- project vault behavior, default scope, proposal expiry, gitignore preferences
-allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 ---
 
 # Vault Settings
@@ -9,17 +9,17 @@ Manage paivot-graph configuration for the current project. Settings are stored i
 
 ## Step 1: Load Current Settings
 
-Check if settings file exists:
+Check if settings file exists and read it:
 ```bash
-test -f .vault/knowledge/.settings.yaml && echo "exists" || echo "not found"
+bin/pvg settings
 ```
 
-If it exists, read it:
+If the pvg binary is not available, read the file directly:
 ```bash
-cat .vault/knowledge/.settings.yaml
+cat .vault/knowledge/.settings.yaml 2>/dev/null || echo "not found"
 ```
 
-If not, use these defaults:
+If not found, use these defaults:
 
 ```yaml
 # paivot-graph project settings
@@ -43,6 +43,10 @@ session_start_max_notes: 10
 # Whether to create .vault/knowledge/ on first /vault-capture
 # Options: auto, ask, never
 auto_init_project_vault: ask
+
+# Whether session-start detects and outputs the project's tech stack
+# Options: true, false
+stack_detection: false
 ```
 
 ## Step 2: Present Current Configuration
@@ -59,6 +63,7 @@ Show the user the current state:
 | proposal_expiry_days     | 30        | Days before proposals are flagged stale          |
 | session_start_max_notes  | 10        | Max notes summarized per subfolder at start      |
 | auto_init_project_vault  | ask       | Create .vault/knowledge/ on first capture        |
+| stack_detection          | false     | Detect and output project tech stack at start    |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```
@@ -71,22 +76,24 @@ Otherwise, ask the user which setting they want to change and what value to set.
 
 ## Step 4: Apply Changes
 
-1. Create `.vault/knowledge/` directory if it doesn't exist:
-   ```bash
-   mkdir -p .vault/knowledge
-   ```
+Use the pvg binary to apply settings changes:
+```bash
+bin/pvg settings <key>=<value>
+```
 
-2. Write or update `.vault/knowledge/.settings.yaml` with the new values. Preserve comments.
+For example:
+```bash
+bin/pvg settings project_vault_git=tracked
+bin/pvg settings proposal_expiry_days=14
+```
 
-3. **If `project_vault_git` was changed:**
-   - `tracked`: ensure `.vault/knowledge/` is NOT in `.gitignore`
-   - `ignored`: add `.vault/knowledge/*.md` to `.gitignore` (keep .settings.yaml tracked)
-   - `ask`: no gitignore changes (will prompt on first capture)
+**If `project_vault_git` was changed:**
+- `tracked`: ensure `.vault/knowledge/` is NOT in `.gitignore`
+- `ignored`: add `.vault/knowledge/*.md` to `.gitignore` (keep .settings.yaml tracked)
+- `ask`: no gitignore changes (will prompt on first capture)
 
-4. **If `proposal_expiry_days` was changed:**
-   - No side effects -- `/vault-triage` reads this at runtime
-
-5. Report what was changed.
+**If `proposal_expiry_days` was changed:**
+- No side effects -- `/vault-triage` reads this at runtime
 
 ## Step 5: Report
 
@@ -103,10 +110,7 @@ Settings file: .vault/knowledge/.settings.yaml
 
 Other commands (`/vault-capture`, `/vault-triage`, session-start hook) should check for `.vault/knowledge/.settings.yaml` and use its values. If the file doesn't exist, use defaults.
 
-To read a setting from a shell hook:
+To read a setting programmatically:
 ```bash
-if [ -f ".vault/knowledge/.settings.yaml" ]; then
-    value="$(grep '^proposal_expiry_days:' .vault/knowledge/.settings.yaml | awk '{print $2}')"
-fi
-value="${value:-30}"  # default
+bin/pvg settings <key>
 ```

@@ -2,17 +2,27 @@
 //
 // It reads Claude Code's PreToolUse hook JSON from stdin, determines if the
 // operation targets a protected vault directory, and exits 2 to block or 0
-// to allow.
+// to allow. Two layers of protection:
 //
-// Protected directories: methodology/, conventions/, decisions/, patterns/,
-// debug/, concepts/, projects/, people/
+// Layer 1 -- System vault (global Obsidian vault "Claude"):
 //
-// Allowed: _inbox/ (proposals and captures), _templates/, anything outside vault
+//	Protected: methodology/, conventions/, decisions/, patterns/,
+//	           debug/, concepts/, projects/, people/
+//	Allowed:   _inbox/ (proposals and captures), _templates/
+//	Mechanism: checkFilePath blocks Edit/Write, checkBashCommand blocks
+//	           shell redirects/cp/mv. vlt commands are always allowed.
 //
-// Special handling:
-//   - Edit/Write: checks file_path against protected dirs
-//   - Bash: checks command for redirects/cp/mv targeting protected dirs
-//   - Bash with vlt: always allowed (vlt is the intended mechanism)
+// Layer 2 -- Project vault (.vault/knowledge/ in project root):
+//
+//	Protected: all files under .vault/knowledge/
+//	Exception: .settings.yaml (managed by pvg settings binary)
+//	Mechanism: checkProjectVault blocks Edit/Write, checkBashProjectVault
+//	           blocks shell writes. vlt commands are always allowed.
+//
+// Why vlt is the required mechanism: vlt uses advisory file locking
+// (.vlt.lock) to serialize concurrent agent writes. Direct file I/O
+// bypasses this lock, risking data loss when multiple agents run
+// simultaneously.
 package guard
 
 import (
@@ -54,12 +64,19 @@ type Result struct {
 }
 
 // Check reads hook input and returns whether the operation should be allowed.
-func Check(vaultDir string, input HookInput) Result {
+// projectRoot is the CWD of the invoking process (used to resolve .vault/knowledge/).
+func Check(vaultDir, projectRoot string, input HookInput) Result {
 	switch input.ToolName {
 	case "Edit", "Write":
-		return checkFilePath(vaultDir, input.ToolInput.FilePath)
+		if r := checkFilePath(vaultDir, input.ToolInput.FilePath); !r.Allowed {
+			return r
+		}
+		return checkProjectVault(projectRoot, input.ToolInput.FilePath)
 	case "Bash":
-		return checkBashCommand(vaultDir, input.ToolInput.Command)
+		if r := checkBashCommand(vaultDir, input.ToolInput.Command); !r.Allowed {
+			return r
+		}
+		return checkBashProjectVault(projectRoot, input.ToolInput.Command)
 	default:
 		return Result{Allowed: true}
 	}
@@ -134,6 +151,56 @@ func checkBashCommand(vaultDir, command string) Result {
 						folder),
 				}
 			}
+		}
+	}
+
+	return Result{Allowed: true}
+}
+
+const projectVaultBlockMsg = "BLOCKED: Direct modification of project vault. " +
+	"Use vlt vault=\"<path>\" commands instead. " +
+	"vlt provides locking for concurrent agent safety."
+
+// projectVaultPath is the relative path segment that identifies project vault files.
+const projectVaultPath = "/.vault/knowledge/"
+
+func checkProjectVault(projectRoot, filePath string) Result {
+	if filePath == "" || projectRoot == "" {
+		return Result{Allowed: true}
+	}
+
+	vaultPrefix := projectRoot + projectVaultPath
+	if !strings.HasPrefix(filePath, vaultPrefix) {
+		return Result{Allowed: true}
+	}
+
+	// Allow .settings.yaml -- managed by pvg settings (our own binary)
+	if filepath.Base(filePath) == ".settings.yaml" {
+		return Result{Allowed: true}
+	}
+
+	return Result{Allowed: false, Reason: projectVaultBlockMsg}
+}
+
+func checkBashProjectVault(projectRoot, command string) Result {
+	if command == "" || projectRoot == "" {
+		return Result{Allowed: true}
+	}
+
+	trimmed := strings.TrimSpace(command)
+	if strings.HasPrefix(trimmed, "vlt ") || strings.HasPrefix(trimmed, "vlt\t") {
+		return Result{Allowed: true}
+	}
+
+	vaultSegment := projectRoot + projectVaultPath
+	if !strings.Contains(command, vaultSegment) {
+		return Result{Allowed: true}
+	}
+
+	writePatterns := []string{">", ">>", "tee ", "cp ", "mv ", "cat >", "mkdir "}
+	for _, pattern := range writePatterns {
+		if strings.Contains(command, pattern) {
+			return Result{Allowed: false, Reason: projectVaultBlockMsg}
 		}
 	}
 
