@@ -20,6 +20,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/RamXX/paivot-graph/pvg-cli/internal/governance"
+	"github.com/RamXX/paivot-graph/pvg-cli/internal/guard"
+	"github.com/RamXX/paivot-graph/pvg-cli/internal/lifecycle"
+	"github.com/RamXX/paivot-graph/pvg-cli/internal/settings"
+	"github.com/RamXX/paivot-graph/pvg-cli/internal/vaultcfg"
 )
 
 // Set at build time via -ldflags
@@ -41,14 +48,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, "pvg hook: missing subcommand (session-start, pre-compact, stop, session-end)")
 			os.Exit(1)
 		}
-		err = runHook(args[0], args[1:])
+		err = runHook(args[0])
 	case "guard":
 		err = runGuard()
 	case "seed":
 		force := len(args) > 0 && args[0] == "--force"
 		err = runSeed(force)
 	case "settings":
-		err = runSettings(args)
+		err = settings.Run(args)
 	case "version":
 		fmt.Printf("pvg %s\n", version)
 	case "help", "--help", "-h":
@@ -80,54 +87,58 @@ Commands:
   help                   Show this help`)
 }
 
-// Stubs -- each will be implemented in its own file
-
-func runHook(name string, args []string) error {
+func runHook(name string) error {
 	switch name {
 	case "session-start":
-		return hookSessionStart()
+		return lifecycle.SessionStart()
 	case "pre-compact":
-		return hookPreCompact()
+		return lifecycle.PreCompact()
 	case "stop":
-		return hookStop()
+		return lifecycle.Stop()
 	case "session-end":
-		return hookSessionEnd()
+		return lifecycle.SessionEnd()
 	default:
 		return fmt.Errorf("unknown hook %q", name)
 	}
 }
 
 func runGuard() error {
-	// TODO: implement -- reads JSON from stdin, checks scope
-	return fmt.Errorf("not yet implemented")
+	// Parse JSON from stdin
+	input, err := guard.ParseInput()
+	if err != nil {
+		// If we can't parse, allow (don't block on parse failures)
+		return nil
+	}
+
+	// Determine vault directory
+	vaultDir, err := vaultcfg.VaultDir()
+	if err != nil {
+		// If vault isn't found, nothing to protect
+		return nil
+	}
+
+	// Check the operation
+	result := guard.Check(vaultDir, input)
+	if !result.Allowed {
+		fmt.Println(result.Reason)
+		os.Exit(2)
+	}
+
+	return nil
 }
 
 func runSeed(force bool) error {
-	// TODO: implement -- seeds vault notes
-	return fmt.Errorf("not yet implemented")
-}
-
-func runSettings(args []string) error {
-	// TODO: implement -- reads/writes .vault/knowledge/.settings.yaml
-	return fmt.Errorf("not yet implemented")
-}
-
-func hookSessionStart() error {
-	// TODO: implement
-	return fmt.Errorf("not yet implemented")
-}
-
-func hookPreCompact() error {
-	// TODO: implement
-	return fmt.Errorf("not yet implemented")
-}
-
-func hookStop() error {
-	// TODO: implement
-	return fmt.Errorf("not yet implemented")
-}
-
-func hookSessionEnd() error {
-	// TODO: implement
-	return fmt.Errorf("not yet implemented")
+	pluginDir := os.Getenv("CLAUDE_PLUGIN_ROOT")
+	if pluginDir == "" {
+		// Try to find it relative to the pvg binary
+		exe, err := os.Executable()
+		if err == nil {
+			// bin/pvg -> plugin root is ../
+			candidate := filepath.Dir(filepath.Dir(exe))
+			if _, serr := os.Stat(filepath.Join(candidate, ".claude-plugin")); serr == nil {
+				pluginDir = candidate
+			}
+		}
+	}
+	return governance.Seed(force, pluginDir)
 }

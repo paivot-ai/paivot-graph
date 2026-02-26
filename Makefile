@@ -17,8 +17,17 @@ check-deps: ## Verify required dependencies are installed
 	@command -v claude >/dev/null 2>&1 || \
 		(echo "ERROR: claude (Claude Code) is not installed." && exit 1)
 	@echo "OK: claude found"
+	@command -v go >/dev/null 2>&1 || \
+		(echo "ERROR: go is not installed." && exit 1)
+	@echo "OK: go $$(go version | awk '{print $$3}')"
 
-install: check-deps fetch-vlt-skill ## Register marketplace, install plugin and vlt skill
+build-pvg: ## Build the pvg Go CLI
+	cd pvg-cli && go build -ldflags "-X main.version=$$(cat ../VERSION)" -o ../bin/pvg ./cmd/pvg/
+
+test-pvg: ## Run pvg Go tests
+	cd pvg-cli && go test ./... -v
+
+install: check-deps build-pvg fetch-vlt-skill ## Register marketplace, install plugin and vlt skill
 	@claude plugin marketplace add "$(PLUGIN_DIR)" 2>/dev/null \
 		&& echo "Marketplace registered." \
 		|| echo "Marketplace already registered."
@@ -33,7 +42,7 @@ fetch-vlt-skill: ## Fetch and install the vlt skill from GitHub (skips if presen
 update-vlt-skill: ## Force-update the vlt skill from GitHub
 	scripts/fetch-vlt-skill.sh --force
 
-update: ## Push local changes to the installed plugin (bump version first)
+update: build-pvg ## Push local changes to the installed plugin (bump version first)
 	claude plugin marketplace update "$(PLUGIN_NAME)"
 	claude plugin update "$(PLUGIN_NAME)@$(PLUGIN_NAME)"
 	@echo "Restart Claude Code sessions for changes to take effect."
@@ -43,29 +52,22 @@ uninstall: ## Remove plugin and marketplace
 	claude plugin marketplace remove "$(PLUGIN_NAME)"
 	@echo "$(PLUGIN_NAME) removed."
 
-seed: ## Seed Obsidian vault with agent prompts and behavioral notes (idempotent)
-	scripts/seed-vault.sh
+seed: build-pvg ## Seed Obsidian vault with agent prompts and behavioral notes (idempotent)
+	bin/pvg seed
 
-reseed: ## Force-update all vault notes with latest plugin content
-	scripts/seed-vault.sh --force
+reseed: build-pvg ## Force-update all vault notes with latest plugin content
+	bin/pvg seed --force
 
-build-pvg: ## Build the pvg Go CLI
-	cd pvg-cli && go build -ldflags "-X main.version=$$(cat ../VERSION)" -o ../bin/pvg ./cmd/pvg/
+lint: ## Run shellcheck on remaining shell scripts
+	shellcheck scripts/*.sh
 
-test-pvg: ## Run pvg Go tests
-	cd pvg-cli && go test ./... -v
-
-lint: ## Run shellcheck on all shell scripts
-	shellcheck hooks/*.sh scripts/*.sh
-
-test: lint test-pvg ## Run all checks (shellcheck + Go tests + functional)
+test: lint test-pvg build-pvg ## Run all checks (shellcheck + Go tests + functional)
 	@echo "--- Functional checks ---"
-	@echo "Checking hook scripts are executable..."
-	@test -x hooks/vault-session-start.sh || (echo "FAIL: vault-session-start.sh not executable" && exit 1)
-	@test -x hooks/vault-pre-compact.sh || (echo "FAIL: vault-pre-compact.sh not executable" && exit 1)
-	@test -x hooks/vault-stop.sh || (echo "FAIL: vault-stop.sh not executable" && exit 1)
-	@test -x hooks/vault-session-end.sh || (echo "FAIL: vault-session-end.sh not executable" && exit 1)
-	@test -x hooks/vault-scope-guard.sh || (echo "FAIL: vault-scope-guard.sh not executable" && exit 1)
+	@echo "Checking pvg binary exists..."
+	@test -x bin/pvg || (echo "FAIL: bin/pvg not found or not executable" && exit 1)
+	@echo "OK: bin/pvg built"
+	@echo ""
+	@echo "Checking scripts are executable..."
 	@test -x scripts/seed-vault.sh || (echo "FAIL: seed-vault.sh not executable" && exit 1)
 	@test -x scripts/fetch-vlt-skill.sh || (echo "FAIL: fetch-vlt-skill.sh not executable" && exit 1)
 	@echo "OK: All scripts are executable"
@@ -94,6 +96,11 @@ assert v_file == v_plugin == v_market, \
 		|| (echo "FAIL: hooks.json missing required events" && exit 1)
 	@echo "OK: All 5 hook events registered"
 	@echo ""
+	@echo "Checking hooks.json points to pvg binary..."
+	@python3 -c "import json; h=json.load(open('hooks/hooks.json'))['hooks']; cmds=[hook.get('command','') for e in h.values() for entry in e for hook in entry.get('hooks',[])]; bad=[c for c in cmds if 'bin/pvg' not in c]; assert not bad, f'hooks not using pvg: {bad}'" \
+		|| (echo "FAIL: hooks.json has hooks not using pvg" && exit 1)
+	@echo "OK: All hooks use pvg binary"
+	@echo ""
 	@echo "Checking all 8 agent vault loaders exist..."
 	@for agent in sr-pm pm developer architect designer business-analyst anchor retro; do \
 		test -f agents/$$agent.md || (echo "FAIL: agents/$$agent.md not found" && exit 1); \
@@ -107,53 +114,56 @@ assert v_file == v_plugin == v_market, \
 	@grep -q 'iCloud~md~obsidian/Documents/Claude' skills/vault-knowledge/SKILL.md || (echo "FAIL: SKILL.md missing vault path" && exit 1)
 	@echo "OK: All vault loaders reference vault paths"
 	@echo ""
-	@echo "Checking session-start hook exits 0 without obsidian..."
-	@echo '{}' | PATH=/usr/bin:/bin hooks/vault-session-start.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: session-start graceful degradation" || echo "FAIL: session-start did not exit 0"
+	@echo "Checking pvg guard allows non-vault Edit..."
+	@echo '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/safe.md"}}' | bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg guard allows non-vault Edit" || echo "FAIL: pvg guard blocked a safe Edit"
 	@echo ""
-	@echo "Checking pre-compact hook exits 0..."
-	@hooks/vault-pre-compact.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: pre-compact exits 0" || echo "FAIL: pre-compact did not exit 0"
-	@echo ""
-	@echo "Checking stop hook exits 0..."
-	@hooks/vault-stop.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: stop exits 0" || echo "FAIL: stop did not exit 0"
-	@echo ""
-	@echo "Checking session-end hook exits 0..."
-	@echo '{}' | hooks/vault-session-end.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: session-end exits 0" || echo "FAIL: session-end did not exit 0"
-	@echo ""
-	@echo "Checking scope-guard allows non-vault Edit..."
-	@echo '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/safe.md"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: scope-guard allows non-vault Edit" || echo "FAIL: scope-guard blocked a safe Edit"
-	@echo ""
-	@echo "Checking scope-guard blocks vault methodology/ Edit..."
+	@echo "Checking pvg guard blocks vault methodology/ Edit..."
 	@echo '{"tool_name":"Edit","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/methodology/Developer Agent.md"}}' \
-		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 2 && echo "OK: scope-guard blocks methodology/ Edit" || echo "FAIL: scope-guard did not block methodology/ Edit"
+		| bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: pvg guard blocks methodology/ Edit" || echo "FAIL: pvg guard did not block methodology/ Edit"
 	@echo ""
-	@echo "Checking scope-guard blocks vault conventions/ Write..."
+	@echo "Checking pvg guard blocks vault conventions/ Write..."
 	@echo '{"tool_name":"Write","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/conventions/Session Operating Mode.md"}}' \
-		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 2 && echo "OK: scope-guard blocks conventions/ Write" || echo "FAIL: scope-guard did not block conventions/ Write"
+		| bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: pvg guard blocks conventions/ Write" || echo "FAIL: pvg guard did not block conventions/ Write"
 	@echo ""
-	@echo "Checking scope-guard blocks vault decisions/ Edit..."
+	@echo "Checking pvg guard blocks vault decisions/ Edit..."
 	@echo '{"tool_name":"Edit","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/decisions/Some Decision.md"}}' \
-		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 2 && echo "OK: scope-guard blocks decisions/ Edit" || echo "FAIL: scope-guard did not block decisions/ Edit"
+		| bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 2 && echo "OK: pvg guard blocks decisions/ Edit" || echo "FAIL: pvg guard did not block decisions/ Edit"
 	@echo ""
-	@echo "Checking scope-guard allows vault _inbox/ Write..."
+	@echo "Checking pvg guard allows vault _inbox/ Write..."
 	@echo '{"tool_name":"Write","tool_input":{"file_path":"$(HOME)/Library/Mobile Documents/iCloud~md~obsidian/Documents/Claude/_inbox/Proposal.md"}}' \
-		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: scope-guard allows _inbox/ Write" || echo "FAIL: scope-guard blocked _inbox/ Write"
+		| bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg guard allows _inbox/ Write" || echo "FAIL: pvg guard blocked _inbox/ Write"
 	@echo ""
-	@echo "Checking scope-guard allows safe Bash commands..."
-	@echo '{"tool_name":"Bash","tool_input":{"command":"ls /tmp"}}' | hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: scope-guard allows safe Bash" || echo "FAIL: scope-guard blocked safe Bash"
+	@echo "Checking pvg guard allows safe Bash commands..."
+	@echo '{"tool_name":"Bash","tool_input":{"command":"ls /tmp"}}' | bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg guard allows safe Bash" || echo "FAIL: pvg guard blocked safe Bash"
 	@echo ""
-	@echo "Checking scope-guard allows vlt Bash commands..."
+	@echo "Checking pvg guard allows vlt Bash commands..."
 	@echo '{"tool_name":"Bash","tool_input":{"command":"vlt vault=\"Claude\" append file=\"Sr PM Agent\" content=\"test\""}}' \
-		| hooks/vault-scope-guard.sh >/dev/null 2>&1; \
-		test $$? -eq 0 && echo "OK: scope-guard allows vlt commands" || echo "FAIL: scope-guard blocked vlt"
+		| bin/pvg guard >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg guard allows vlt commands" || echo "FAIL: pvg guard blocked vlt"
+	@echo ""
+	@echo "Checking pvg version..."
+	@bin/pvg version | grep -q "$$(cat VERSION)" && echo "OK: pvg version matches VERSION file" || echo "FAIL: pvg version mismatch"
+	@echo ""
+	@echo "Checking pvg hook session-start exits 0..."
+	@echo '{}' | bin/pvg hook session-start >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg hook session-start exits 0" || echo "FAIL: pvg hook session-start did not exit 0"
+	@echo ""
+	@echo "Checking pvg hook pre-compact exits 0..."
+	@bin/pvg hook pre-compact >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg hook pre-compact exits 0" || echo "FAIL: pvg hook pre-compact did not exit 0"
+	@echo ""
+	@echo "Checking pvg hook stop exits 0..."
+	@bin/pvg hook stop >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg hook stop exits 0" || echo "FAIL: pvg hook stop did not exit 0"
+	@echo ""
+	@echo "Checking pvg hook session-end exits 0..."
+	@echo '{}' | bin/pvg hook session-end >/dev/null 2>&1; \
+		test $$? -eq 0 && echo "OK: pvg hook session-end exits 0" || echo "FAIL: pvg hook session-end did not exit 0"
 	@echo ""
 	@echo "All checks passed."

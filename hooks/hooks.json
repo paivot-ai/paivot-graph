@@ -1,5 +1,5 @@
 {
-  "description": "paivot-graph hooks -- vault consultation, knowledge capture, stop reminder, session logging, scope guard",
+  "description": "paivot-graph hooks -- vault consultation, knowledge capture, stop reminder, session logging, scope guard (powered by pvg)",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-scope-guard.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pvg guard",
             "timeout": 5
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-session-start.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pvg hook session-start",
             "timeout": 15
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-pre-compact.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pvg hook pre-compact",
             "timeout": 10
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-stop.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pvg hook stop",
             "timeout": 10
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/vault-session-end.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/pvg hook session-end",
             "timeout": 10
           }
         ]

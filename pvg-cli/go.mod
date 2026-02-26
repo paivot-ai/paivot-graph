@@ -2,4 +2,4 @@ module github.com/RamXX/paivot-graph/pvg-cli
 
 go 1.24
 
-require github.com/RamXX/vlt v0.5.3
+require github.com/RamXX/vlt v0.7.1
