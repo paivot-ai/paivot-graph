@@ -139,6 +139,80 @@ func TestStaticStopChecklist_ContainsKeyContent(t *testing.T) {
 	}
 }
 
+func TestFormatSessionEntry_NoLinks(t *testing.T) {
+	entry := formatSessionEntry("2026-02-25", nil)
+	if !strings.Contains(entry, "Session log (2026-02-25)") {
+		t.Error("missing date in session entry")
+	}
+	if !strings.Contains(entry, "Session ended normally") {
+		t.Error("missing status line")
+	}
+	if strings.Contains(entry, "Notes created") {
+		t.Error("should not have Notes created line when no links")
+	}
+}
+
+func TestFormatSessionEntry_WithLinks(t *testing.T) {
+	links := []string{"pvg Go CLI architecture", "Three-Tier Knowledge Model"}
+	entry := formatSessionEntry("2026-02-25", links)
+	if !strings.Contains(entry, "[[pvg Go CLI architecture]]") {
+		t.Error("missing first wikilink")
+	}
+	if !strings.Contains(entry, "[[Three-Tier Knowledge Model]]") {
+		t.Error("missing second wikilink")
+	}
+	if !strings.Contains(entry, "Notes created: [[pvg Go CLI architecture]], [[Three-Tier Knowledge Model]]") {
+		t.Errorf("unexpected format: %s", entry)
+	}
+}
+
+func TestFormatSessionEntry_SingleLink(t *testing.T) {
+	links := []string{"Some Decision"}
+	entry := formatSessionEntry("2026-02-25", links)
+	if !strings.Contains(entry, "- Notes created: [[Some Decision]]\n") {
+		t.Errorf("unexpected format for single link: %s", entry)
+	}
+	// No comma for single link
+	if strings.Contains(entry, ", ") {
+		t.Error("should not have comma with single link")
+	}
+}
+
+func TestCollectSessionLinks_NoVaultDir(t *testing.T) {
+	dir := t.TempDir()
+	links := collectSessionLinks(dir, "test-project", "2026-02-25")
+	// No .vault/knowledge/ exists, no vault available -- should return empty
+	if len(links) != 0 {
+		t.Errorf("expected empty links, got %v", links)
+	}
+}
+
+func TestCollectSessionLinks_FindsLocalNotes(t *testing.T) {
+	dir := t.TempDir()
+	knowledgeDir := filepath.Join(dir, ".vault", "knowledge", "decisions")
+	if err := os.MkdirAll(knowledgeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	today := "2026-02-25"
+	note := filepath.Join(knowledgeDir, "Use Go for CLI.md")
+	if err := os.WriteFile(note, []byte("# Use Go for CLI\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	links := collectSessionLinks(dir, "test-project", today)
+	// The note was just created, so its mtime is today
+	found := false
+	for _, l := range links {
+		if l == "Use Go for CLI" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected 'Use Go for CLI' in links, got %v", links)
+	}
+}
+
 func TestOutputProjectKnowledge_EmptyDir(t *testing.T) {
 	dir := t.TempDir()
 	knowledgeDir := filepath.Join(dir, ".vault", "knowledge")

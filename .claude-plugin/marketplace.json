@@ -9,7 +9,7 @@
       "name": "paivot-graph",
       "source": "./",
       "description": "Obsidian vault as runtime -- agents, skills, and hooks read from the vault and evolve with every session",
-      "version": "1.5.0"
+      "version": "1.6.0"
     }
   ]
 }

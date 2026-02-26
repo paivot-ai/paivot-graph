@@ -78,6 +78,36 @@ When `/vault-evolve` identifies an improvement to a system-scoped note:
 4. Each proposal can be: accepted (applied + moved to decisions/), rejected (kept as record in decisions/), or modified
 5. Accepted proposals append to the target note's `## Changelog` section
 
+## Promotion Workflow (project -> system)
+
+When project-local knowledge proves universally useful, it can be promoted to the system vault:
+
+1. `/vault-evolve` reviews project notes and identifies promotion candidates
+2. Criteria: validated across sessions, applies broadly to the stack/domain, improves cross-project consistency
+3. A **promotion proposal** is created in `_inbox/` with `type: proposal`, `promotion_from: project`
+4. `/vault-triage` reviews the promotion -- user accepts or rejects
+5. On acceptance: note is copied to the system vault's target folder; the project-local copy remains untouched
+
+Promotions are rare. Most project knowledge should stay local. Only promote when there's clear cross-project value.
+
+## Actionable Knowledge Tags
+
+Retro insights and session learnings that need to be incorporated into upcoming work use the `actionable:` frontmatter property:
+
+| Value          | Meaning                                                    |
+|----------------|------------------------------------------------------------|
+| `pending`      | Written by retro agent, not yet consumed by Sr PM          |
+| `incorporated` | Sr PM has read and integrated into upcoming stories         |
+
+### How it works
+
+1. **Retro agent** writes insights to `.vault/knowledge/` (decisions/, patterns/, debug/, conventions/) with `actionable: pending` in frontmatter
+2. **Sr PM agent** searches for `actionable: pending` notes, reads them, incorporates relevant feedback into upcoming stories
+3. **Sr PM agent** updates the tag to `actionable: incorporated` after consuming the insight
+4. `/vault-status` reports the count of pending actionable notes
+
+This replaces the `.learnings/` directory pattern. Knowledge goes directly into the proper vault subfolder with appropriate categorization, making it searchable and linkable from day one.
+
 ## Emergency Edits
 
 The scope guard blocks Edit and Write tool calls to protected vault directories. However, **vlt commands via Bash are allowed through** because vlt is the intended mechanism for the proposal workflow.

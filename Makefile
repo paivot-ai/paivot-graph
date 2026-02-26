@@ -111,8 +111,8 @@ update-vlt-skill: ## Force-update the vlt skill from GitHub
 # Lint & test
 # ---------------------------------------------------------------------------
 
-lint: ## Run shellcheck on remaining shell scripts
-	shellcheck scripts/*.sh
+lint: ## Run shellcheck on shell scripts
+	shellcheck scripts/fetch-vlt-skill.sh
 
 test: lint test-pvg build-pvg ## Run all checks (shellcheck + Go tests + functional)
 	@echo "--- Functional checks ---"
@@ -121,7 +121,6 @@ test: lint test-pvg build-pvg ## Run all checks (shellcheck + Go tests + functio
 	@echo "OK: bin/pvg built"
 	@echo ""
 	@echo "Checking scripts are executable..."
-	@test -x scripts/seed-vault.sh || (echo "FAIL: seed-vault.sh not executable" && exit 1)
 	@test -x scripts/fetch-vlt-skill.sh || (echo "FAIL: fetch-vlt-skill.sh not executable" && exit 1)
 	@echo "OK: All scripts are executable"
 	@echo ""

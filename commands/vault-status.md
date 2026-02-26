@@ -83,7 +83,19 @@ Show the current state and health of both the global Obsidian vault and the proj
    find .vault/knowledge -name '*.md' -type f -not -name 'README.md' -not -name 'changelog.md' 2>/dev/null | head -10
    ```
 
-5. **Check for pending proposals**:
+5. **Check for actionable knowledge** (retro insights awaiting incorporation):
+
+   Search the project vault for notes with `actionable: pending`:
+   ```bash
+   grep -rl 'actionable: pending' .vault/knowledge/ 2>/dev/null
+   ```
+
+   For each found, extract the title and type:
+   ```bash
+   head -20 <file> | grep -E '^(title|type):'
+   ```
+
+6. **Check for pending proposals**:
 
    Search the global vault inbox for pending proposals:
    ```bash
@@ -100,7 +112,7 @@ Show the current state and health of both the global Obsidian vault and the proj
    Grep: pattern="status: pending" in each proposal file
    ```
 
-6. **Present the report**:
+7. **Present the report**:
 
    ```
    ## Vault Status
@@ -132,6 +144,13 @@ Show the current state and health of both the global Obsidian vault and the proj
 
    (If not initialized: "No project vault. Run /vault-capture to create one.")
 
+   ### Actionable Knowledge (retro insights)
+   N notes with actionable: pending (awaiting Sr PM incorporation):
+   - <type>: <title> (created <date>)
+   - <type>: <title> (created <date>)
+
+   (If none: "No pending retro insights.")
+
    ### Pending Proposals
    N proposals awaiting review:
    - Proposal for <Target Note A> (from project <X>, created <date>)
@@ -150,9 +169,10 @@ Show the current state and health of both the global Obsidian vault and the proj
    - <any actionable suggestions based on the data>
    ```
 
-7. **Provide actionable recommendations** based on what was found:
+8. **Provide actionable recommendations** based on what was found:
    - If inbox has items: "N notes in _inbox/ need triage -- move them to proper folders"
    - If pending proposals exist: "N proposals pending -- run /vault-triage to review"
+   - If actionable knowledge pending: "N retro insights pending -- Sr PM should incorporate into upcoming stories"
    - If a folder is empty: "No <type> notes yet -- consider capturing <type> knowledge"
    - If project vault not initialized: "Consider initializing .vault/knowledge/ for project-local knowledge"
    - If vault is healthy: "Vault is well-organized. Keep capturing knowledge as you work."

@@ -78,6 +78,24 @@ find .vault/knowledge -name '*.md' -type f 2>/dev/null | sort
 
 Look for project-specific conventions, patterns, or decisions that need updating.
 
+### Promotion candidates (project -> system)
+
+Review project-local notes for knowledge that has proven **universally useful** -- patterns, decisions, or debug insights that would benefit other projects too. Only promote when the knowledge is genuinely cross-project; most project knowledge should stay local.
+
+Criteria for promotion:
+- The pattern has been validated across multiple sessions or use cases within this project
+- The insight applies to the technology/stack broadly, not just this project's specific setup
+- The convention would improve consistency across all projects, not just this one
+
+To find candidates:
+```bash
+find .vault/knowledge -name '*.md' -type f 2>/dev/null | while read f; do
+  grep -l 'scope: project' "$f" 2>/dev/null
+done
+```
+
+Read each candidate and evaluate whether it should be promoted. If yes, create a **promotion proposal** in Step 3.
+
 ## Step 3: Determine Scope and Apply
 
 For each improvement identified, **read the target note's frontmatter first** and check the `scope:` property.
@@ -141,9 +159,48 @@ When updating any note, be conservative:
 - Add examples of what went wrong and how to avoid it
 - Preserve the overall structure
 
+### Promotion proposals (project -> system)
+
+For project-local notes identified as promotion candidates in Step 2, create a promotion proposal in the global vault's `_inbox/`:
+
+```bash
+vlt vault="Claude" create name="Promotion -- <Note Title>" path="_inbox/Promotion -- <Note Title>.md" content="---
+type: proposal
+scope: system
+promotion_from: project
+source_project: <originating-project>
+source_path: \".vault/knowledge/<subfolder>/<Note>.md\"
+target_path: \"<target folder>/<Note>.md\"
+status: pending
+created: <YYYY-MM-DD>
+---
+
+# Promotion: <Note Title>
+
+## Source
+Project: <project-name>
+Path: .vault/knowledge/<subfolder>/<Note>.md
+
+## Rationale
+<why this knowledge is universally useful, not just project-specific>
+
+## Content
+<full content of the project-local note>
+
+## Suggested target
+<target folder>/<Note>.md (e.g., patterns/, decisions/, debug/)
+
+## Impact
+Would benefit all projects working with <relevant stack/domain>." silent
+```
+
+Tell the user: "Created promotion proposal for <note>. Run /vault-triage to review."
+
+**Do NOT delete the project-local note.** It stays in the project vault regardless of whether the promotion is accepted. The system vault gets its own copy.
+
 ## Step 4: Report Changes
 
-Separate the report into two sections:
+Separate the report into three sections:
 
 ```
 ## Vault Evolve Summary
@@ -151,6 +208,9 @@ Separate the report into two sections:
 ### Proposals Created (system scope -- requires /vault-triage)
 - Proposal for <Note A>: <what would change and why>
 - Proposal for <Note B>: <what would change and why>
+
+### Promotions Proposed (project -> system -- requires /vault-triage)
+- Promotion for <Note C>: <why it's universally useful>
 
 ### Changes Applied (project scope -- applied directly)
 - Updated .vault/knowledge/<path>: <what changed>
