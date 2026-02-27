@@ -917,7 +917,7 @@
           <span class="agent-name">Developer</span>
           <span class="agent-model">opus</span>
         </div>
-        <p class="agent-desc">Ephemeral. Implements one story, runs tests, records proof of passing in delivery notes. Reads vault for context. Does NOT close stories.</p>
+        <p class="agent-desc">Ephemeral. Implements one story, runs tests, records proof. Supports optional hard-tdd mode: RED phase (tests only) or GREEN phase (implementation only, test files locked by git).</p>
       </div>
       <div class="agent-card yellow reveal">
         <div class="agent-header">
@@ -1178,6 +1178,19 @@
             <tr><td>Harvest</td><td>Retro agent extracts</td></tr>
             <tr><td>Store</td><td>.vault/knowledge/ (actionable: pending)</td></tr>
             <tr><td>Promote</td><td>/vault-evolve + /vault-triage</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="quality-card reveal">
+        <h3>Hard-TDD Mode</h3>
+        <p>Opt-in per story via <code>hard-tdd</code> label. Two-phase developer workflow with git-enforced test immutability.</p>
+        <table class="quality-table">
+          <thead><tr><th>Phase</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td>RED</td><td>Test Author writes tests only</td></tr>
+            <tr><td>Review</td><td>PM verifies tests cover all ACs</td></tr>
+            <tr><td>GREEN</td><td>Implementer writes code (cannot touch tests)</td></tr>
+            <tr><td>Verify</td><td>Git diff confirms test immutability</td></tr>
           </tbody>
         </table>
       </div>

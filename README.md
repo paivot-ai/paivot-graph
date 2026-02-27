@@ -118,6 +118,25 @@ Eight specialized agents that read their full instructions from the vault at run
 | **pm** | Ephemeral -- accepts or rejects delivered stories using evidence-based review |
 | **retro** | Ephemeral -- extracts learnings from completed epics |
 
+### Hard-TDD mode (optional)
+
+For stories where correctness is critical, add the `hard-tdd` label. This activates a two-phase developer workflow:
+
+1. **RED phase** -- A Test Author developer writes tests only (unit + integration). PM-Acceptor reviews tests against acceptance criteria: "If these tests passed, would they prove the story is done?"
+2. **GREEN phase** -- A separate Implementer developer writes code to make all tests pass. The Implementer cannot modify test files -- git enforces this structurally via commit diffing.
+
+The Sr PM applies the label during backlog creation (user can steer: "hard-tdd on all payment stories"). The label persists on the story as a permanent record, read by every agent:
+
+| Agent | How it uses `hard-tdd` |
+|-------|----------------------|
+| **sr-pm** | Applies the label (user-directed or by judgment for high-risk stories) |
+| **developer** | Reads RED/GREEN phase from prompt, adjusts behavior |
+| **pm** | Adjusts review lens per phase (test quality vs implementation correctness) |
+| **anchor** | Validates two-commit pattern (test commit before implementation commit) |
+| **retro** | Compares outcomes between hard-tdd and normal stories |
+
+No new agent types, hooks, or nd states. The mechanism is dispatcher orchestration + git enforcement.
+
 ### Skills
 
 | Skill | What it does |
