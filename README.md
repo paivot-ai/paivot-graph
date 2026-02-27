@@ -15,7 +15,7 @@ cd vlt
 make install
 
 # Verify
-vlt version   # should print vlt 0.8.0+
+vlt version   # should print vlt 0.9.0+
 ```
 
 Pre-built binaries are available at [vlt releases](https://github.com/RamXX/vlt/releases) if you don't have Go installed.
@@ -188,7 +188,7 @@ The guard checks:
 
 ### Graph-aware retrieval with vlt
 
-Vault notes link to each other extensively via `[[wikilinks]]`. vlt 0.8.0 added `follow` and `backlinks` flags to the `read` command, enabling agents to retrieve a note's entire link neighborhood in a single call:
+Vault notes link to each other extensively via `[[wikilinks]]`. vlt added `follow` and `backlinks` flags to the `read` command, enabling agents to retrieve a note's entire link neighborhood in a single call:
 
 ```bash
 # Read a project note + everything it links to (decisions, patterns, debug notes)

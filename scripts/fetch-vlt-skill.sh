@@ -12,8 +12,8 @@
 set -euo pipefail
 
 REPO="RamXX/vlt"
-VERSION="v0.8.1"
-EXPECTED_SHA256="b28d4d3935fc967ef624ff37e08c0e7f9ea2e8f4a31d4fd932d6bf7b55c5fe0a"
+VERSION="v0.9.0"
+EXPECTED_SHA256="cf91fe6ea74b97d3da982c3ee402b8df2abeedc7725a4324b74f2da04d4fa888"
 SKILL_DIR="$HOME/.claude/skills/vlt-skill"
 FORCE=false
 

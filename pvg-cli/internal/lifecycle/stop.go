@@ -13,11 +13,11 @@ import (
 func Stop() error {
 	v, err := vaultcfg.OpenVault()
 	if err == nil {
-		content, rerr := v.Read("Stop Capture Checklist", "")
-		if rerr == nil && content != "" {
+		result, rerr := v.Read("Stop Capture Checklist", "")
+		if rerr == nil && result.Content != "" {
 			fmt.Println("[VAULT] Stop capture check (from vault):")
 			fmt.Println()
-			fmt.Println(content)
+			fmt.Println(result.Content)
 			outputTwoTierReminder()
 			return nil
 		}

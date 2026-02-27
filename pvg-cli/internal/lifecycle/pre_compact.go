@@ -13,11 +13,11 @@ import (
 func PreCompact() error {
 	v, err := vaultcfg.OpenVault()
 	if err == nil {
-		content, rerr := v.Read("Pre-Compact Checklist", "")
-		if rerr == nil && content != "" {
+		result, rerr := v.Read("Pre-Compact Checklist", "")
+		if rerr == nil && result.Content != "" {
 			fmt.Println("[VAULT] Context compaction imminent -- capture knowledge now.")
 			fmt.Println()
-			fmt.Println(content)
+			fmt.Println(result.Content)
 			outputTwoTierGuidance()
 			return nil
 		}

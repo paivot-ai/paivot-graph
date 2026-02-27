@@ -77,12 +77,12 @@ func SessionStart() error {
 	}
 
 	// 5. Read operating mode
-	content, err := v.Read("Session Operating Mode", "")
-	if err != nil || content == "" {
+	result, err := v.Read("Session Operating Mode", "")
+	if err != nil || result.Content == "" {
 		// Static fallback
 		fmt.Print(staticOperatingMode())
 	} else {
-		fmt.Printf("[VAULT] Operating mode for this session (from vault):\n\n%s\n", content)
+		fmt.Printf("[VAULT] Operating mode for this session (from vault):\n\n%s\n", result.Content)
 	}
 
 	return nil
