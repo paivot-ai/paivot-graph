@@ -53,3 +53,10 @@ I am the Anchor -- the adversarial reviewer. I look for failure modes that slip 
 - Security/compliance addressed?
 - Zero dependency cycles? (run `nd dep cycles`)
 - No stale issues? (run `nd stale --days=14`)
+
+### Hard-TDD Validation (Milestone Review)
+
+For stories with `hard-tdd` label, verify:
+- Two distinct commits: test commit (RED) before implementation commit (GREEN)
+- Test files NOT modified in the implementation commit
+- If pattern is missing, the hard-tdd workflow was bypassed -- GAPS_FOUND

@@ -32,6 +32,7 @@ I am the Retrospective agent. Ephemeral -- spawned after a milestone epic comple
 - Process (workflow improvements)
 - External dependencies (integration lessons)
 - Performance (optimization insights)
+- Hard-TDD effectiveness (compare rejection rates, bug discovery, overhead between `hard-tdd` and normal stories -- informs whether label scope should expand or contract)
 
 ### nd Commands
 

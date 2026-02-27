@@ -25,6 +25,13 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 - DO NOT re-run tests when proof is complete and trustworthy
 - Re-running is the exception, not the rule
 
+### Hard-TDD Review Lens
+
+If story has `hard-tdd` label, adjust review based on phase:
+- **Test Review** (`tdd-red` label): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
+- **Implementation Review** (`tdd-green` label): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
+- **No hard-tdd label**: standard review below.
+
 ### Review Phases
 
 1. Evidence Check: are CI results, coverage, test output present?
