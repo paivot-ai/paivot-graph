@@ -54,6 +54,11 @@ workflow.fsm: false
 workflow.sequence: open,in_progress,delivered,review,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: delivered,review,rejected
+
+# C4 architecture model alongside ARCHITECTURE.md
+# When enabled, Architect maintains workspace.dsl and Architecture Contract
+# Options: true, false
+architecture.c4: false
 ```
 
 ## Step 2: Present Current Configuration
@@ -75,6 +80,7 @@ Show the user the current state:
 | workflow.sequence        | open,...  | Ordered status pipeline (forward=+1, backward=any) |
 | workflow.exit_rules      | ...       | Escape rules for blocked/rejected statuses        |
 | workflow.custom_statuses | ...       | Custom statuses registered with nd for display    |
+| architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```
@@ -114,6 +120,15 @@ bin/pvg settings proposal_expiry_days=14
 - `false` (disable):
   1. `bin/pvg settings workflow.fsm=false` (pvg auto-syncs nd)
   2. Report: "FSM disabled. Status transitions are no longer enforced."
+
+**If `architecture.c4` was changed:**
+- `true` (enable):
+  1. Report: "C4 architecture model enabled. Architect will maintain workspace.dsl and Architecture Contract."
+  2. If `workspace.dsl` does not exist, note: "Architect will create workspace.dsl on next D&F or architecture update."
+  3. The `c4` skill will be discovered by agents via normal skill discovery.
+- `false` (disable):
+  1. Report: "C4 architecture model disabled. Existing workspace.dsl is preserved but not maintained."
+  2. No files are deleted.
 
 ## Step 5: Report
 
