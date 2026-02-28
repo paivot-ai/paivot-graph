@@ -12,5 +12,8 @@ Thumbs.db
 # Claude Code local files
 .claude/*.local.md
 
+# Internal documents
+ENTERPRISE.md
+
 # Build artifacts
 bin/
