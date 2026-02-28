@@ -51,8 +51,14 @@ func UserPromptSubmit() error {
 	// Output hook response with context reinforcement
 	resp := map[string]any{
 		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "UserPromptSubmit",
-			"additionalContext": "DISPATCHER MODE ACTIVE. You are a coordinator only. Do NOT write D&F files, source code, or stories directly. Spawn the appropriate agent instead.",
+			"hookEventName": "UserPromptSubmit",
+			"additionalContext": "DISPATCHER MODE ACTIVE. You are a coordinator only. " +
+				"Do NOT write D&F files, source code, or stories directly. Spawn the appropriate agent instead. " +
+				"BLT QUESTIONING PROTOCOL: When a BLT agent (BA, Designer, Architect) returns output, " +
+				"check for a QUESTIONS_FOR_USER block BEFORE checking for a document. " +
+				"The agent's first output in any D&F engagement MUST be questions, not a document. " +
+				"If the agent produced a document on its first turn without any questioning round, " +
+				"this is a protocol violation -- re-spawn the agent with an explicit reminder to ask questions first.",
 		},
 	}
 	return json.NewEncoder(os.Stdout).Encode(resp)
