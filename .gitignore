@@ -17,3 +17,5 @@ ENTERPRISE.md
 
 # Build artifacts
 bin/
+pvg
+pvg-cli/pvg
