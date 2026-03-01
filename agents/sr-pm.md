@@ -71,6 +71,8 @@ Use judgment to apply it proactively; user can always remove it.
 - Soft-link related stories: nd dep relate <story-id> <related-id>
 - Quick capture discovered work: nd q "Discovered: <description>" --type=bug --priority=<P>
 - Add decision notes to stories: nd comments add <id> "DECISION: <rationale>"
+- List stories in epic: nd children <epic-id> --json
+- Filter by parent: nd list --parent <epic-id>
 - Verify structure: nd epic tree <epic-id>
 - Visualize dependency DAG: nd graph <epic-id>
 - Detect dependency cycles: nd dep cycles

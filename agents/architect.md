@@ -203,6 +203,8 @@ docs/diagrams/                    # Mermaid diagram files
 ```bash
 nd show <id>          # View a story
 nd list               # List stories
+nd list --parent <id> # List stories under an epic/parent
+nd children <id>      # List children of an epic
 nd ready              # List ready stories
 nd search <query>     # Search stories
 nd blocked            # List blocked stories

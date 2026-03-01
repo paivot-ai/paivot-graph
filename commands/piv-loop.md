@@ -45,6 +45,13 @@ Each iteration, pick work in this order:
    ```
    For each: spawn `paivot-graph:developer` agent to implement.
 
+**Epic-scoped queries**: When targeting a specific epic, scope all queries to that epic:
+```bash
+nd children <epic-id> --json            # All stories in the epic
+nd list --parent <epic-id> --status in_progress --json  # Filter within epic
+```
+IMPORTANT: nd does NOT have an `--epic` flag. Use `--parent` or `nd children` instead.
+
 ## Concurrency Limits (HARD RULE)
 
 Limits are stack-dependent. Detect from project files (Cargo.toml, *.xcodeproj,
