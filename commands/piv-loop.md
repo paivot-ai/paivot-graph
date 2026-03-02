@@ -51,11 +51,18 @@ Each iteration, pick work in this order:
    ```
    For each: spawn `paivot-graph:developer` agent to address rejection notes.
 
-3. **Developer for ready stories** (new work)
+3. **Developer for ready stories** (new work, P0 bugs first)
    ```bash
-   nd ready --json
+   nd ready --priority 0 --json   # P0 bugs first
+   nd ready --json                 # then everything else
    ```
    For each: spawn `paivot-graph:developer` agent to implement.
+
+**nd filter cheat sheet** (prevents wasted queries with wrong flags):
+- Priority: `--priority 0` (not `--label P0` -- priority is not a label)
+- Labels: `--label delivered`, `--label rejected`, `--label hard-tdd`
+- Type: `--type bug`, `--type task`, `--type epic`
+- Parent: `--parent <epic-id>`
 
 **Epic-scoped queries**: When targeting a specific epic, scope queries with `--parent`.
 But remember: the loop runs across the ENTIRE backlog, not just one epic (see Termination).
