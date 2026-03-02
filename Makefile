@@ -5,11 +5,36 @@ CACHE_BASE  := $(HOME)/.claude/plugins/cache/$(PLUGIN_NAME)/$(PLUGIN_NAME)
 CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
 .PHONY: install update uninstall test lint seed reseed check-deps check-pvg \
-        fetch-vlt-skill update-vlt-skill help sync-cache
+        fetch-vlt-skill update-vlt-skill help sync-cache bump
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
+
+# ---------------------------------------------------------------------------
+# Version management -- single command to bump VERSION + plugin.json + marketplace.json
+# ---------------------------------------------------------------------------
+
+bump: ## Bump version: make bump v=1.22.0 (updates all three version files atomically)
+ifndef v
+	$(error Usage: make bump v=X.Y.Z)
+endif
+	@echo "$(v)" > VERSION
+	@python3 -c "\
+import json; \
+p = json.load(open('.claude-plugin/plugin.json')); \
+p['version'] = '$(v)'; \
+f = open('.claude-plugin/plugin.json','w'); \
+json.dump(p, f, indent=2); f.write('\n'); f.close(); \
+print('OK: plugin.json -> $(v)')"
+	@python3 -c "\
+import json; \
+m = json.load(open('.claude-plugin/marketplace.json')); \
+m['plugins'][0]['version'] = '$(v)'; \
+f = open('.claude-plugin/marketplace.json','w'); \
+json.dump(m, f, indent=2); f.write('\n'); f.close(); \
+print('OK: marketplace.json -> $(v)')"
+	@echo "All versions synced to $(v)"
 
 # ---------------------------------------------------------------------------
 # Dependency checks
