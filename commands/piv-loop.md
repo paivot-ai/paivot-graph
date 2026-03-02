@@ -51,12 +51,14 @@ Each iteration, pick work in this order:
    ```
    For each: spawn `paivot-graph:developer` agent to address rejection notes.
 
-3. **Developer for ready stories** (new work, P0 bugs first)
+3. **Developer for ready stories** (new work)
    ```bash
-   nd ready --priority 0 --json   # P0 bugs first
-   nd ready --json                 # then everything else
+   nd ready --sort priority --json
    ```
+   Pick the highest-priority item from results (P0 first, then P1, etc.).
    For each: spawn `paivot-graph:developer` agent to implement.
+   **An empty result from this query is the ONLY signal that work is done.**
+   If it returns items at ANY priority, keep working.
 
 **nd filter cheat sheet** (prevents wasted queries with wrong flags):
 - Priority: `--priority 0` (not `--label P0` -- priority is not a label)
