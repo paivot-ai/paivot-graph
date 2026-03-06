@@ -1,0 +1,4 @@
+{"timestamp":"2026-03-06T00:00:00Z","command":"nd update HTR-j1ao --status in_progress","exit_code":1,"stderr":"Error: unknown flag: --status","pattern":"invalid_flag"}
+{"timestamp":"2026-03-06T00:00:00Z","command":"nd labels add HTR-8c6g rejected","exit_code":1,"stderr":"Error: label \"rejected\" already exists on HTR-8c6g","pattern":"duplicate_label"}
+{"timestamp":"2026-03-06T00:00:00Z","command":"nd close HTR-74dr","exit_code":1,"stderr":"nd: HTR-74dr: issue HTR-74dr is already closed","pattern":"already_closed"}
+{"timestamp":"2026-03-06T14:47:33Z","command":"nd update PROJ-123 --status in_progress","exit_code":1,"stderr":"Error: unknown flag: --status","pattern":"invalid_flag"}

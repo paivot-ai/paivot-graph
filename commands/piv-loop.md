@@ -102,18 +102,97 @@ When a project mixes stacks, use the most restrictive limit.
 
 These limits prevent context and machine resource exhaustion.
 
+## Branch Management (Two-Level Model)
+
+Paivot uses a two-level branching strategy: `main → epic → story`. See [[Two-Level Branch Model]] for complete details.
+
+**Your responsibilities as dispatcher:**
+
+### Story Branch Setup
+
+Before spawning a developer:
+
+```bash
+# Ensure epic branch exists (create if needed)
+git fetch origin
+if ! git rev-parse --verify origin/epic/EPIC_ID >/dev/null 2>&1; then
+  git checkout -b epic/EPIC_ID origin/main
+  git push -u origin epic/EPIC_ID
+fi
+
+# Create story branch from epic
+git checkout -b story/STORY_ID origin/epic/EPIC_ID
+git push -u origin story/STORY_ID
+```
+
+Developer receives worktree rooted at `story/STORY_ID`. They work in isolation, cannot accidentally push to epic or main.
+
+### Story Merge (After PM Approves)
+
+After PM-Acceptor adds `accepted` label to a delivered story:
+
+```bash
+git fetch origin
+git checkout epic/EPIC_ID
+git pull origin epic/EPIC_ID  # Ensure latest (other stories may have merged)
+
+# Attempt merge
+if ! git merge --no-ff origin/story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY_ID"; then
+  # Conflict detected
+  echo "Merge conflict detected. Spawning developer to resolve..."
+  # Spawn Developer with: "Resolve merge conflict between story/STORY_ID and epic/EPIC_ID"
+  # Developer updates story branch, dispatcher retries merge
+  exit 1
+fi
+
+git push origin epic/EPIC_ID
+
+# Cleanup story branch
+git push origin --delete story/STORY_ID
+```
+
+**Merge order:** If multiple stories waiting to merge, process in priority order (P0 first). Use `nd show STORY_ID | grep -i parent` to detect dependencies; merge dependencies first.
+
+### Epic Completion (All Stories Merged)
+
+When all stories in epic have been approved and merged to epic branch:
+
+```bash
+git fetch origin
+gh pr create \
+  --base main \
+  --head epic/EPIC_ID \
+  --title "epic(EPIC_ID): [epic title from nd]" \
+  --body "Completed epic with $(nd children EPIC_ID --json | wc -l) stories"
+```
+
+Wait for:
+- [ ] CI passes on epic branch (full test suite with all stories integrated)
+- [ ] User/PM reviews PR for milestone readiness
+
+Then merge and cleanup:
+
+```bash
+git checkout main
+git pull origin main
+git merge --no-ff origin/epic/EPIC_ID -m "Merge epic/EPIC_ID to main"
+git push origin main
+git push origin --delete epic/EPIC_ID
+```
+
 ## Dispatcher Rules
 
-You are a dispatcher. You coordinate agents. You NEVER:
+You are a dispatcher. You coordinate agents and manage git integration. You NEVER:
 - Write source code or tests yourself
 - Fix errors or bugs yourself
 - Modify story files yourself
 - Make architectural decisions yourself
 - Skip agents to "save time"
-- Resolve merge conflicts yourself (spawn a developer -- conflict resolution requires code judgment)
 - Edit source files for any reason, including "cleanup" or "git maintenance"
 - Inspect agent worktree internals (cd into `.claude/worktrees/agent-*`, run git log, read files there)
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- you just read its output)
+
+**You DO manage git:** Creating epic/story branches, merging story→epic after PM approval, creating PR epic→main, resolving merge conflicts (by spawning developer if conflicts arise).
 
 If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 
