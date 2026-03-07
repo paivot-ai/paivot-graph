@@ -68,6 +68,18 @@ workflow.sequence: open,in_progress,delivered,review,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: delivered,review,rejected
 
+# D&F specialist review: adversarial challengers review each BLT document
+# When false (default), only Anchor reviews the final backlog (cost-optimized)
+# When true, specialist challengers review BUSINESS.md, DESIGN.md, ARCHITECTURE.md
+# individually before proceeding to the next BLT step (up to 3 iterations each)
+# Options: true, false
+dnf.specialist_review: false
+
+# Maximum iterations for each specialist challenger review loop
+# If a challenger rejects after this many iterations, escalate to user
+# Range: 1-5 (default: 3)
+dnf.max_iterations: 3
+
 # C4 architecture model alongside ARCHITECTURE.md
 # When enabled, Architect maintains workspace.dsl and Architecture Contract
 # Options: true, false
@@ -102,6 +114,8 @@ Show the user the current state:
 | workflow.sequence        | open,...  | Ordered status pipeline (forward=+1, backward=any) |
 | workflow.exit_rules      | ...       | Escape rules for blocked/rejected statuses        |
 | workflow.custom_statuses | ...       | Custom statuses registered with nd for display    |
+| dnf.specialist_review    | false     | Adversarial challengers review each D&F document |
+| dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
 | loop.persist_across_sessions | false | Whether execution loop state persists across sessions |
 
@@ -142,6 +156,19 @@ pvg settings proposal_expiry_days=14
 - `false` (disable):
   1. Report: "Bug fast-track disabled. All bugs route through Sr PM (centralized model)."
   2. No side effects -- PM-Acceptor reverts to DISCOVERED_BUG blocks.
+
+**If `dnf.specialist_review` was changed:**
+- `true` (enable):
+  1. Report: "D&F specialist review enabled. Each BLT document will be adversarially reviewed before proceeding."
+  2. Report: "Challengers: BA Challenger (BUSINESS.md), Designer Challenger (DESIGN.md), Architect Challenger (ARCHITECTURE.md)."
+  3. Report: "Max iterations per document: <dnf.max_iterations> (default 3). After exhaustion, escalates to user."
+- `false` (disable):
+  1. Report: "D&F specialist review disabled. Only Anchor reviews the final backlog (cost-optimized model)."
+  2. No side effects -- challengers simply won't be spawned.
+
+**If `dnf.max_iterations` was changed:**
+- Validate value is between 1 and 5. If out of range, reject and report valid range.
+- Report: "Max challenger iterations set to <value>. Each D&F document may be reviewed up to <value> times before user escalation."
 
 **If `workflow.fsm` was changed:**
 - `true` (enable):

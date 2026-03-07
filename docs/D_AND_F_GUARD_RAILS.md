@@ -171,26 +171,42 @@ This could break down if:
 2. Sr PM doesn't embed architecture/design details (developers read external files)
 3. Anchor focuses on style rather than substance (stories don't match requirements)
 
-## Proposal: Optional Specialist Review Mode
+## Implemented: Optional Specialist Review Mode
 
-For high-risk projects, consider optionally spawning specialist reviewers:
+Specialist challengers are now available as an opt-in setting:
 
-```python
-if project.compliance_level == "high" or project.risk_level == "critical":
-    # Old approach: specialist challengers
-    spawn(designer_challenger)
-    spawn(architect_challenger)
-    # Then normal backlog review
-    spawn(anchor)
-else:
-    # Current approach: cost-optimized
-    # BLT convergence + Anchor
+**Activation:** `pvg settings dnf.specialist_review=true`
+
+**Pipeline with specialist review enabled:**
+
+```
+BA -> BA Challenger -> Designer -> Designer Challenger -> Architect -> Architect Challenger -> Sr PM -> Anchor
 ```
 
-This would be a future enhancement, not needed now.
+**Key design decisions:**
+- Challengers use Sonnet (cheap, focused review -- not heavy creative work)
+- Each challenger loops up to `dnf.max_iterations` times (default 3)
+- Challengers never talk to user -- feedback routes to creator via dispatcher
+- After max iterations exhausted, dispatcher escalates to user with remaining issues
+- Default is still cost-optimized (challengers disabled) -- same as before
+- Anchor stays regardless (backlog-level review complements document-level review)
+
+**Differences from old ns-paivot challengers:**
+- No Backlog Challenger (Anchor handles this)
+- Creator feedback loop instead of user clarification rounds (less user fatigue)
+- Opt-in per project, not mandatory
+- Max iteration cap prevents infinite loops
+- Structured output format (REVIEW_RESULT: APPROVED/REJECTED) for reliable parsing
+
+**Agent definitions:** `agents/ba-challenger.md`, `agents/designer-challenger.md`, `agents/architect-challenger.md`
+**Setting docs:** `commands/vault-settings.md` (dnf.specialist_review, dnf.max_iterations)
+**Orchestration:** Session Operating Mode vault note (D&F ORCHESTRATION section)
 
 ## Related
 
-- [[Session Operating Mode]] — BLT Convergence Protocol section
-- [[Anchor Agent]] — Current adversarial review logic
+- [[Session Operating Mode]] — D&F orchestration with specialist review loop
+- [[Anchor Agent]] — Backlog-level adversarial review (complements document-level challengers)
+- [[BA Challenger Agent]] — Reviews BUSINESS.md
+- [[Designer Challenger Agent]] — Reviews DESIGN.md
+- [[Architect Challenger Agent]] — Reviews ARCHITECTURE.md
 - [[Testing Philosophy]] — Integration test mandate (replaces some Architect Challenger checks)
