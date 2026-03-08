@@ -38,19 +38,40 @@ If story has `hard-tdd` label, adjust review based on phase:
 - **Implementation Review** (`tdd-green` label): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
-### Review Phases
+### Verification Ladder (review in this order -- cheapest first)
 
-1. Evidence Check: are CI results, coverage, test output present?
-2. Outcome Alignment: does the implementation match ACs precisely?
-3. Test Quality: integration tests with no mocks? Claims backed by proof?
-   **Execution count verification (CRITICAL):** Verify integration tests ACTUALLY
-   EXECUTED -- not just existed. Check for "skipped", "deselected", "xfail" in test
-   output. If ALL integration tests were skipped (even if they "exist"), reject
-   immediately. "0 failures with 0 executions" is NOT passing. Tests gated behind
-   env vars (`@pytest.mark.skipif(not os.environ.get(...))`) are dormant code, not
-   integration tests -- reject if found.
-4. Code Quality Spot-Check: wiring verified? No dead code?
-5. Discovered Issues Extraction: anything found during implementation? (see Reporting Bugs below)
+**Tier 1: Static (deterministic -- run FIRST, before any LLM review)**
+
+Run `pvg verify` on the delivered files:
+```bash
+pvg verify <path-to-changed-files> --format=text
+```
+If pvg verify reports stubs (NotImplementedError, panic("todo"), return {}, bare pass,
+unimplemented!()) or thin files: **reject immediately**. No need to spend tokens on
+LLM review when deterministic checks already caught incomplete implementation.
+
+TODO markers are informational -- note them but they are not automatic rejections.
+
+**Tier 2: Command (deterministic -- check CI evidence)**
+
+- Evidence Check: are CI results, coverage, test output present?
+- Test execution count: Verify integration tests ACTUALLY EXECUTED -- not just existed.
+  Check for "skipped", "deselected", "xfail" in test output. If ALL integration tests
+  were skipped (even if they "exist"), reject immediately. "0 failures with 0 executions"
+  is NOT passing. Tests gated behind env vars are dormant code -- reject if found.
+
+**Tier 3: Behavioral (LLM judgment)**
+
+- Outcome Alignment: does the implementation match ACs precisely?
+- Test Quality: integration tests with no mocks? Claims backed by proof?
+- Code Quality Spot-Check: wiring verified? No dead code?
+- Boundary Map Verification: does the delivered code actually PRODUCE what the story
+  declared in its PRODUCES section? Check exports, function signatures, endpoints.
+
+**Tier 4: Human (only when agent genuinely cannot verify)**
+
+- Discovered Issues Extraction: anything found during implementation? (see Reporting Bugs below)
+- Escalate to user only for issues requiring human judgment (UX, product decisions)
 
 ### nd Commands
 

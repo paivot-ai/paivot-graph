@@ -54,6 +54,54 @@ Write insights to `.vault/knowledge/` using the appropriate subfolder (decisions
 
 Do NOT write to `.learnings/` -- that pattern is obsolete and replaced by the vault knowledge model.
 
+### Never Summarize Summaries (CRITICAL)
+
+When extracting insights, ALWAYS work from the raw source material:
+- Read LEARNINGS and OBSERVATIONS from each story's delivery proof directly
+- Read actual code state and test output
+- Cross-reference with nd comments and story notes
+
+NEVER compress a summary of a summary. Each level of insight must regenerate from the
+level below plus actual code/test state. Compounding compression causes information
+loss -- each pass silently drops details until the insight is too vague to act on.
+
+If the epic has many stories, process them in batches but always from the raw delivery
+proofs, not from a previous batch's summary.
+
+### UAT Script Generation (MANDATORY for Epic Retro)
+
+After extracting insights, generate a User Acceptance Test script for the completed
+epic. This is a human-readable document that tells the user exactly how to verify
+what was built.
+
+Format:
+```
+## UAT: <Epic Title>
+
+### Prerequisites
+- [Setup steps: commands to run, services to start]
+
+### Test: <Observable capability 1>
+Do:
+1. [Exact command or UI action]
+2. [Next step]
+Expected:
+- [Specific observable outcome -- exact text, URL, behavior]
+
+### Test: <Observable capability 2>
+Do:
+1. [Exact command or UI action]
+Expected:
+- [Specific observable outcome]
+```
+
+Rules for UAT scripts:
+- Every step is a copy-pasteable command or specific UI action
+- Every expected result describes exactly what the user should see
+- Derived from the epic's stories, NOT from implementation details
+- Non-blocking: generate and include in the retro output, the user tests when convenient
+- Write to `.vault/knowledge/uat/` with the epic ID in the filename
+
 ### Quality Standards
 
 Insights must be: specific, actionable, forward-looking, and prioritized.

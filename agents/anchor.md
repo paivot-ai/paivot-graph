@@ -70,6 +70,7 @@ If more than 5 issues exist, report only the top 5 and note "additional issues l
 - Security/compliance addressed?
 - Zero dependency cycles? (run `nd dep cycles`)
 - No stale issues? (run `nd stale --days=14`)
+- **Boundary maps consistent?** Every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED.
 
 ### Hard-TDD Validation (Milestone Review)
 

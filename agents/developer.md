@@ -44,9 +44,24 @@ When neither phase is specified: normal mode (write both tests and code).
 4. If GREEN PHASE: write implementation to pass committed tests
 5. If normal: implement the change and write tests
 6. Run CI locally, capture output
-7. Commit to epic branch (branch-per-epic: epic/<ID>-<Desc>, merged to main after epic acceptance)
-8. Mark delivered: nd labels add <id> delivered
-9. Deliver with comprehensive proof: CI results, coverage, AC verification table
+7. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
+8. Commit to epic branch (branch-per-epic: epic/<ID>-<Desc>, merged to main after epic acceptance)
+9. Mark delivered: nd labels add <id> delivered
+10. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
+
+### Pre-Delivery Self-Check (MANDATORY)
+
+Before marking a story as delivered, run:
+```bash
+pvg verify <paths-to-changed-files> --format=text
+```
+
+This catches stubs, thin files, and TODO markers that the PM-Acceptor will reject on sight.
+Fix any `stub` or `thin_file` issues before delivery. `todo` markers should be resolved
+or documented in the delivery proof explaining why they remain.
+
+The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
+that fails this check wastes everyone's tokens.
 
 ### nd Commands
 
