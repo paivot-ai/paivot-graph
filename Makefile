@@ -4,7 +4,7 @@ VERSION     := $(shell cat VERSION)
 CACHE_BASE  := $(HOME)/.claude/plugins/cache/$(PLUGIN_NAME)/$(PLUGIN_NAME)
 CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
-.PHONY: install update uninstall test lint seed reseed check-deps check-pvg \
+.PHONY: install update uninstall test seed reseed check-deps check-pvg \
         fetch-vlt-skill update-vlt-skill help sync-cache bump
 
 help: ## Show this help
@@ -137,28 +137,25 @@ reseed: check-pvg ## Force-update all vault notes with latest plugin content
 # vlt skill management
 # ---------------------------------------------------------------------------
 
-fetch-vlt-skill: ## Fetch and install the vlt skill from GitHub (skips if present)
-	scripts/fetch-vlt-skill.sh
+fetch-vlt-skill: check-pvg ## Fetch and install the vlt skill from GitHub (skips if present)
+	pvg fetch-vlt-skill
 
-update-vlt-skill: ## Force-update the vlt skill from GitHub
-	scripts/fetch-vlt-skill.sh --force
+update-vlt-skill: check-pvg ## Force-update the vlt skill from GitHub
+	pvg fetch-vlt-skill --force
 
 # ---------------------------------------------------------------------------
 # Lint & test
 # ---------------------------------------------------------------------------
 
-lint: ## Run shellcheck on shell scripts
-	shellcheck scripts/fetch-vlt-skill.sh
-
-test: lint check-pvg ## Run all checks (shellcheck + functional)
+test: check-pvg ## Run all checks (functional)
 	@echo "--- Functional checks ---"
 	@echo "Checking pvg is on PATH..."
 	@command -v pvg >/dev/null 2>&1 || (echo "FAIL: pvg not found on PATH" && exit 1)
 	@echo "OK: pvg found at $$(command -v pvg)"
 	@echo ""
-	@echo "Checking scripts are executable..."
-	@test -x scripts/fetch-vlt-skill.sh || (echo "FAIL: fetch-vlt-skill.sh not executable" && exit 1)
-	@echo "OK: All scripts are executable"
+	@echo "Checking no shell scripts remain..."
+	@test ! -d scripts || test -z "$$(ls scripts/ 2>/dev/null)" || (echo "FAIL: shell scripts still exist in scripts/" && exit 1)
+	@echo "OK: No shell scripts"
 	@echo ""
 	@echo "Checking hooks.json is valid JSON..."
 	@python3 -c "import json; json.load(open('hooks/hooks.json'))" || (echo "FAIL: hooks.json is not valid JSON" && exit 1)
