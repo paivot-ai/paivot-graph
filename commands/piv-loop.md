@@ -166,26 +166,15 @@ When all stories in epic have been approved and merged to epic branch:
 
 ```bash
 git fetch origin
-gh pr create \
-  --base main \
-  --head epic/EPIC_ID \
-  --title "epic(EPIC_ID): [epic title from nd]" \
-  --body "Completed epic with $(nd children EPIC_ID --json | wc -l) stories"
-```
-
-Wait for:
-- [ ] CI passes on epic branch (full test suite with all stories integrated)
-- [ ] User/PM reviews PR for milestone readiness
-
-Then merge and cleanup:
-
-```bash
 git checkout main
 git pull origin main
 git merge --no-ff origin/epic/EPIC_ID -m "Merge epic/EPIC_ID to main"
 git push origin main
 git push origin --delete epic/EPIC_ID
 ```
+
+Note: This is a solo-developer workflow -- epics merge directly to main without PRs.
+PR-based review gates belong in paivot-enterprise for team workflows.
 
 ## Dispatcher Rules
 
