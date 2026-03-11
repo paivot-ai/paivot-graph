@@ -117,6 +117,10 @@ These limits prevent context and machine resource exhaustion.
 
 Paivot uses a two-level branching strategy: `main → epic → story`. See [[Two-Level Branch Model]] for complete details.
 
+The branch model does not change the live source of record requirement: when nd
+backs execution, the mutable backlog must live in a branch-independent vault
+shared across worktrees, not in branch-local `.vault/issues/` copies.
+
 **Your responsibilities as dispatcher:**
 
 ### Story Branch Setup
@@ -160,7 +164,8 @@ fi
 
 git push origin epic/EPIC_ID
 
-# Cleanup story branch
+# Cleanup story branch (local + remote)
+git branch -D story/STORY_ID
 git push origin --delete story/STORY_ID
 ```
 
@@ -178,6 +183,9 @@ git checkout main
 git pull origin main
 git merge --no-ff origin/epic/EPIC_ID -m "Merge epic/EPIC_ID to main"
 git push origin main
+
+# Cleanup epic branch (local + remote)
+git branch -D epic/EPIC_ID
 git push origin --delete epic/EPIC_ID
 ```
 
@@ -319,8 +327,9 @@ pvg loop recover
 This command automatically:
 1. Reads the snapshot file (if one exists from a prior `pvg loop snapshot`)
 2. Removes all agent worktrees and their branches
-3. Resets orphaned in-progress stories to `open` in nd (delivered stories are preserved)
-4. Outputs a recovery summary showing what's ready, delivered, and needs attention
+3. Deletes stale local branches (`epic/*`, `story/*`, `worktree-*`) that are fully merged into main
+4. Resets orphaned in-progress stories to `open` in nd (delivered stories are preserved)
+5. Outputs a recovery summary showing what's ready, delivered, and needs attention
 
 If no snapshot exists, it still cleans orphan worktrees from `git worktree list`.
 
