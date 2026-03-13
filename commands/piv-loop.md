@@ -1,13 +1,14 @@
 ---
-description: Run unattended execution loop until complete or blocked
+description: Run unattended execution loop until blocked or protected-main handoff
 allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
 args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 ---
 
 # piv-loop -- Unattended Execution Loop
 
-Run the backlog to completion without manual intervention. Spawns developer and PM agents
-in priority order until all work is done, blocked, or max iterations reached.
+Run the backlog forward without manual intervention until all dispatchable work is
+done, the loop is blocked, a protected-main handoff is required, or max
+iterations are reached. Spawns developer and PM agents in priority order.
 
 ## Setup
 
@@ -236,8 +237,9 @@ git pull origin epic/EPIC_ID
 # Main is protected; do not push a direct merge from the dispatcher.
 ```
 
-If your environment provides PR automation, use it. Otherwise stop after the epic
-branch is ready and ask the user to complete or approve the protected-main merge.
+If your environment provides PR automation, use it and continue unattended.
+Otherwise stop after the epic branch is ready and ask the user to complete or
+approve the protected-main merge.
 
 ## Dispatcher Rules
 
