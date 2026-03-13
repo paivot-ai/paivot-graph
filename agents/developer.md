@@ -69,7 +69,7 @@ that fails this check wastes everyone's tokens.
 - If you are reworking a rejected story: nd update <id> --status=in_progress --remove-label rejected
 - Breadcrumb notes (compaction-safe): nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
 - Structured progress notes: nd comments add <id> "..."
-- Mark delivered: nd labels add <id> delivered (YOU must do this, not the orchestrator)
+- Mark delivered: nd labels add <id> delivered (YOU must do this, not the orchestrator; delivered remains an nd label while status stays `in_progress`)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)
 

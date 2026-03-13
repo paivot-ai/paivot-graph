@@ -64,11 +64,15 @@ bug_fast_track: false
 # Workflow FSM -- structural enforcement of nd status transitions
 # This is an nd-native status FSM, separate from Paivot's label-based
 # delivered/accepted/rejected contract.
-# When enabled, pvg guard blocks nd commands that skip workflow steps
+# When enabled, pvg guard blocks nd commands that skip nd status steps.
+# The Paivot contract still uses labels:
+#   delivered = nd status in_progress + delivered label
+#   accepted  = nd status closed + accepted label
+#   rejected  = nd status open + rejected label
 workflow.fsm: false
-workflow.sequence: open,in_progress,delivered,review,closed
-workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
-workflow.custom_statuses: delivered,review,rejected
+workflow.sequence: open,in_progress,closed
+workflow.exit_rules: blocked:open,in_progress;deferred:open,in_progress
+workflow.custom_statuses:
 
 # D&F specialist review: adversarial challengers review each BLT document
 # When false (default), only Anchor reviews the final backlog (cost-optimized)
@@ -113,9 +117,9 @@ Show the user the current state:
 | stack_detection          | false     | Detect and output project tech stack at start    |
 | bug_fast_track           | false     | PM-Acceptor can create bugs directly during review |
 | workflow.fsm             | false     | Structural enforcement of nd status transitions  |
-| workflow.sequence        | open,...  | Ordered status pipeline (forward=+1, backward=any) |
-| workflow.exit_rules      | ...       | Escape rules for blocked/rejected statuses        |
-| workflow.custom_statuses | ...       | Custom statuses registered with nd for display    |
+| workflow.sequence        | open,...  | Ordered nd status pipeline (forward=+1, backward=any) |
+| workflow.exit_rules      | ...       | Escape rules for blocked/deferred statuses        |
+| workflow.custom_statuses | ...       | Extra nd statuses, if your project explicitly uses them |
 | dnf.specialist_review    | false     | Adversarial challengers review each D&F document |
 | dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
@@ -179,7 +183,8 @@ pvg settings proposal_expiry_days=14
 - `true` (enable):
   1. `pvg settings workflow.fsm=true` (pvg auto-syncs nd)
   2. Verify nd is initialized: `nd stats`
-  3. Report: "FSM enabled. pvg guard will enforce status transitions: <sequence>"
+  3. Report: "FSM enabled. pvg guard will enforce nd status transitions: <sequence>."
+  4. Report: "Paivot contract labels remain unchanged: delivered stays on in_progress, accepted on closed, rejected on open."
 - `false` (disable):
   1. `pvg settings workflow.fsm=false` (pvg auto-syncs nd)
   2. Report: "FSM disabled. Status transitions are no longer enforced."

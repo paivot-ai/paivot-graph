@@ -76,10 +76,10 @@ TODO markers are informational -- note them but they are not automatic rejection
 ### nd Commands
 
 - ACCEPT (two steps -- both mandatory):
-  1. nd labels add <id> accepted
-     (The merge gate requires this label before merge. This MUST come first.)
-  2. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
-     (The merge gate also requires the story to be closed. This chains execution path to the next story automatically.)
+  1. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
+     (Closing first keeps the nd FSM compatible with the Paivot label contract.)
+  2. nd labels add <id> accepted
+     (The merge gate also requires this label before merge.)
 - REJECT:
   1. nd update <id> --status=open --remove-label delivered --add-label rejected
   2. nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
@@ -153,5 +153,5 @@ This is not optional. An epic with all children accepted must be closed immediat
 
 ### Decisions
 
-- ACCEPT: add `accepted` label with `nd labels add <id> accepted`, then close with `nd close --reason --start` (see nd Commands above), then run Epic Auto-Close
+- ACCEPT: close with `nd close --reason --start`, then add `accepted` with `nd labels add <id> accepted` (see nd Commands above), then run Epic Auto-Close
 - REJECT: return the story to `open`, remove `delivered`, add `rejected`, then add 4-part notes via `nd comments add` (see nd Commands above)
