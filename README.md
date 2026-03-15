@@ -41,14 +41,32 @@ Pre-built binaries are available at [nd releases](https://github.com/RamXX/nd/re
 
 Without nd, the vault-knowledge and vault-lifecycle features still work (hooks, commands, skills), but the execution agents (developer, PM, Sr PM, anchor, retro) cannot manage work items.
 
-### 3. Obsidian vault
+### 3. pvg (required)
+
+**[pvg](https://github.com/paivot-ai/pvg) is the shared control plane Paivot uses for guardrails, live nd routing, loop recovery, and story helpers.** `paivot-graph` shells out to the installed `pvg` binary; `make install` checks that it is already on your `PATH`.
+
+```bash
+# Pre-built binaries
+gh release download -R paivot-ai/pvg -p '*darwin*arm64*' -D /tmp
+tar xzf /tmp/pvg_*.tar.gz -C ~/go/bin
+
+# Or from source (requires Go 1.24+)
+git clone https://github.com/paivot-ai/pvg.git
+cd pvg
+make install
+
+# Verify
+pvg version
+```
+
+### 4. Obsidian vault
 
 You need an Obsidian vault that vlt can discover. The plugin expects a vault named "Claude" by default. If you don't have one:
 
 1. Open Obsidian and create a new vault named "Claude"
 2. Verify vlt can see it: `vlt vaults`
 
-### 4. Claude Code
+### 5. Claude Code
 
 This is a Claude Code plugin. You need [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) installed.
 
@@ -60,11 +78,12 @@ cd paivot-graph
 make install
 ```
 
-This does three things:
+This does four things:
 
 1. Checks that vlt and Claude Code are installed
-2. Fetches the [vlt skill](https://github.com/RamXX/vlt) from GitHub and installs it to `~/.claude/skills/vlt-skill` (teaches Claude how to use vlt effectively)
-3. Registers the plugin with Claude Code's marketplace and installs it
+2. Verifies that `pvg` is on `PATH`
+3. Fetches the [vlt skill](https://github.com/RamXX/vlt) from GitHub and installs it to `~/.claude/skills/vlt-skill` (teaches Claude how to use vlt effectively)
+4. Registers the plugin with Claude Code's marketplace and installs it
 
 Restart any open Claude Code sessions for hooks to take effect.
 
