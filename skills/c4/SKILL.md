@@ -1,7 +1,7 @@
 ---
 name: c4
 description: Architecture-as-code using C4 model and Structurizr DSL. Use when the project has `architecture.c4` enabled in settings, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, or dependency rules. Teaches agents how to maintain a canonical architecture model alongside ARCHITECTURE.md, declare machine-checkable boundaries, and export diagrams.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # C4 Architecture Model
@@ -25,7 +25,7 @@ If the setting is not enabled and the user hasn't asked for C4, do not use this 
 
 ```
 workspace.dsl              # Canonical C4 model (Structurizr DSL)
-docs/diagrams/             # Generated diagram artifacts (SVG/PNG/Mermaid)
+docs/diagrams/             # Generated diagram sources/artifacts (Mermaid/PlantUML; SVG/PNG via downstream renderers if needed)
 ARCHITECTURE.md            # Narrative architecture (always exists, references model)
 ```
 

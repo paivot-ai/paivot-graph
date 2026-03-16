@@ -86,7 +86,7 @@ Criteria for promotion:
 
 To find candidates:
 ```bash
-vlt vault=".vault/knowledge" search query="scope: project"
+vlt vault=".vault/knowledge" search query="[scope:project]"
 ```
 
 Read each candidate and evaluate whether it should be promoted. If yes, create a **promotion proposal** in Step 3.

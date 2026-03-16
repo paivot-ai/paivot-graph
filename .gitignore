@@ -16,6 +16,3 @@ Thumbs.db
 .vault/.guard/
 .vault/.vlt.lock
 .vault/knowledge/.vlt.lock
-
-# Internal documents
-ENTERPRISE.md

@@ -84,7 +84,7 @@ Show the current state and health of both the global Obsidian vault and the proj
 
    Search the project vault for notes with `actionable: pending`:
    ```bash
-   vlt vault=".vault/knowledge" search query="actionable: pending"
+   vlt vault=".vault/knowledge" search query="[actionable:pending]"
    ```
 
    For each found, read the note and its linked context:
@@ -96,7 +96,7 @@ Show the current state and health of both the global Obsidian vault and the proj
 
    Search the global vault inbox for pending proposals:
    ```bash
-   vlt vault="Claude" search query="type: proposal"
+   vlt vault="Claude" search query="[type:proposal] [status:pending]"
    ```
 
    Or fallback with Grep (resolve vault path first with `vlt vault="Claude" dir`):

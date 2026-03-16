@@ -1,7 +1,7 @@
 ---
 name: vault-knowledge
 description: This skill should be used when working on any project to understand how to effectively interact with the Obsidian knowledge vault. It teaches when to capture knowledge, what to capture, how to format vault notes, and how to search effectively. Use when you need to "save to vault", "update vault", "capture a decision", "record a pattern", "log a debug insight", or when starting/ending a significant work session.
-version: 0.5.0
+version: 0.5.1
 ---
 
 # Vault Knowledge
@@ -28,7 +28,7 @@ Shared across ALL projects. Cross-project knowledge only.
 | people/       | Team preferences                | `#dev-tools/workflow` |
 | _inbox/       | Unsorted capture                | (triage required)  |
 
-**Governance:** Changes go through `/vault-capture` which auto-triages to the correct folder.
+**Governance:** New captures can go through `/vault-capture`. Changes to protected system notes go through `/vault-evolve` (proposal) and `/vault-triage` (review/apply).
 
 ### Tier 2: Project Vault (`.vault/` in each repo)
 
@@ -36,20 +36,20 @@ Scoped to a single project. Changes apply directly.
 
 ```
 .vault/
-  knowledge/     # Timeless project knowledge
-    decisions/   # Project-specific decisions
-    patterns/    # Project-specific patterns
-    debug/       # Project-specific debug insights
-  sessions/      # Execution logs (ephemeral)
-    YYYY-MM-DD.md
-  README.md      # Project knowledge index
+  knowledge/         # Project-local knowledge managed via vlt
+    conventions/     # Project-specific conventions
+    decisions/       # Project-specific decisions
+    patterns/        # Project-specific patterns
+    debug/           # Project-specific debug insights
+    skills/          # Project-specific synthesized skills
+    .settings.yaml   # Project settings managed by pvg
 ```
 
-**Separation:** `knowledge/` is for timeless insights. `sessions/` is for execution logs that age out.
+**Separation:** `knowledge/` is for durable project knowledge. Other `.vault/` paths are runtime state managed by `pvg`/`nd`, not a manual session-log area.
 
 ## Controlled Domain Vocabulary
 
-Use ONLY these domain values in frontmatter:
+Use these domain values in frontmatter. Prefer the granular `dev-tools-*` values for new captures; older seeded notes may still use the legacy values listed here.
 
 | Domain | Description | Auto-Tag |
 |--------|-------------|----------|
@@ -57,10 +57,12 @@ Use ONLY these domain values in frontmatter:
 | `ai-inference` | Model inference, reasoning, neuro-symbolic | `#ai/inference` |
 | `ai-agents` | Agent orchestration, multi-agent systems | `#ai/agents` |
 | `ai-nlp` | Natural language processing, NER, classification | `#ai/nlp` |
+| `developer-tools` | Legacy seeded Paivot system notes; prefer `dev-tools-*` for new notes | `#dev-tools/workflow` |
 | `dev-tools-cli` | CLI tools, build systems, package managers | `#dev-tools/cli` |
 | `dev-tools-testing` | Testing frameworks, test patterns | `#dev-tools/testing` |
 | `dev-tools-workflow` | Development workflow, methodology | `#dev-tools/workflow` |
 | `dev-tools-knowledge` | Knowledge management, vault patterns | `#dev-tools/knowledge` |
+| `product-management` | Product and backlog management practices | `#product/management` |
 | `security-gateway` | API gateways, middleware, auth | `#security/gateway` |
 | `security-hardening` | Security fixes, vulnerability remediation | `#security/hardening` |
 | `security-compliance` | Regulatory compliance, audit | `#security/compliance` |
@@ -218,10 +220,10 @@ vlt vault="Claude" read file="<Note Title>" backlinks
 vlt vault="Claude" search query="<term>"
 
 # By domain
-vlt vault="Claude" search query="domain: ai-agents"
+vlt vault="Claude" search query="[domain:ai-agents]"
 
 # By project
-vlt vault="Claude" search query="project: reader"
+vlt vault="Claude" search query="[project:reader]"
 ```
 
 ## How to Update
@@ -258,7 +260,7 @@ vlt vault="Claude" property:set file="<Note Title>" name="status" value="superse
 
 Warn if vault needs attention:
 ```bash
-inbox_count=$(vlt vault="Claude" files folder="_inbox" --total)
+inbox_count=$(vlt vault="Claude" files folder="_inbox" total)
 orphans=$(vlt vault="Claude" orphans --json | jq length)
 if [ "$inbox_count" -gt 5 ] || [ "$orphans" -gt 10 ]; then
   echo "Vault needs attention: $inbox_count in inbox, $orphans orphans"
@@ -270,14 +272,14 @@ fi
 The project note in `projects/` should be:
 - A summary of the project (stack, domain, purpose)
 - Links to key decisions, patterns, and concepts
-- Brief session updates (1-2 lines each)
+- Brief session log entries (1-2 lines each, including the `## Session log (...)` entries appended by `pvg` at session end)
 
 NOT:
 - Full execution logs
 - Story-by-story completion records
 - Verbose session transcripts
 
-Put execution details in `.vault/sessions/YYYY-MM-DD.md` if needed for audit trail.
+Keep detailed execution history in nd story notes, git history, or Claude memory when needed. Paivot does not manage a `.vault/sessions/` tree.
 
 ## The Rules
 

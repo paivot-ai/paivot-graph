@@ -44,7 +44,8 @@ Check domain against controlled vocabulary:
 
 ```
 ai-training, ai-inference, ai-agents, ai-nlp
-dev-tools-cli, dev-tools-testing, dev-tools-workflow, dev-tools-knowledge
+developer-tools (legacy), dev-tools-cli, dev-tools-testing, dev-tools-workflow, dev-tools-knowledge
+product-management
 security-gateway, security-hardening, security-compliance
 finance-quant, finance-fintech
 frontend-ui, frontend-performance
@@ -88,10 +89,12 @@ Auto-derive tags based on type + domain:
 | ai-inference | `#ai/inference` |
 | ai-agents | `#ai/agents` |
 | ai-nlp | `#ai/nlp` |
+| developer-tools | `#dev-tools/workflow` |
 | dev-tools-cli | `#dev-tools/cli` |
 | dev-tools-testing | `#dev-tools/testing` |
 | dev-tools-workflow | `#dev-tools/workflow` |
 | dev-tools-knowledge | `#dev-tools/knowledge` |
+| product-management | `#product/management` |
 | security-gateway | `#security/gateway` |
 | security-hardening | `#security/hardening` |
 | security-compliance | `#security/compliance` |

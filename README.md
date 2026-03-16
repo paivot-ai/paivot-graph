@@ -183,6 +183,7 @@ No new agent types, hooks, or nd states. The mechanism is dispatcher orchestrati
 | Skill | What it does |
 |-------|--------------|
 | **vault-knowledge** | Teaches agents how to interact with the vault -- when to capture, what to capture, how to format notes |
+| **c4** | Optional architecture-as-code skill for `workspace.dsl`, diagram exports, and Architecture Contract maintenance when `architecture.c4` is enabled |
 | **vlt-skill** | Complete vlt command reference, agentic patterns, and advanced techniques (fetched from GitHub at install time) |
 
 ## Knowledge governance
