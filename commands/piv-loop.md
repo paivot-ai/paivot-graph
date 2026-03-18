@@ -1,5 +1,5 @@
 ---
-description: Run unattended execution loop until blocked or protected-main handoff
+description: Run unattended execution loop until blocked or all work is done
 allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
 args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 ---
@@ -7,8 +7,9 @@ args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 # piv-loop -- Unattended Execution Loop
 
 Run the backlog forward without manual intervention until all dispatchable work is
-done, the loop is blocked, a protected-main handoff is required, or max
-iterations are reached. Spawns developer and PM agents in priority order.
+done, the loop is blocked, or max iterations are reached. Spawns developer and
+PM agents in priority order. Epics complete with a full verification gate
+(e2e tests + Anchor milestone review) before merging to main.
 
 ## Setup
 
@@ -225,21 +226,114 @@ git merge --no-ff origin/story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY
 ### Epic Completion (All Stories Merged)
 
 When all stories in the epic have been approved and merged to the epic branch,
-prepare the epic for merge back to `main` through the repository's protected-main
-flow. Do NOT merge `epic/*` directly into `main` from the dispatcher.
+the epic enters a three-step completion gate before merging to main. All three
+steps are structural -- no step may be skipped.
+
+**Step 1: Epic Verification Gate (STRUCTURAL -- always on)**
+
+Run the FULL test suite on the merged epic branch. This catches integration
+failures that passed in isolation on individual story branches but break when
+combined. **No epic is done without passing e2e tests. Period.**
 
 ```bash
 git fetch origin
 git checkout epic/EPIC_ID
 git pull origin epic/EPIC_ID
 
-# Then hand off to the repo's PR/integration process for epic -> main.
-# Main is protected; do not push a direct merge from the dispatcher.
+# Run the project's full test suite (unit + integration + e2e)
+# Use the project's standard test command (make test, pytest, go test ./..., etc.)
+```
+
+Every test must pass -- unit, integration, AND e2e. If any test fails:
+
+1. Spawn `paivot-graph:developer` with:
+   ```
+   EPIC VERIFICATION FIX. Tests fail on the merged epic/EPIC_ID branch after
+   all stories were integrated. Your task: fix the failing tests on the epic
+   branch directly. This is NOT a story -- do not create nd issues. Run the
+   full test suite after fixing and report results.
+
+   Failing tests: <paste test output>
+   Infrastructure: <paste connection details>
+   ```
+2. After the developer fix, re-run the full test suite.
+3. If tests still fail after 2 developer attempts, escalate to user via AskUserQuestion.
+
+Do NOT skip this gate. Do NOT proceed to Step 2 with failing tests.
+
+**Step 2: Anchor Milestone Review**
+
+Spawn `paivot-graph:anchor` in milestone review mode:
+
+```
+MILESTONE REVIEW for epic EPIC_ID.
+
+Validate that the completed epic delivered real value:
+- Inspect tests for mocks in integration/e2e tests (forbidden)
+- Verify skills were consulted where stories required them
+- Check that boundary maps are satisfied (PRODUCES/CONSUMES)
+- Validate hard-TDD two-commit pattern where applicable
+
+Epic branch: epic/EPIC_ID
+```
+
+If the Anchor returns GAPS_FOUND, address the gaps (spawn developer to fix,
+or escalate to user) before proceeding. Do NOT merge to main with open gaps.
+
+**Step 3: Merge to Main**
+
+Check the project workflow setting:
+
+```bash
+pvg settings workflow.solo_dev
+```
+
+**If `workflow.solo_dev=true`** (default -- solo developer, no PRs):
+
+```bash
+# Safety: ensure we have the latest main
+git checkout main
+git pull origin main
+
+# Merge with --no-ff to preserve epic history
+git merge --no-ff epic/EPIC_ID -m "merge(main): complete EPIC_ID"
+git push origin main
+
+# Clean up epic branch (local + remote)
+git branch -D epic/EPIC_ID
+git push origin --delete epic/EPIC_ID
+```
+
+Then clean up all story branches for this epic:
+
+```bash
+# Delete remote story branches
+for branch in $(git branch -r --list "origin/story/*" | sed 's|origin/||'); do
+  git push origin --delete "$branch" 2>/dev/null || true
+done
+
+# Delete local story branches
+for branch in $(git branch --list "story/*"); do
+  git branch -D "$branch" 2>/dev/null || true
+done
+```
+
+**If `workflow.solo_dev=false`** (team workflow, PRs required):
+
+```bash
+git fetch origin
+git checkout epic/EPIC_ID
+git pull origin epic/EPIC_ID
+
+# Create PR for epic -> main (requires gh CLI)
+gh pr create --base main --head "epic/EPIC_ID" \
+  --title "merge(main): complete EPIC_ID" \
+  --body "All stories accepted. Full test suite passing. Anchor review: VALIDATED."
 ```
 
 If your environment provides PR automation, use it and continue unattended.
-Otherwise stop after the epic branch is ready and ask the user to complete or
-approve the protected-main merge.
+Otherwise stop after the PR is created and ask the user to complete or
+approve the merge. Branch cleanup happens after the PR is merged.
 
 ## Dispatcher Rules
 
@@ -253,7 +347,7 @@ You are a dispatcher. You coordinate agents and manage git integration. You NEVE
 - Inspect agent worktree internals (cd into `.claude/worktrees/agent-*`, run git log, read files there)
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- you just read its output)
 
-**You DO manage git:** Creating epic/story branches, merging story→epic after PM approval, preparing epic branches for protected-main integration, and resolving merge conflicts (by spawning developer if conflicts arise).
+**You DO manage git:** Creating epic/story branches, merging story→epic after PM approval, running the epic completion gate (e2e + Anchor review), merging epic→main (solo-dev) or creating PRs (team), cleaning up branches, and resolving merge conflicts (by spawning developer if conflicts arise).
 
 If an agent fails, re-spawn it with corrective guidance. Do not do its work.
 
@@ -325,8 +419,23 @@ The stop hook (`pvg hook stop`) evaluates these automatically:
 | Only in-progress work (waiting) | Block exit, increment wait counter |
 
 **Epic completion is NOT a termination event.** When an epic's last story is
-accepted, the PM-Acceptor closes the epic (auto-close), and the loop moves on
-to the next piece of ready work in the backlog. The loop keeps running.
+accepted, the PM-Acceptor closes the epic (auto-close), the epic completion gate
+runs (e2e + Anchor + merge to main), and the loop moves on to the next piece of
+ready work in the backlog. The loop keeps running.
+
+### Live Demo (before session exit)
+
+Every session must produce demonstrable progress. Before the loop exits:
+
+1. Identify what was delivered (accepted stories, completed epics, merged to main)
+2. If anything was merged to main: run the project's demo, smoke test, or e2e suite
+   on main and report results to the user
+3. If nothing reached main: explain what blocked progress and what the user should
+   do next
+
+A session that cannot show working software at the end should be treated as a
+signal that something is wrong with the backlog, the infrastructure, or the
+test suite -- not as normal.
 
 ## Cancellation
 

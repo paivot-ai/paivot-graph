@@ -55,6 +55,12 @@ staleness_days: 30
 # Options: true, false
 stack_detection: false
 
+# Solo developer workflow: merge epics directly to main, no PRs
+# When true (default), epic branches merge to main and are deleted after completion.
+# When false, epic completion creates a PR for team review before merging.
+# Options: true, false
+workflow.solo_dev: true
+
 # Bug creation model: PM-Acceptor fast-track vs centralized Sr PM
 # When false (default), only Sr PM creates bugs (ensures consistency and completeness)
 # When true, PM-Acceptor can create bugs directly during story review (faster, less overhead)
@@ -116,6 +122,7 @@ Show the user the current state:
 | staleness_days           | 30        | Days before vault notes are considered stale     |
 | stack_detection          | false     | Detect and output project tech stack at start    |
 | bug_fast_track           | false     | PM-Acceptor can create bugs directly during review |
+| workflow.solo_dev        | true      | Merge epics to main directly, no PRs, clean branches |
 | workflow.fsm             | false     | Structural enforcement of nd status transitions  |
 | workflow.sequence        | open,...  | Ordered nd status pipeline (forward=+1, backward=any) |
 | workflow.exit_rules      | ...       | Escape rules for blocked/deferred statuses        |
@@ -178,6 +185,14 @@ pvg settings proposal_expiry_days=14
 **If `dnf.max_iterations` was changed:**
 - Validate value is between 1 and 5. If out of range, reject and report valid range.
 - Report: "Max challenger iterations set to <value>. Each D&F document may be reviewed up to <value> times before user escalation."
+
+**If `workflow.solo_dev` was changed:**
+- `true` (enable -- default):
+  1. Report: "Solo-dev workflow enabled. Epics merge directly to main after completion gate (e2e + Anchor review). No PRs."
+  2. Report: "Branch cleanup: epic and story branches deleted after merge to main."
+- `false` (disable):
+  1. Report: "Team workflow enabled. Epic completion creates a PR for review before merging to main."
+  2. Report: "Branch cleanup happens after the PR is merged."
 
 **If `workflow.fsm` was changed:**
 - `true` (enable):

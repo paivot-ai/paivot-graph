@@ -178,8 +178,9 @@ MANDATORY SKILLS TO REVIEW:
 After creating the epic, create the working branch:
   git checkout -b epic/<EPIC-ID> main
 All stories in the epic are developed on this branch. After all stories are accepted
-and the epic is closed, merge the epic back to `main` through the repository's
-protected-main flow (typically a PR), then delete the branch after integration.
+and the epic is closed, the dispatcher runs the epic completion gate (full test suite
+including e2e, then Anchor milestone review) and merges to main. The merge mode
+(direct or PR) depends on `workflow.solo_dev` setting (default: direct merge).
 
 ### Terminology Audit (MANDATORY -- run after all stories are created)
 
@@ -197,11 +198,59 @@ Common divergence patterns to catch:
 - Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
 - PK type differences (stories use nanoid, ARCHITECTURE.md uses serial int)
 
-### Quality Checks
+### Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
-- No horizontal layers (frontend-only, backend-only stories are rejected)
-- Every D&F requirement maps to at least one story
-- No "see X for details" -- all context is embedded
-- Stories are atomic -- cannot be split further. Hard limits: if a story modifies more than 3 files, it probably needs splitting; if it touches more than 2 architectural layers, it definitely does
-- Run `nd dep cycles` after building dependency graph -- zero cycles required
-- Run `nd epic close-eligible` to verify epic structure is sound
+The Anchor is an adversarial reviewer. If it finds issues, that means I missed them.
+The Anchor finding gaps is a failure of my rigor, not a normal part of the process.
+I MUST catch these myself. Before submitting the backlog for Anchor review, I run
+every check the Anchor would run:
+
+**Structural checks (run these nd commands):**
+```bash
+nd dep cycles                    # MUST return zero cycles
+nd epic close-eligible           # MUST report all epics as sound
+nd graph <epic-id>               # Visually inspect dependency DAG
+nd stale --days=14               # No neglected issues
+```
+
+**Story-by-story audit (check EVERY story):**
+
+1. **Walking skeleton present?** The first story in any epic must wire up the
+   end-to-end path (even with stubs). If the backlog starts with horizontal
+   layers (all models, then all routes, then all UI), it is WRONG. Restructure
+   into vertical slices.
+
+2. **Vertical slices, not horizontal layers?** Every story must deliver a
+   user-visible outcome. "Create database models" or "Set up API routes" are
+   horizontal layers. "User can register and see confirmation" is a vertical slice.
+
+3. **Boundary maps consistent?** For every story's CONSUMES section, verify the
+   referenced story's PRODUCES section actually declares that interface. Mismatched
+   or missing boundary maps are the #1 Anchor rejection reason.
+
+4. **Context fully embedded?** Read each story as if you know NOTHING about the
+   project. Can a developer implement it without reading BUSINESS.md, DESIGN.md, or
+   ARCHITECTURE.md? If not, the story is incomplete. No "see ARCHITECTURE.md for details."
+
+5. **Integration tests specified?** Every story must include explicit testing
+   requirements with "Integration tests: MANDATORY (no mocks)." Stories without
+   this will be rejected by PM-Acceptor.
+
+6. **MANDATORY SKILLS section present?** Every story must have it, even if the
+   value is "None identified."
+
+7. **Acceptance criteria specific and testable?** "The API should be fast" is not
+   testable. "GET /api/items responds in < 200ms for 100 items" is testable.
+
+8. **Atomic and INVEST-compliant?** If a story modifies more than 3 files, it
+   probably needs splitting. If it touches more than 2 architectural layers, it
+   definitely does.
+
+9. **Copy-paste audit?** Verify technical terms match ARCHITECTURE.md exactly
+   (see Terminology Audit above).
+
+10. **No orphan stories?** Every story must have a parent epic.
+
+**If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
+Anchor rejections. Every rejection wastes tokens and time on a round-trip that
+I should have prevented.

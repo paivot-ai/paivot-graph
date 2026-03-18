@@ -157,6 +157,22 @@ Eight specialized agents that read their full instructions from the vault at run
 | **pm** | Ephemeral -- accepts or rejects delivered stories using evidence-based review |
 | **retro** | Ephemeral -- extracts learnings from completed epics |
 
+### Execution workflow
+
+The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Two structural gates enforce quality:
+
+**Story gate:** Every story must have passing integration tests with no mocks before the PM-Acceptor will accept it. Tests gated behind env vars or skipped tests are rejected on sight.
+
+**Epic gate:** After all stories in an epic are accepted and merged to the epic branch, three steps run before the epic reaches main:
+
+1. **E2e verification** -- the full test suite (unit + integration + e2e) runs on the merged epic branch. No epic is done without passing e2e tests.
+2. **Anchor milestone review** -- the Anchor agent validates real delivery: no mocks in integration tests, boundary maps satisfied, skills consulted.
+3. **Merge to main** -- depends on `workflow.solo_dev` setting:
+   - `true` (default): merge directly to main, push, delete epic and story branches
+   - `false`: create a PR for team review
+
+Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
+
 ### Hard-TDD mode (optional)
 
 For stories where correctness is critical, add the `hard-tdd` label. This activates a two-phase developer workflow:
