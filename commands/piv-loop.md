@@ -244,6 +244,17 @@ git pull origin epic/EPIC_ID
 # Use the project's standard test command (make test, pytest, go test ./..., etc.)
 ```
 
+**After running the test suite, verify e2e tests exist and ran:**
+
+```bash
+pvg verify --check-e2e
+```
+
+If `pvg verify --check-e2e` reports zero e2e test files, the gate FAILS --
+even if all other tests passed. "0 e2e failures" with 0 e2e tests is not
+passing, it is missing. Spawn a developer to write the e2e tests before
+proceeding.
+
 Every test must pass -- unit, integration, AND e2e. If any test fails:
 
 1. Spawn `paivot-graph:developer` with:

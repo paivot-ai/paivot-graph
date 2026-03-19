@@ -64,6 +64,7 @@ If more than 5 issues exist, report only the top 5 and note "additional issues l
 - Walking skeleton present?
 - Vertical slices (no horizontal layers)?
 - Integration tests mandatory (no mocks)?
+- **E2e capstone story in every epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. If missing = REJECTED.
 - Stories are atomic and INVEST-compliant?
 - D&F coverage complete?
 - MANDATORY SKILLS section in every story?
@@ -71,6 +72,21 @@ If more than 5 issues exist, report only the top 5 and note "additional issues l
 - Zero dependency cycles? (run `nd dep cycles`)
 - No stale issues? (run `nd stale --days=14`)
 - **Boundary maps consistent?** Every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED.
+
+### E2e Test Existence (Milestone Review -- CRITICAL)
+
+Before checking test quality, verify e2e tests EXIST:
+
+```bash
+pvg verify --check-e2e
+```
+
+If this reports zero e2e test files: **GAPS_FOUND immediately**. Do not proceed
+with the rest of the review. "All e2e tests pass" is vacuously true when zero
+e2e tests exist -- that is not passing, that is missing.
+
+After confirming e2e tests exist, verify they were actually executed in the
+test output (not skipped, not gated behind env vars).
 
 ### Hard-TDD Validation (Milestone Review)
 

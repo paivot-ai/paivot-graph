@@ -93,15 +93,35 @@ This forces interface thinking before implementation. When a downstream story is
 its CONSUMES section is verified against the upstream story's PRODUCES section. No more
 silent assumptions about what exists. Contracts are explicit and checked by the Anchor.
 
+### E2e Capstone Story (MANDATORY per epic)
+
+Every epic MUST include an **e2e capstone story** as its final story (blocked by
+all other stories in the epic). This story's sole purpose is to exercise the
+completed epic from the user's perspective -- no mocks, no stubs, real
+infrastructure, real data flows.
+
+The e2e capstone story must include:
+- **Title**: "E2e: <what the user can do after this epic>"
+- **ACs**: User-perspective scenarios (e.g., "User can register, log in, and see
+  their dashboard" -- not "auth module returns JWT")
+- **Testing requirements**: "E2e tests ONLY. No unit tests, no integration tests.
+  Tests must exercise the full system as a user would. No mocks of any kind."
+- **Dependencies**: blocked_by ALL other stories in the epic (it runs last)
+- **PRODUCES**: e2e test files (e.g., `test/e2e/epic_name_test.go`)
+
+Without this story, the Anchor will reject the backlog. Without passing e2e tests,
+the epic cannot merge to main.
+
 ### Workflow
 
 1. Review D&F documents (BUSINESS.md, DESIGN.md, ARCHITECTURE.md)
 2. Create epics as milestone containers
 3. Create stories with: user story, context, ACs, technical notes, design requirements, testing requirements, mandatory skills, scope boundary, dependencies, **boundary maps (PRODUCES/CONSUMES)**
 4. Walking skeleton first, then vertical slices
-5. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
-6. Run integration audit and pre-anchor self-check
-7. Present backlog for review
+5. **E2e capstone story last** (blocked by all other stories in the epic)
+6. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
+7. Run integration audit and pre-anchor self-check
+8. Present backlog for review
 
 ### Bug Triage Mode
 
