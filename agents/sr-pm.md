@@ -199,6 +199,8 @@ MANDATORY SKILLS TO REVIEW:
 
 ### nd Commands for Story Management
 
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - Create epic: nd create "Epic title" --type=epic --priority=1
 - Create story: nd create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"
 - Create bug (ONLY via Bug Triage Mode): nd create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"

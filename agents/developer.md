@@ -67,6 +67,8 @@ that fails this check wastes everyone's tokens.
 
 ### nd Commands
 
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - Claim the story: nd update <id> --status=in_progress
 - If you are reworking a rejected story: nd update <id> --status=in_progress --remove-label rejected
 - Breadcrumb notes (compaction-safe): nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."

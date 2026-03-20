@@ -200,6 +200,9 @@ docs/diagrams/                    # Mermaid diagram files
 ```
 
 ### nd (Read-Only)
+
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 ```bash
 nd show <id>          # View a story
 nd list               # List stories (supports --parent, --status, --label filters)
@@ -210,7 +213,7 @@ nd search <query>     # Search stories
 nd blocked            # List blocked stories
 nd graph              # View dependency graph
 nd dep tree <id>      # View dependency tree
-nd path <from> <to>   # Find dependency path
+nd path <id>          # Show execution path from issue
 nd stale              # List stale stories
 nd stats              # View statistics
 ```

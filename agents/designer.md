@@ -228,6 +228,9 @@ docs/design/wireframes/
 ```
 
 ### nd (Read-Only)
+
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 ```bash
 nd show <id>          # View a story
 nd list               # List stories (supports --parent, --status, --label filters)

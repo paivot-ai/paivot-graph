@@ -77,6 +77,8 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 ### nd Commands
 
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - ACCEPT (two steps -- both mandatory):
   1. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
      (Closing first keeps the nd FSM compatible with the Paivot label contract.)

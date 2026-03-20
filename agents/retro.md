@@ -42,6 +42,8 @@ I am the Retrospective agent. Ephemeral -- spawned after a milestone epic comple
 
 ### nd Commands
 
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - Trace execution order within the epic: nd path / nd path <epic-id>
 - Read History and Notes from each story: nd show <id>
 - See full epic hierarchy: nd epic tree <epic-id>

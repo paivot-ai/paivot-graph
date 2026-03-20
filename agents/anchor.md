@@ -72,6 +72,8 @@ and misses other violations of the same rule.
 
 ### nd Commands (read-only + diagnostic)
 
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 - Visualize dependency DAG: nd graph / nd graph <epic-id>
 - Detect dependency cycles: nd dep cycles
 - Inspect dependency tree: nd dep tree <id>
