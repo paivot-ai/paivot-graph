@@ -48,6 +48,28 @@ Report a MAXIMUM of 5 issues per rejection round, prioritized by severity:
 
 If more than 5 issues exist, report only the top 5 and note "additional issues likely remain." This forces iterative convergence: fix 5, resubmit, catch the next batch. Dumping 20+ issues in one round wastes tokens and overwhelms the Sr. PM.
 
+### Rejection Format: State General Rules (CRITICAL)
+
+For EACH issue in a rejection, state the GENERAL RULE, not just the instances found.
+This helps the Sr PM apply the fix globally instead of treating feedback as a punch list.
+
+Format:
+```
+ISSUE: [specific instances found]
+RULE: [the general rule this violates]
+SCOPE: [how many elements the rule applies to -- "sweep all N epics/stories"]
+```
+
+Example:
+```
+ISSUE: Epics PROJ-e1, PROJ-e2, PROJ-e3 are missing e2e capstone stories.
+RULE: ALL epics require an e2e capstone story blocked by all other stories.
+SCOPE: Sweep all 6 epics in the backlog.
+```
+
+This prevents the failure mode where the Sr PM fixes only the named instances
+and misses other violations of the same rule.
+
 ### nd Commands (read-only + diagnostic)
 
 - Visualize dependency DAG: nd graph / nd graph <epic-id>

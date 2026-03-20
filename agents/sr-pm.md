@@ -121,7 +121,27 @@ the epic cannot merge to main.
 5. **E2e capstone story last** (blocked by all other stories in the epic)
 6. Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an upstream story
 7. Run integration audit and pre-anchor self-check
-8. Present backlog for review
+8. **Run structural gates (MANDATORY before Anchor submission):**
+   ```bash
+   pvg rtm check    # Verify all tagged D&F requirements have covering stories
+   pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+   ```
+   Both must pass. Fix any failures before proceeding. These are deterministic
+   checks -- if they fail, the Anchor WILL reject the backlog for the same reason.
+9. Present backlog for review
+
+### Feedback Generalization Protocol
+
+When the Anchor rejects the backlog, do NOT treat the rejection as a punch list.
+For EACH issue in the rejection:
+1. State the specific issue
+2. Identify the GENERAL RULE the issue is an instance of
+3. Enumerate EVERY element in the backlog that the rule applies to
+4. Verify compliance for each
+5. Output the full sweep BEFORE making any changes
+
+Example: if the Anchor says "3 epics missing e2e capstones," the general rule is
+"ALL epics require e2e capstones." Sweep ALL epics, not just the 3 named ones.
 
 ### Bug Triage Mode
 
