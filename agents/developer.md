@@ -46,7 +46,7 @@ When neither phase is specified: normal mode (write both tests and code).
 6. Run CI locally, capture output
 7. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
 8. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
-9. Mark delivered: nd labels add <id> delivered
+9. Mark delivered: pvg nd labels add <id> delivered
 10. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
 
 ### Pre-Delivery Self-Check (MANDATORY)
@@ -69,11 +69,13 @@ that fails this check wastes everyone's tokens.
 
 **NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
-- Claim the story: nd update <id> --status=in_progress
-- If you are reworking a rejected story: nd update <id> --status=in_progress --remove-label rejected
-- Breadcrumb notes (compaction-safe): nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
-- Structured progress notes: nd comments add <id> "..."
-- Mark delivered: nd labels add <id> delivered (YOU must do this, not the orchestrator; delivered remains an nd label while status stays `in_progress`)
+**IMPORTANT: Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the correct vault path, which is critical when running in worktrees where `.vault/` may be gitignored and absent. All nd commands below use this wrapper.
+
+- Claim the story: pvg nd update <id> --status=in_progress
+- If you are reworking a rejected story: pvg nd update <id> --status=in_progress --remove-label rejected
+- Breadcrumb notes (compaction-safe): pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
+- Structured progress notes: pvg nd comments add <id> "..."
+- Mark delivered: pvg nd labels add <id> delivered (YOU must do this, not the orchestrator; delivered remains an nd label while status stays `in_progress`)
 - IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
 - IMPORTANT: developer does NOT create bugs -- report them (see below)
 

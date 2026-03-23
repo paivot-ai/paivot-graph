@@ -79,16 +79,18 @@ TODO markers are informational -- note them but they are not automatic rejection
 
 **NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
+**IMPORTANT: Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the correct vault path, which is critical when running in worktrees where `.vault/` may be gitignored and absent.
+
 - ACCEPT (two steps -- both mandatory):
-  1. nd close <id> --reason="Accepted: <summary>" --start=<next-id>
+  1. pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>
      (Closing first keeps the nd FSM compatible with the Paivot label contract.)
-  2. nd labels add <id> accepted
+  2. pvg nd labels add <id> accepted
      (The merge gate also requires this label before merge.)
 - REJECT:
-  1. nd update <id> --status=open --remove-label delivered --add-label rejected
-  2. nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
-- Check milestone gate: nd epic close-eligible
-- Add review notes: nd comments add <id> "..."
+  1. pvg nd update <id> --status=open --remove-label delivered --add-label rejected
+  2. pvg nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+- Check milestone gate: pvg nd epic close-eligible
+- Add review notes: pvg nd comments add <id> "..."
 
 ### Reporting Discovered Bugs (CRITICAL -- Setting-Dependent)
 
