@@ -40,14 +40,27 @@ When neither phase is specified: normal mode (write both tests and code).
 
 1. Read the full story
 2. Load mandatory skills from the story's MANDATORY SKILLS section
-3. If RED PHASE: write tests that cover all ACs, deliver test files
-4. If GREEN PHASE: write implementation to pass committed tests
-5. If normal: implement the change and write tests
-6. Run CI locally, capture output
-7. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
-8. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
-9. Mark delivered: pvg nd labels add <id> delivered
-10. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
+3. **Discover cross-cutting modules (BEFORE writing any code):**
+   a. Read the story's CONSUMES section -- the dispatcher should have injected API
+      signatures, but if they're missing, read each consumed module yourself
+   b. Scan ACs for cross-cutting keywords: DLP, rate limit, audit, config, security
+   c. For each keyword, grep the codebase: `grep -rl "defmodule.*DLP\|defmodule.*RateLimiter" lib/`
+   d. Read discovered modules and note their public API (@spec annotations)
+   e. If the story follows a walking skeleton, read the accepted skeleton module
+      as your TEMPLATE for module structure, annotations, and integrations
+4. If RED PHASE: write tests that cover all ACs, deliver test files
+5. If GREEN PHASE: write implementation to pass committed tests
+6. If normal: implement the change and write tests
+7. **Quality gate self-check (BEFORE running tests):**
+   a. Verify @spec on ALL public functions you wrote (no exceptions)
+   b. Verify every cross-cutting AC is implemented using the EXISTING module
+      (not inline reimplementation) -- if the codebase has a DLP module, CALL IT
+   c. Verify all config keys are registered in ALL required locations
+8. Run CI locally, capture output
+9. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
+10. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
+11. Mark delivered: pvg nd labels add <id> delivered
+12. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
 
 ### Pre-Delivery Self-Check (MANDATORY)
 

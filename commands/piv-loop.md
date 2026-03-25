@@ -458,6 +458,88 @@ is available locally and include connection details in ALL developer agent promp
 Without this context, developers will reasonably gate tests behind env vars --
 creating dormant tests that satisfy no testing gate.
 
+## Context Injection Protocol (MANDATORY before developer spawn)
+
+Before spawning ANY developer agent, the dispatcher MUST enrich the prompt with
+concrete codebase context. Advisory instructions like "search for existing modules"
+are unreliable -- subagents skip them. Instead, the dispatcher reads the codebase
+and INJECTS the context directly into the developer prompt. This is structural, not advisory.
+
+### Step 1: Parse the story's CONSUMES block
+
+Read the story (`pvg nd show <id>`) and extract all CONSUMES entries. Each entry
+names an upstream module or file.
+
+### Step 2: Extract API signatures from consumed modules
+
+For each consumed module/file, read it and extract:
+- Module name and one-line @moduledoc summary
+- All `@spec` annotations on public functions
+- Key `@doc` usage examples
+
+Include these as a "CODEBASE CONTEXT" section in the developer prompt:
+```
+## CODEBASE CONTEXT (injected by dispatcher -- use these APIs)
+
+### <ModuleName> (<file_path>)
+<one-line summary>
+
+Public API:
+  @spec function_name(arg_types) :: return_type
+  # Usage: Module.function_name(arg1, arg2)
+```
+
+### Step 3: Scan ACs for cross-cutting keywords
+
+Scan the story's acceptance criteria for keywords that indicate cross-cutting
+concern integration is needed:
+
+| Keyword | Module to discover | What to inject |
+|---------|-------------------|----------------|
+| DLP, scan, credential, PII | Gateway DLP/security module | scan/2 API + severity handling |
+| rate limit, throttle | Gateway rate limiter | check/3 API + config key pattern |
+| config, configuration | Project config module | How to add runtime keys + defaults |
+| audit, log, telemetry | Observability module | Event emission pattern |
+| allowed_paths, security | Path validation module | validate_allowed pattern |
+
+For each keyword found, grep the codebase:
+```bash
+grep -rl "defmodule.*DLP\|defmodule.*RateLimiter\|defmodule.*Config" lib/
+```
+
+Read the discovered modules and inject their public APIs into the developer prompt.
+
+### Step 4: Inject existing patterns from accepted stories
+
+If the story follows a walking skeleton (earlier accepted stories produced similar
+modules), read one accepted module as a TEMPLATE:
+```
+## TEMPLATE: Follow this pattern (from <accepted_module>)
+
+<paste the first 30 lines showing module structure, use Jido.Action, @spec, etc.>
+```
+
+This prevents the "bad pattern propagation" problem where developers copy incomplete
+patterns from early stories.
+
+### What the developer prompt looks like after injection
+
+```
+STORY: <full story content>
+
+CODEBASE CONTEXT (injected by dispatcher):
+  <API signatures from CONSUMES modules>
+  <Cross-cutting module APIs discovered from AC keywords>
+  <Template from accepted walking skeleton>
+
+INFRASTRUCTURE:
+  <Running services, connection details>
+```
+
+The developer receives everything needed to implement WITHOUT searching the codebase.
+This is the structural enforcement of "all context comes from the story" -- the
+dispatcher ensures the context is actually complete.
+
 ## Agent Types
 
 | Role | Agent Type | When |

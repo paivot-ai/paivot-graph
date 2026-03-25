@@ -54,6 +54,37 @@ LLM review when deterministic checks already caught incomplete implementation.
 
 TODO markers are informational -- note them but they are not automatic rejections.
 
+**Tier 1b: Quality Gate Verification (deterministic -- run with Tier 1)**
+
+These are structural checks that catch the most common developer omissions:
+
+1. **@spec on all public functions:** For every new module, verify that all public
+   functions have @spec annotations. Grep for `def ` lines and check each has a
+   preceding `@spec`. This is the #1 systemic gap -- developers consistently omit
+   type specifications.
+
+   ```bash
+   # Example check for Elixir:
+   grep -n "def \|@spec " <new_module_files> | # look for def without preceding @spec
+   ```
+
+   Missing @spec on any public function = REJECT. No exceptions.
+
+2. **Cross-cutting concern integration:** Read the story's ACs. For each AC that
+   mentions DLP, security scanning, rate limiting, or audit logging, verify the
+   delivered code ACTUALLY CALLS the existing module (not an inline reimplementation):
+
+   - AC says "DLP scan": grep delivered code for the project's DLP module call
+   - AC says "rate limit": grep for Gateway.RateLimiter or equivalent
+   - AC says "audit": grep for audit/telemetry event emission
+
+   If the AC mentions a cross-cutting concern but the code doesn't integrate with
+   the existing module, REJECT with specific guidance pointing to the module's API.
+
+3. **Config registration (when story adds config keys):** Verify new config keys
+   appear in ALL required locations (runtime keys list, defaults, env var reader).
+   Incomplete config registration causes runtime errors.
+
 **Tier 2: Command (deterministic -- check CI evidence)**
 
 - Evidence Check: are CI results, coverage, test output present?
@@ -69,6 +100,10 @@ TODO markers are informational -- note them but they are not automatic rejection
 - Code Quality Spot-Check: wiring verified? No dead code?
 - Boundary Map Verification: does the delivered code actually PRODUCE what the story
   declared in its PRODUCES section? Check exports, function signatures, endpoints.
+- **Walking Skeleton Pattern Check:** If this story follows a walking skeleton,
+  verify it follows the same patterns (module structure, annotations, integrations).
+  Divergence from established patterns suggests the developer didn't reference the
+  skeleton.
 
 **Tier 4: Human (only when agent genuinely cannot verify)**
 

@@ -86,8 +86,54 @@ PRODUCES:
 - src/middleware.ts -> authMiddleware()
 
 CONSUMES:
-- PROJ-a1b: src/auth.ts -> generateToken(), verifyToken()
+- PROJ-a1b: src/auth.ts -> generateToken(userId: string): string
+- PROJ-a1b: src/auth.ts -> verifyToken(token: string): Claims | null
 ```
+
+### CONSUMES Must Include API Signatures (CRITICAL)
+
+CONSUMES entries that name only the file path are INSUFFICIENT. Developers are
+ephemeral agents who see only the story -- they cannot discover module APIs on their
+own. Every CONSUMES entry must include:
+
+1. The upstream story ID and file path
+2. The actual function signature (name, arguments, return type)
+3. For cross-cutting modules (DLP, rate limiting, config, audit), include a usage example
+
+Bad (developer will miss the integration):
+```
+CONSUMES:
+- PRA-jrm9: lib/praktical/config.ex -> :file_allowed_paths config key
+```
+
+Good (developer can implement immediately):
+```
+CONSUMES:
+- PRA-jrm9: lib/praktical/config.ex -> Config.get(:file_allowed_paths, default)
+  Pattern for adding new keys: add to @runtime_keys list, add to defaults(), read env var in config/runtime.exs
+```
+
+For cross-cutting security modules, always include the full call pattern:
+```
+CONSUMES:
+- (existing): lib/app/gateway/dlp.ex -> DLP.scan(content, direction: :outbound)
+  Returns {:ok, []} when clean, {:ok, [%{severity: :block|:warn, ...}]} when matched.
+  Block on :block severity, allow on :warn.
+```
+
+### Cross-Cutting Concern Discovery (MANDATORY during story creation)
+
+When writing stories that involve security, configuration, observability, or other
+cross-cutting concerns, SEARCH THE CODEBASE for existing modules:
+
+```bash
+grep -rl "defmodule\|class\|module" lib/ src/ --include="*.ex" --include="*.ts" --include="*.py" | head -50
+```
+
+For each cross-cutting AC (DLP scan, rate limiting, audit logging, config registration),
+find the existing module and embed its API in the story's CONSUMES section. Stories
+that say "DLP scan the content" without providing the DLP module's API will cause
+developer failures.
 
 This forces interface thinking before implementation. When a downstream story is planned,
 its CONSUMES section is verified against the upstream story's PRODUCES section. No more
@@ -292,6 +338,18 @@ nd stale --days=14               # No neglected issues
    (see Terminology Audit above).
 
 10. **No orphan stories?** Every story must have a parent epic.
+
+11. **CONSUMES includes API signatures?** Every CONSUMES entry for a cross-cutting
+    module must include the actual function signature and usage pattern, not just a
+    file path. Developers are ephemeral and cannot discover APIs on their own.
+    "CONSUMES: lib/app/gateway/dlp.ex" is insufficient.
+    "CONSUMES: DLP.scan(content, direction: :outbound) -> {:ok, findings}" is correct.
+
+12. **Walking skeleton establishes ALL quality gate patterns?** The first story
+    (walking skeleton) in each epic sets the template. Verify its ACs explicitly
+    require @spec on all public functions, cross-cutting module integration where
+    applicable, config registration patterns, and test coverage patterns. If the
+    skeleton doesn't demonstrate these, every subsequent story will omit them.
 
 **If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that

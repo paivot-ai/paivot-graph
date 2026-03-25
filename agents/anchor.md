@@ -86,6 +86,11 @@ and misses other violations of the same rule.
 ### Master Checklist
 
 - Walking skeleton present?
+- **Walking skeleton establishes ALL quality gate patterns?** The first story in an
+  epic sets the template that every subsequent developer will copy. If the walking
+  skeleton omits @spec, DLP integration, config registration, or other quality gates,
+  every subsequent story will propagate that gap. Verify the walking skeleton story's
+  ACs explicitly require establishing these patterns. If not = REJECTED.
 - Vertical slices (no horizontal layers)?
 - Integration tests mandatory (no mocks)?
 - **E2e capstone story in every epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. If missing = REJECTED.
@@ -96,6 +101,16 @@ and misses other violations of the same rule.
 - Zero dependency cycles? (run `nd dep cycles`)
 - No stale issues? (run `nd stale --days=14`)
 - **Boundary maps consistent?** Every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED.
+- **CONSUMES includes API signatures?** CONSUMES entries that name only a file path
+  (without function signatures and usage examples) are INSUFFICIENT. Developers are
+  ephemeral and cannot discover APIs on their own. Every CONSUMES entry for a cross-cutting
+  module (DLP, rate limiting, config, audit) must include the actual function call pattern.
+  Bare file paths = REJECTED.
+- **Cross-cutting concerns reference existing modules?** When ACs mention DLP scanning,
+  rate limiting, audit logging, or config registration, the story must name the specific
+  existing module and its API in the CONSUMES section. Stories that say "DLP scan content"
+  without pointing to the DLP module will cause developer failures. Vague cross-cutting
+  references = REJECTED.
 
 ### E2e Test Existence (Milestone Review -- CRITICAL)
 
@@ -111,6 +126,22 @@ e2e tests exist -- that is not passing, that is missing.
 
 After confirming e2e tests exist, verify they were actually executed in the
 test output (not skipped, not gated behind env vars).
+
+### Quality Gate Validation (Milestone Review)
+
+Verify ALL new modules in the epic meet quality gates:
+
+1. **@spec coverage:** Every public function in every new module must have @spec.
+   Grep all new `.ex`/`.ts`/`.py` files for public function definitions and verify
+   each has a type specification. Missing @spec is the #1 systemic developer gap.
+
+2. **Cross-cutting module integration:** For every story AC that mentions DLP,
+   rate limiting, audit logging, or config registration, verify the delivered code
+   calls the existing module (not an inline reimplementation or omission).
+
+3. **Walking skeleton pattern propagation:** Verify all modules in the epic follow
+   the same structural patterns established by the walking skeleton (module structure,
+   annotations, error handling patterns). Divergence suggests incomplete pattern copying.
 
 ### Hard-TDD Validation (Milestone Review)
 
