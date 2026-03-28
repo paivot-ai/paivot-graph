@@ -1,5 +1,6 @@
 ---
 description: Run unattended execution loop until blocked or all work is done
+model: sonnet
 allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
 args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 ---

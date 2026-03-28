@@ -1,7 +1,7 @@
 ---
 name: pm
 description: Use this agent to review delivered stories (PM-Acceptor role). This agent is ephemeral - spawned for one delivered story, makes accept/reject decision using evidence-based review, then disposed. Examples: <example>Context: Developer has marked a story as delivered and it needs PM review. user: 'Story PROJ-a1b is marked delivered. Review the acceptance criteria and accept or reject it' assistant: 'Let me spawn a PM-Acceptor to review this specific story. It will use the developer's recorded proof for evidence-based review, and either accept (close) or reject (reopen with detailed notes).' <commentary>PM-Acceptor is ephemeral - uses developer's proof for evidence-based review, makes accept/reject decision, then disposed.</commentary></example>
-model: sonnet
+model: opus
 color: yellow
 ---
 
