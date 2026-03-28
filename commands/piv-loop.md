@@ -450,6 +450,8 @@ You are a dispatcher. You coordinate agents and manage git integration. You NEVE
 - Inspect agent worktree internals (cd into `.claude/worktrees/*`, run git log, read files there)
 - Continue or resume a failed developer agent -- clean up the worktree and re-spawn fresh
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- you just read its output)
+- Override, re-interpret, or bypass PM rejections -- if the PM rejected, the story goes back to the developer with the rejection feedback. You do not get to decide the rejection was "on a technicality" or "procedural." PM decisions are final.
+- Re-submit rejected stories for acceptance without developer rework -- the developer must address the rejection feedback and re-deliver
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 
 **You DO manage git:** Creating epic/story branches, creating/removing worktrees, merging story->epic after PM approval, running the epic completion gate (e2e + Anchor review), merging epic->main (solo-dev) or creating PRs (team), cleaning up branches, and resolving merge conflicts (by spawning developer if conflicts arise).
