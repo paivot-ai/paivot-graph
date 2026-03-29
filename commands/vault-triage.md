@@ -190,6 +190,7 @@ Date: <today>
 Valid domains:
 - ai-training, ai-inference, ai-agents, ai-nlp
 - developer-tools (legacy), dev-tools-cli, dev-tools-testing, dev-tools-workflow, dev-tools-knowledge
+- platform-engineering (Kubernetes, Flux, Helm, Talos, Proxmox, Velero, CI/CD, IaC)
 - product-management
 - security-gateway, security-hardening, security-compliance
 - finance-quant, finance-fintech
