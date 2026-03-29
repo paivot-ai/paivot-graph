@@ -56,7 +56,14 @@ When neither phase is specified: normal mode (write both tests and code).
    b. Verify every cross-cutting AC is implemented using the EXISTING module
       (not inline reimplementation) -- if the codebase has a DLP module, CALL IT
    c. Verify all config keys are registered in ALL required locations
-8. Run the FULL test suite (not just the tests you wrote or modified), capture output. Your changes may break tests you didn't touch. If the project uses `mix test`, run `mix test`. If `cargo test`, run `cargo test`. Run ALL tests, not a subset.
+8. **Run tests proportional to blast radius.** Default: run the FULL test suite.
+   If the user has explicitly constrained to targeted tests (e.g., long suites),
+   run tests covering the blast radius of your changes -- not just the files you
+   touched, but downstream dependents. A change to core storage paths requires
+   running every test that touches storage, not just the tests in the same directory.
+   In delivery evidence, declare what you ran and what you skipped:
+   "Ran 15/40 e2e tests covering storage + feeds. Skipped: auth, billing (no code path overlap)."
+   The epic completion gate runs the full suite regardless -- this is your pre-gate diligence.
 9. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
 10. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
 11. Mark delivered: pvg nd labels add <id> delivered
