@@ -159,11 +159,11 @@ Eight specialized agents that read their full instructions from the vault at run
 
 ### Model allocation
 
-The plugin assigns models to balance cost and capability. The dispatcher runs on Sonnet (protocol following, highest-frequency call), while judgment-heavy agents use Opus:
+The plugin assigns models to balance cost and capability:
 
 | Agent | Model | Rationale |
 |-------|-------|-----------|
-| Dispatcher (`/piv-loop`) | Sonnet | Procedural coordination + context injection. Runs every iteration -- largest cost savings. |
+| Dispatcher (`/piv-loop`) | Opus | Worktree lifecycle, CWD safety, and context injection require strong reasoning. Sonnet-class models drift on multi-step git orchestration. |
 | Developer | Opus | Code generation requires maximum reasoning. |
 | PM-Acceptor | Opus | Quality gate -- false acceptance is the most expensive failure mode. |
 | Sr PM | Opus | Story creation needs domain reasoning and precise terminology. |
@@ -172,7 +172,7 @@ The plugin assigns models to balance cost and capability. The dispatcher runs on
 | Challengers (BA/Designer/Architect) | Sonnet | Scoped adversarial critique against a single document. |
 | Retro | Sonnet | Pattern extraction from completed work. |
 
-Rate limits are per-model. If you hit limits on one model, the other tier remains available. Moving the dispatcher to Sonnet means execution loops don't compete with Opus-heavy developer and PM agents for rate limit headroom.
+Rate limits are per-model. Challengers and Retro run on Sonnet to preserve Opus headroom for the judgment-heavy agents.
 
 ### Execution workflow
 

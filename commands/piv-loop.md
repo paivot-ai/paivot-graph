@@ -1,6 +1,6 @@
 ---
 description: Run unattended execution loop until blocked or all work is done
-model: sonnet
+model: opus
 allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
 args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 ---
@@ -479,8 +479,8 @@ You are a dispatcher. You coordinate agents and manage git integration. You NEVE
 
 If a developer agent fails, returns partial output, or times out:
 1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting the worktree)
-2. If NOT delivered: remove the worktree, re-spawn a fresh developer with corrective guidance
-3. If delivered: proceed with PM review (create PM worktree on the story branch)
+2. If NOT delivered: `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, re-spawn a fresh developer with corrective guidance
+3. If delivered: `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review (create PM worktree on the story branch)
 4. NEVER cd into the worktree to check what happened, run git log, or try to continue the agent
 
 The developer's worktree is their workspace. If they failed, their workspace is suspect.
@@ -679,10 +679,10 @@ the story branch is the durable record.
 2. Dispatcher creates dev worktree: `git worktree add .claude/worktrees/dev-<STORY_ID> story/<STORY_ID>`
 3. Developer works, commits, pushes on `story/<STORY_ID>`
 4. Developer marks delivered
-5. Dispatcher removes dev worktree: `git worktree remove --force .claude/worktrees/dev-<STORY_ID>`
+5. Dispatcher removes dev worktree: `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
 6. Dispatcher creates PM worktree: `git worktree add .claude/worktrees/pm-<STORY_ID> story/<STORY_ID>`
 7. PM reviews, accepts or rejects
-8. Dispatcher removes PM worktree: `git worktree remove --force .claude/worktrees/pm-<STORY_ID>`
+8. Dispatcher removes PM worktree: `pvg worktree remove .claude/worktrees/pm-<STORY_ID>`
 9. If accepted: merge story branch to epic, then delete story branch
 10. If rejected: re-create dev worktree, re-spawn developer with rejection feedback
 
@@ -690,10 +690,12 @@ the story branch is the durable record.
 
 Remove a worktree with:
 ```bash
-git worktree remove --force .claude/worktrees/<worktree-name>
+pvg worktree remove .claude/worktrees/<worktree-name>
 ```
 
-Always use `--force` (worktrees have build artifacts).
+This resolves the project root from the worktree path (not CWD), runs
+`git worktree remove --force`, and prunes stale metadata. It is safe to call
+even if CWD has drifted into the worktree being removed.
 
 **Do NOT delete the story branch when removing a worktree.** The worktree is a checkout;
 the branch is the record. Story branches are deleted ONLY after merging to the epic branch:
@@ -727,7 +729,7 @@ If the developer already set `delivered`, don't set it again. Check first or ign
 the error.
 
 For bulk cleanup after context loss, use `pvg loop recover` instead of manual
-`git worktree remove` commands (see Post-Compaction Recovery below).
+`pvg worktree remove` commands (see Post-Compaction Recovery below).
 
 ## Post-Compaction Recovery
 
@@ -764,6 +766,59 @@ Do NOT redirect stderr on nd or pvg commands:
 - No `2>/dev/null` -- hides errors you need to see
 
 Claude Code's Bash tool already captures stderr separately. Run commands bare.
+
+## CWD Safety (CRITICAL -- read this before any worktree operation)
+
+Claude Code's shell CWD can silently drift into a worktree path after agent
+completion or background task resolution. If you then remove that worktree,
+your CWD becomes invalid and **every subsequent Bash command fails permanently**.
+The session is unrecoverable -- you must ask the user to restart Claude Code.
+
+### Prevention rules
+
+1. **ALWAYS prefix worktree operations with an explicit cd to the project root:**
+   ```bash
+   cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-STORY_ID
+   ```
+   Do NOT rely on your CWD being correct. Always cd first.
+
+2. **NEVER chain branch checkout + worktree add in one Bash call:**
+   ```bash
+   # WRONG -- if checkout changes main worktree, worktree add may fail and
+   # leave you on the wrong branch:
+   git checkout -b story/X epic/Y && git worktree add .claude/worktrees/dev-X story/X
+
+   # RIGHT -- two separate Bash calls:
+   git checkout -b story/X epic/Y
+   # (then in a SEPARATE Bash call:)
+   git worktree add .claude/worktrees/dev-X story/X
+   ```
+
+3. **After any agent completes (foreground or background), verify CWD:**
+   ```bash
+   pwd
+   ```
+   If the output is inside `.claude/worktrees/`, reset immediately:
+   ```bash
+   cd $PROJECT_ROOT
+   ```
+
+4. **Use `pvg worktree remove` instead of raw `git worktree remove`.**
+   `pvg worktree remove` resolves the project root from the worktree path,
+   not from CWD, so it works even if CWD has drifted.
+
+### Recovery (if CWD is already invalid)
+
+If you see `fatal: Unable to read current working directory` or
+`Working directory no longer exists`:
+
+1. Your session shell is corrupted. Raw Bash commands will not work.
+2. Spawn a general-purpose Agent with the cleanup task -- agents start from
+   the project root and have a fresh shell.
+3. The cleanup agent runs: `cd PROJECT_ROOT && git worktree prune && git worktree list`
+4. After cleanup, escalate to the user: "Shell CWD is unrecoverable. Please
+   restart Claude Code from PROJECT_ROOT."
+5. Include a summary of remaining work so the next session can resume.
 
 ## How It Works
 
