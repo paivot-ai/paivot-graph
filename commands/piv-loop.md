@@ -269,8 +269,8 @@ git merge --no-ff story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY_ID"
 With remote:
 ```bash
 git push origin epic/EPIC_ID
-git branch -D story/STORY_ID
 git push origin --delete story/STORY_ID
+git branch -D story/STORY_ID
 ```
 
 Local-only:
@@ -417,9 +417,19 @@ git merge --no-ff epic/EPIC_ID -m "merge(main): complete EPIC_ID"
 git push origin main
 
 # Clean up epic branch (local + remote)
-git branch -D epic/EPIC_ID
+# ALWAYS use -D (force). -d will fail because the remote tracking ref
+# origin/epic/EPIC_ID still exists even though the branch is merged to HEAD.
 git push origin --delete epic/EPIC_ID
+git branch -D epic/EPIC_ID
 ```
+
+**After** branch cleanup succeeds, close the epic in nd:
+```bash
+pvg nd update EPIC_ID --status closed --add-label accepted
+```
+
+Do NOT run nd updates in parallel with branch deletes. If the branch delete
+errors, Claude Code cancels sibling parallel calls -- losing the nd update.
 
 Then clean up all story branches for this epic:
 
