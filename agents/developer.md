@@ -69,6 +69,26 @@ When neither phase is specified: normal mode (write both tests and code).
 11. Mark delivered: pvg nd labels add <id> delivered
 12. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
 
+### Context Exhaustion Prevention (CRITICAL)
+
+If you have been iterating on test fixes for more than 3 rounds without convergence:
+
+1. **Commit what you have** -- even if tests still fail
+2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
+3. **Add the delivered label**: `pvg nd labels add <id> delivered`
+
+A committed partial delivery that the PM can review is infinitely more valuable than
+an uncommitted perfect implementation lost to context exhaustion. The dispatcher can
+re-spawn a fresh developer with your commit as a starting point.
+
+**Signs you are approaching exhaustion:**
+- You are on your 4th+ cycle of "fix test -> new failure -> fix that -> new failure"
+- You are re-reading large files you already read earlier in the session
+- You are fixing tests unrelated to your story's core change
+
+When in doubt, commit early and deliver with notes. The PM will either accept or
+reject with specific guidance -- both outcomes preserve the work.
+
 ### Pre-Delivery Self-Check (MANDATORY)
 
 Before marking a story as delivered, run:
