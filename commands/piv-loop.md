@@ -108,6 +108,18 @@ You do NOT need to manually run `nd dep rm` after closing a blocker story.
 **`nd update` does NOT support `--remove-blocked-by` or `--add-blocked-by`.**
 These flags do not exist. Always use `nd dep add` / `nd dep rm` for dependency changes.
 
+### nd flag gotchas
+
+**Priority is numeric, not P-prefixed.** nd displays `P0`..`P4` but the CLI
+accepts only the integer:
+
+```bash
+nd create --priority 0    # correct (P0)
+nd create --priority 2    # correct (P2)
+nd create --priority P2   # WRONG -- "invalid syntax" error
+nd update X --priority 1  # correct
+```
+
 ### Bug Triage (Overrides Iteration Protocol)
 
 After any Developer or PM-Acceptor agent completes, scan its output for
