@@ -59,14 +59,27 @@ make install
 pvg version
 ```
 
-### 4. Obsidian vault
+### 4. Codebase indexing MCP server (strongly recommended)
+
+**A codebase indexing MCP server dramatically improves story quality.** When available, Paivot agents use it for API signature verification, cross-cutting concern discovery, and module count validation instead of grep. This prevents the most common class of Anchor rejections: hallucinated API signatures.
+
+Any MCP server that provides `search_graph`, `get_code_snippet`, and `trace_call_path` works. Two tested options:
+
+- **[codebase-memory-mcp](https://github.com/nicobailon/codebase-memory-mcp)** -- Graph-based indexing with Cypher queries, call path tracing, and architecture summaries
+- **[Augment Code](https://www.augmentcode.com/)** (cx) -- Commercial codebase intelligence with similar capabilities
+
+Install via `.mcp.json` in your project or `~/.claude/settings.json`. After indexing, agents automatically prefer MCP tools over grep for codebase queries.
+
+Without a codebase indexing server, agents fall back to grep/ripgrep. This works but is slower, less precise on call graph analysis, and cannot verify module counts as reliably.
+
+### 5. Obsidian vault
 
 You need an Obsidian vault that vlt can discover. The plugin expects a vault named "Claude" by default. If you don't have one:
 
 1. Open Obsidian and create a new vault named "Claude"
 2. Verify vlt can see it: `vlt vaults`
 
-### 5. Claude Code
+### 6. Claude Code
 
 This is a Claude Code plugin. You need [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) installed.
 
