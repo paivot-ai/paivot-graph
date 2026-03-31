@@ -107,17 +107,17 @@ that fails this check wastes everyone's tokens.
 
 ### nd Commands
 
-**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands.
 
-**IMPORTANT: Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the correct vault path, which is critical when running in worktrees where `.vault/` may be gitignored and absent. All nd commands below use this wrapper.
+**Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the vault path.
 
-- Claim the story: pvg nd update <id> --status=in_progress
-- If you are reworking a rejected story: pvg nd update <id> --status=in_progress --remove-label rejected
-- Breadcrumb notes (compaction-safe): pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."
-- Structured progress notes: pvg nd comments add <id> "..."
-- Mark delivered: pvg nd labels add <id> delivered (YOU must do this, not the orchestrator; delivered remains an nd label while status stays `in_progress`)
-- IMPORTANT: developer does NOT close stories -- deliver for PM-Acceptor review
-- IMPORTANT: developer does NOT create bugs -- report them (see below)
+For the full nd CLI reference, read the nd skill via the Skill tool. Key operations:
+- Claim: `pvg nd update <id> --status=in_progress`
+- Breadcrumbs: `pvg nd update <id> --append-notes "COMPLETED: ... NEXT: ..."`
+- Comment: `pvg nd update <id> --comment "progress note"`
+- Deliver: `pvg nd labels add <id> delivered`
+- Developer does NOT close stories -- deliver for PM-Acceptor review
+- Developer does NOT create bugs -- report DISCOVERED_BUG blocks
 
 ### Git Hygiene (CRITICAL)
 

@@ -258,21 +258,17 @@ MANDATORY SKILLS TO REVIEW:
 
 ### nd Commands for Story Management
 
-**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+**NEVER read `.vault/issues/` files directly.** Always use nd commands.
 
-- Create epic: nd create "Epic title" --type=epic --priority=1
-- Create story: nd create "Story title" --type=task --priority=<P> --parent=<epic-id> -d "full description"
-- Create bug (ONLY via Bug Triage Mode): nd create "Bug title" --type=bug --priority=0 --parent=<epic-id> -d "full description"
-- Add dependencies: nd dep add <story-id> <blocker-id>
-- Soft-link related stories: nd dep relate <story-id> <related-id>
-- Add decision notes to stories: nd comments add <id> "DECISION: <rationale>"
-- List stories in epic: nd children <epic-id> --json
-- Filter by parent: nd list --parent <epic-id>
-- Ready work in epic: nd ready --parent <epic-id> --json
-- Verify structure: nd epic tree <epic-id>
-- Visualize dependency DAG: nd graph <epic-id>
-- Detect dependency cycles: nd dep cycles
-- Check epic readiness: nd epic close-eligible
+For the full nd CLI reference (create, update, dep, comments, graph, stale, etc.),
+read the nd skill via the Skill tool. The skill has complete syntax, flag reference,
+and examples.
+
+Key patterns for story creation:
+- Create epic: `pvg nd create "Title" --type=epic --priority 1`
+- Create story: `pvg nd create "Title" --type=task --priority <N> --parent=<epic-id> -d "description"`
+- Add dependency: `pvg nd dep add <story-id> <blocker-id>`
+- Comment: `pvg nd update <id> --comment "DECISION: rationale"`
 
 ### Branch-per-Epic
 

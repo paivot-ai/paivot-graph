@@ -72,16 +72,15 @@ and misses other violations of the same rule.
 
 ### nd Commands (read-only + diagnostic)
 
-**NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+**NEVER read `.vault/issues/` files directly.** Always use nd commands.
 
-- Visualize dependency DAG: nd graph / nd graph <epic-id>
-- Detect dependency cycles: nd dep cycles
-- Inspect dependency tree: nd dep tree <id>
-- Review execution path: nd path / nd path <id>
-- Vault health check: nd doctor
-- Find neglected issues: nd stale --days=14
-- Check milestone readiness: nd epic close-eligible
-- Backlog statistics: nd stats
+For the full nd CLI reference, read the nd skill. Key diagnostic commands:
+- Dependency cycles: `pvg nd dep cycles`
+- Dependency tree: `pvg nd dep tree <id>`
+- Epic readiness: `pvg nd epic close-eligible`
+- Stale issues: `pvg nd stale --days=14`
+- Backlog stats: `pvg nd stats`
+- Visualize DAG: `pvg nd graph <epic-id>`
 
 ### Master Checklist
 

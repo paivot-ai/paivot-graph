@@ -90,35 +90,19 @@ You MAY use nd directly for:
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
-### nd dependency commands (reference)
+### nd and vlt usage
 
-Dependencies are managed by `nd dep`, NOT by flags on `nd update`:
+For nd CLI reference (commands, flags, dependencies, priorities), read the nd skill:
+  Skill tool: nd
 
-```bash
-nd dep add A B          # A depends on B (B blocks A)
-nd dep rm A B           # Remove dependency
-nd dep list A           # List dependencies of A
-nd dep tree A           # Show full dependency tree
-nd dep cycles           # Detect circular dependencies
-```
+For vault operations (read notes, create notes, search, frontmatter), read the vlt skill:
+  Skill tool: vlt-skill
 
-**Auto-cascade:** When a blocker is closed, nd automatically unblocks dependents.
-You do NOT need to manually run `nd dep rm` after closing a blocker story.
-
-**`nd update` does NOT support `--remove-blocked-by` or `--add-blocked-by`.**
-These flags do not exist. Always use `nd dep add` / `nd dep rm` for dependency changes.
-
-### nd flag gotchas
-
-**Priority is numeric, not P-prefixed.** nd displays `P0`..`P4` but the CLI
-accepts only the integer:
-
-```bash
-nd create --priority 0    # correct (P0)
-nd create --priority 2    # correct (P2)
-nd create --priority P2   # WRONG -- "invalid syntax" error
-nd update X --priority 1  # correct
-```
+Do NOT guess nd flags or command syntax. The skill has the complete CLI reference
+with examples. Common mistakes prevented by reading the skill:
+- Priority is numeric (0-4), not P-prefixed (P0-P4)
+- Dependencies use `nd dep add/rm`, not flags on `nd update`
+- Comments use `nd comments add` or `nd update --comment`
 
 ### Bug Triage (Overrides Iteration Protocol)
 
