@@ -478,8 +478,10 @@ Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
 
 **After retro**: if `epic_complete` included a `next_epic`, run
 `pvg loop rotate <next_epic>` to transition the loop state, then resume
-with `pvg loop next --json`. If no `next_epic` was provided, the next
-call returns `complete` (all done).
+with `pvg loop next --json`. If no `next_epic` was provided (last epic),
+the completion gate is still MANDATORY -- run all four steps (e2e, Anchor,
+merge to main, retro) before allowing exit. The stop hook enforces this
+structurally: it blocks exit while the epic branch exists unmerged.
 
 ## Dispatcher Rules
 
@@ -652,12 +654,14 @@ termination automatically:
 
 | Condition | Action |
 |-----------|--------|
-| No actionable epics remain | Allow exit, remove state |
+| No actionable epics remain AND epic branch merged | Allow exit, remove state |
 | Current epic blocked, no other epics | Allow exit |
 | Max iterations reached | Allow exit, remove state |
 | Too many consecutive waits (3) | Allow exit |
 | Current epic has actionable work | Block exit, continue |
-| Current epic complete, next epic exists | Block exit, call `pvg loop rotate` and continue |
+| Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
+| Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
+| Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
 
 ### Live Demo (before session exit)
 
