@@ -666,7 +666,7 @@ termination automatically:
 | Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
 | Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
 
-### Live Demo (before session exit)
+### Live Demo (before session exit -- MANDATORY)
 
 Every session must produce demonstrable progress. Before the loop exits:
 
@@ -675,6 +675,17 @@ Every session must produce demonstrable progress. Before the loop exits:
    on main and report results to the user
 3. If nothing reached main: explain what blocked progress and what the user should
    do next
+
+**External integration demo (NON-WAIVABLE):** If the completed epic includes stories
+with the `external-integration` label, the live demo MUST verify the external service
+interaction works against real endpoints -- not just mocked internal wiring. If the
+demo environment cannot exercise the real API (e.g., mobile-only OAuth flow), you MUST:
+1. Explicitly report this to the user: "External integration with [service] has not been
+   verified against real endpoints. Automated tests verify internal wiring only."
+2. Ask the user whether to (a) defer epic merge until manual verification, or
+   (b) merge with a known gap and create a follow-up verification task.
+Do NOT silently skip external integration demo because "tests pass." Tests with mocked
+external APIs prove internal correctness, not operational readiness.
 
 A session that cannot show working software at the end should be treated as a
 signal that something is wrong with the backlog, the infrastructure, or the

@@ -485,6 +485,23 @@ Stories created:
 - bd-s008: Implement password reset (parent: User Auth epic, AC#5)
 - bd-s009: Security audit - HIPAA compliance (parent: User Auth epic, AC#6)
 
+**External integration stories:**
+
+When a story integrates with an external service (OAuth providers, payment gateways,
+email/SMS APIs, third-party webhooks), apply these rules:
+
+1. Add the label `external-integration` to the story
+2. Add a non-automatable AC: "Credentials configured and verified against real
+   [service] endpoint (manual or smoke-test verification required -- cannot be
+   checked by mocked tests)"
+3. If the story introduces new secrets or env vars that the user must provision
+   (API keys, OAuth client IDs, redirect URIs registered in external consoles),
+   create a configuration sub-task that blocks the integration story. The sub-task
+   AC: "[SECRET_NAME] provisioned in [service] console and deployed to [environment]"
+4. Include in the story description: "NOTE: This story requires external service
+   credentials. E2E tests will mock the external API for CI, but operational
+   verification against the real endpoint is required before epic acceptance."
+
 **Key patterns:**
 - **Walking skeleton first** (story bd-s003): proves e2e integration before building out features
 - **Vertical slices** (bd-s004 through s008): each story delivers working functionality
