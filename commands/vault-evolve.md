@@ -1,5 +1,5 @@
 ---
-description: Refine vault-backed content based on session experience. Review what happened, identify improvements to agent prompts, skill content, or operating mode, and update the relevant vault notes. System-scoped notes get proposals; project-scoped notes get direct edits.
+description: Refine vault knowledge based on session experience. Capture learned patterns, decisions, and debug insights. Agent prompts are self-contained in agents/*.md (not vault). System-scoped notes get proposals; project-scoped notes get direct edits.
 allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 ---
 
@@ -17,7 +17,7 @@ Review the current session's work and refine the vault notes that power paivot-g
 
 Review the conversation so far. Identify:
 - What tasks were completed
-- What friction was encountered (agent prompts that were unclear, missing context, wrong defaults)
+- What friction was encountered (missing context, wrong defaults, unclear patterns)
 - What patterns emerged that should be codified
 - What decisions were made that should be recorded
 
@@ -25,23 +25,22 @@ Review the conversation so far. Identify:
 
 Check which vault-backed content could be improved:
 
-### Agent prompts (methodology/)
+### Learned knowledge (patterns/, decisions/, debug/)
 
-Find agent notes:
 ```bash
-vlt vault="Claude" files folder="methodology"
+vlt vault="Claude" files folder="patterns"
+vlt vault="Claude" files folder="decisions"
+vlt vault="Claude" files folder="debug"
 ```
 
-Read any that need review, including all notes they link to:
-```bash
-vlt vault="Claude" read file="<Agent Name>" follow
-```
+Agent operational prompts are self-contained in `agents/*.md` files (not in the vault).
+To change agent behavior, update the agent .md file and commit to the repo.
+vault-evolve captures LEARNED KNOWLEDGE that agents can consult -- not operational rules.
 
-Look for:
-- Instructions that were unclear or missing (agent got confused or went off-track)
-- Workflow steps that should be reordered
-- Quality checks that should be added
-- Mode descriptions that need refinement
+If you identify an improvement to agent behavior during vault-evolve:
+1. Capture the insight as a vault note (patterns/ or debug/)
+2. Note in the vault note: "Consider promoting to agents/<agent>.md"
+3. The improvement becomes permanent when PRed into the agent .md file
 
 ### Skill content (conventions/)
 
