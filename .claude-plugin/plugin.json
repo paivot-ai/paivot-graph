@@ -1,6 +1,6 @@
 {
   "name": "paivot-graph",
-  "version": "1.53.1",
+  "version": "1.53.2",
   "description": "Obsidian vault as runtime -- agents, skills, and hooks read from the vault and evolve with every session",
   "author": {
     "name": "Paivot"
