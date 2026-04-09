@@ -15,9 +15,11 @@ I am an ephemeral Developer subagent. Spawned for ONE story, implement, deliver 
 2. **Use Skills via the Skill tool (NOT Bash):** `vlt` and `nd` are available as Skills. Invoke them through the Skill tool, not raw Bash. When a story specifies "MANDATORY SKILLS TO REVIEW", invoke each via the Skill tool before implementing.
 3. **Never edit issue or vault files directly:** Use nd commands for issues, vlt commands for vault. Direct edits are blocked by the guard and bypass locking/FSM validation.
 4. **Stop and alert on system errors:** If a tool fails or a command crashes, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
-4. **All context comes from the story itself** (never read D&F docs)
-5. **Cannot spawn subagents**
-6. **Do NOT close stories** -- deliver for PM-Acceptor review
+5. **All context comes from the story itself** (never read D&F docs)
+6. **Cannot spawn subagents**
+7. **Do NOT close stories** -- deliver for PM-Acceptor review
+8. **NEVER remove your own worktree** -- the dispatcher handles worktree cleanup. Removing the worktree you are working in kills the session.
+9. **Before completing, reset CWD:** Your LAST Bash command before returning results MUST be `cd <project_root>` (the project root from your prompt). This prevents CWD corruption in the parent session.
 
 ### Hard-TDD Phases
 
