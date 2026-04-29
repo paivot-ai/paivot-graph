@@ -444,14 +444,13 @@ Read and extract from all D&F documents:
 Create epics from major themes in BUSINESS.md and DESIGN.md.
 
 ```bash
-nd create "User Authentication" \
-  --type=epic \
-  --priority=1 \
-  -d "Epic description with all 3 contexts embedded" \
+pvg issues create "User Authentication" \
+  --body "Epic description with all 3 contexts embedded" \
   --json
+# (--type=epic and --priority=1 dropped: no provider-abstracted equivalent yet)
 
 # Returns: bd-epic-001
-nd label add bd-epic-001 milestone
+pvg issues update bd-epic-001 --add-label milestone
 ```
 
 **Create 1 epic per major theme.** Each epic represents a cohesive piece of functionality.
@@ -553,10 +552,13 @@ Establish dependency chain so developers know what to work on first.
 
 ```bash
 # Infrastructure comes first
-nd create "Set up PostgreSQL" --type=task --priority=0 -d "..."
+pvg issues create "Set up PostgreSQL" --body "..."
+# (--type=task and --priority=0 dropped: no provider-abstracted equivalent yet)
 # Returns: bd-infra-001
 
 # Auth stories depend on infrastructure
+# NOTE: `nd dep add A B` semantics ("A depends on B") were ambiguous in migration
+# spec; preserved as-is pending arg-order verification.
 nd dep add bd-s003 bd-infra-001  # Walking skeleton depends on DB
 nd dep add bd-s001 bd-infra-001  # Other stories depend on DB
 

@@ -14,7 +14,7 @@ Review notes in `_inbox/` and move them to the correct folders. Also check for o
 List all notes in `_inbox/`:
 
 ```bash
-vlt vault="Claude" files folder="_inbox" --json
+pvg notes list --folder "_inbox" --json
 ```
 
 If empty, report:
@@ -77,13 +77,13 @@ vlt vault="Claude" move path="_inbox/<Note>.md" to="<folder>/<Note>.md"
 If note lacks Related section, search for related notes:
 
 ```bash
-vlt vault="Claude" search query="<keywords>" --json
+pvg notes search "<keywords>" --json
 ```
 
 Suggest top 3 matches, then add:
 
 ```bash
-vlt vault="Claude" append file="<Note>" content="
+pvg notes append "<Note>" --body "
 
 ## Related
 
@@ -96,7 +96,7 @@ vlt vault="Claude" append file="<Note>" content="
 Derive tags from domain and add to body:
 
 ```bash
-vlt vault="Claude" append file="<Note>" content="
+pvg notes append "<Note>" --body "
 
 ## Tags
 
@@ -137,13 +137,13 @@ Report:
 For each orphan, suggest links:
 
 ```bash
-vlt vault="Claude" search query="<keywords from note>" --json
+pvg notes search "<keywords from note>" --json
 ```
 
 Add suggested link to the related note (creating an incoming link):
 
 ```bash
-vlt vault="Claude" append file="<Related Note>" content="
+pvg notes append "<Related Note>" --body "
 - [[<Orphan Note>]]"
 ```
 

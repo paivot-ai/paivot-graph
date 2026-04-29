@@ -28,19 +28,22 @@ Before spawning the Sr. PM agent, YOU must gather context and pass it in the pro
 
 First, read the vault-backed operating mode and everything it links to:
 ```bash
-vlt vault="Claude" read file="Session Operating Mode" follow
+pvg notes read "Session Operating Mode"
+# TODO: pvg notes addresses by full path; if "Session Operating Mode" is not at vault root,
+# use the full path. The `follow` semantic (auto-include linked notes) has no pvg equivalent yet.
 ```
 
 Then read the project note with all linked context (decisions, patterns, session logs):
 ```bash
-vlt vault="Claude" read file="<project-name>" follow
+pvg notes read "<project-name>"
+# TODO: see note above about path vs. title and `follow`.
 ```
 
 This gives you the project note plus the full content of every note it references -- typically decisions, patterns, debug insights, and prior session logs -- in a single call.
 
 If you need additional context not linked from the project note:
 ```bash
-vlt vault="Claude" search query="<project-name>"
+pvg notes search "<project-name>"
 ```
 
 Fallback if vlt unavailable: use Read/Grep tools directly on the vault path.
@@ -117,20 +120,20 @@ When a project mixes stacks, use the most restrictive limit.
 Work through the approved backlog top-to-bottom. For each story:
 
 1. **Spawn a developer agent** to implement the story. The developer will:
-   - Read the full story (`nd show <id>`) and claim it (`nd update <id> --status=in_progress`)
+   - Read the full story (`pvg issues show <id>`) and claim it (`pvg issues update <id> --status=in_progress`)
    - Load mandatory skills from the story's MANDATORY SKILLS TO REVIEW section
    - Implement the change, write tests, run CI locally
-   - Leave breadcrumb notes: `nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."`
-   - Mark as delivered with proof (`nd labels add <id> delivered`)
+   - Leave breadcrumb notes: `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."` (nd-specific)
+   - Mark as delivered with proof (`pvg issues update <id> --add-label delivered`)
    - The developer does NOT close stories
 
 2. **Spawn a PM-Acceptor agent** to review the delivered story. The PM-Acceptor will:
    - Review evidence (CI results, coverage, test output)
    - Verify outcomes match acceptance criteria
-   - Accept: `nd close <id> --reason="Accepted: <summary>" --start=<next-id>`
-   - Or reject: return the story to `open`, remove `delivered`, add `rejected`, and leave detailed notes via `nd comments add`
+   - Accept: `pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>` (--start is nd-specific)
+   - Or reject: return the story to `open`, remove `delivered`, add `rejected`, and leave detailed notes via `pvg issues comment`
 
-3. **Capture learnings** to the vault via `vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..."` (decisions, patterns, debug insights)
+3. **Capture learnings** to the vault via `pvg notes create "_inbox/<Title>.md" --title "<Title>" --body "..."` (decisions, patterns, debug insights)
 
 4. If a discovered issue arises during implementation, route it through the documented bug flow: Developer/PM-Acceptor emits `DISCOVERED_BUG`, then Sr PM triages it (or PM fast-track if enabled). Do NOT quick-capture ad-hoc bugs with `nd q`.
 

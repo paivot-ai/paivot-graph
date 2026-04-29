@@ -80,13 +80,13 @@ This returns a JSON decision. Follow it:
 | `blocked` | All remaining work globally is blocked (--all mode). Allow exit |
 
 **`pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch decisions.**
-Do NOT query nd directly with `nd ready --json` or `nd list --json` for choosing what
-to work on next. Those queries are unscoped and will return stories from ALL epics,
-breaking containment.
+Do NOT query nd directly with `pvg issues ready --json` or `pvg issues list --json` for
+choosing what to work on next. Those queries are unscoped and will return stories from
+ALL epics, breaking containment.
 
-You MAY use nd directly for:
-- Reading story content before spawning a developer (`nd show STORY_ID`)
-- Checking story labels (`nd show STORY_ID --json`)
+You MAY use the issues CLI directly for:
+- Reading story content before spawning a developer (`pvg issues show STORY_ID`)
+- Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
@@ -327,7 +327,7 @@ git merge --no-ff origin/story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY
 
 **Canonical branch names:** use `epic/<EPIC_ID>` and `story/<STORY_ID>` exactly. Do not append descriptive suffixes. The dispatcher, merge gate, and recovery flow all assume IDs are the full branch key.
 
-**Merge order:** If multiple stories are waiting to merge, process them in dependency order first, then priority order (P0 first) within each ready layer. Do NOT use `parent` for this: `parent` is epic containment, not the dependency graph. Use `nd dep tree STORY_ID` and `nd show STORY_ID --json` to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories before dependents.
+**Merge order:** If multiple stories are waiting to merge, process them in dependency order first, then priority order (P0 first) within each ready layer. Do NOT use `parent` for this: `parent` is epic containment, not the dependency graph. Use `pvg nd dep tree STORY_ID` (nd-specific) and `pvg issues show STORY_ID --json` to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories before dependents.
 
 ### Epic Completion (All Stories Merged)
 
@@ -425,7 +425,7 @@ git branch -D epic/EPIC_ID
 
 **After** branch cleanup succeeds, close the epic in nd:
 ```bash
-pvg nd update EPIC_ID --status closed --add-label accepted
+pvg issues update EPIC_ID --status closed --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
@@ -518,7 +518,7 @@ You are a dispatcher. You coordinate agents and manage git integration. You NEVE
 ### When a Developer Agent Fails
 
 If a developer agent fails, returns partial output, or times out:
-1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting the worktree)
+1. Check story status via `pvg issues show <STORY_ID> --json` (NOT by inspecting the worktree)
 2. If NOT delivered: run `cd $PROJECT_ROOT && pwd`, then `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, then re-spawn a fresh developer with corrective guidance
 3. If delivered: run `cd $PROJECT_ROOT && pwd`, then `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, then proceed with PM review
 4. NEVER cd into the worktree to check what happened, run git log, or try to continue the agent
@@ -555,7 +555,7 @@ and INJECTS the context directly into the developer prompt. This is structural, 
 
 ### Step 1: Parse the story's CONSUMES block
 
-Read the story (`pvg nd show <id>`) and extract all CONSUMES entries. Each entry
+Read the story (`pvg issues show <id>`) and extract all CONSUMES entries. Each entry
 names an upstream module or file.
 
 ### Step 2: Extract API signatures from consumed modules
@@ -643,7 +643,7 @@ dispatcher ensures the context is actually complete.
 Hard-TDD is **opt-in per story**. Before spawning a developer, check for the `hard-tdd` label:
 
 ```bash
-nd show <id> --json | grep -q '"hard-tdd"'
+pvg issues show <id> --json | grep -q '"hard-tdd"'
 ```
 
 **If `hard-tdd` label is ABSENT** (the default): spawn ONE developer agent in normal mode.

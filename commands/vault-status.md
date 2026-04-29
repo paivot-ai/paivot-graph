@@ -85,18 +85,20 @@ Show the current state and health of both the global Obsidian vault and the proj
    Search the project vault for notes with `actionable: pending`:
    ```bash
    vlt vault=".vault/knowledge" search query="[actionable:pending]"
+   # Project-local vault still uses vlt directly; pvg notes addresses the configured vault only.
    ```
 
    For each found, read the note and its linked context:
    ```bash
    vlt vault=".vault/knowledge" read file="<note>" follow
+   # Project-local vault still uses vlt directly.
    ```
 
 6. **Check for pending proposals**:
 
    Search the global vault inbox for pending proposals:
    ```bash
-   vlt vault="Claude" search query="[type:proposal] [status:pending]"
+   pvg notes search "[type:proposal] [status:pending]"
    ```
 
    Or fallback with Grep (resolve vault path first with `vlt vault="Claude" dir`):

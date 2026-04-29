@@ -164,7 +164,7 @@ Ask: "Would this help someone working on a DIFFERENT project?"
 ### Step 2: Create with vlt
 
 ```bash
-vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="---
+pvg notes create "_inbox/<Title>.md" --title "<Title>" --body "---
 type: <type>
 project: <project>
 stack: [<stack>]
@@ -185,7 +185,8 @@ created: $(date +%Y-%m-%d)
 ## Related
 
 - [[<related note>]]
-" silent
+"
+# (vlt-only `silent` flag dropped)
 ```
 
 ### Step 3: Triage Immediately
@@ -204,39 +205,38 @@ Ensure at least one wikilink exists. If creating a new concept, link to related 
 
 ```bash
 # Single note
-vlt vault="Claude" read file="<Note Title>"
-
-# Note + all linked notes (graph traversal)
-vlt vault="Claude" read file="<Note Title>" follow
-
-# Note + all notes that link TO it
-vlt vault="Claude" read file="<Note Title>" backlinks
+pvg notes read "<Note Title>"
+# TODO: pvg notes addresses by full path; if the note is not at vault root, use the
+# full path. The `follow` and `backlinks` semantics have no pvg equivalent yet --
+# fall back to vlt for those:
+vlt vault="Claude" read file="<Note Title>" follow      # graph traversal
+vlt vault="Claude" read file="<Note Title>" backlinks   # incoming links
 ```
 
 ## How to Search
 
 ```bash
 # Text search
-vlt vault="Claude" search query="<term>"
+pvg notes search "<term>"
 
 # By domain
-vlt vault="Claude" search query="[domain:ai-agents]"
+pvg notes search "[domain:ai-agents]"
 
 # By project
-vlt vault="Claude" search query="[project:reader]"
+pvg notes search "[project:reader]"
 ```
 
 ## How to Update
 
 ```bash
 # Append to note
-vlt vault="Claude" append file="<Note Title>" content="<new content>"
+pvg notes append "<Note Title>" --body "<new content>"
 
-# Replace a section
+# Replace a section (vlt-only: `patch` has no pvg equivalent yet)
 vlt vault="Claude" patch file="<Note Title>" heading="## Section" content="<new section>"
 
 # Set property
-vlt vault="Claude" property:set file="<Note Title>" name="status" value="superseded"
+pvg notes property:set "<Note Title>" "status" "superseded"
 ```
 
 ## Session Workflow
@@ -246,7 +246,10 @@ vlt vault="Claude" property:set file="<Note Title>" name="status" value="superse
 1. Detect project from git remote or directory
 2. Read project note + follow links:
    ```bash
-   vlt vault="Claude" read file="<Project>" follow
+   pvg notes read "<Project>"
+   # TODO: `follow` (auto-include linked notes) has no pvg equivalent yet --
+   # fall back to `vlt vault="Claude" read file="<Project>" follow` if you need
+   # the linked context in one call.
    ```
 3. Check for project-specific knowledge in `.vault/knowledge/`
 
