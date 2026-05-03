@@ -594,6 +594,87 @@ Before declaring backlog ready, verify all of these:
 - ☐ Anchor pre-reviewed (if doing formal validation)
 - ☐ `pvg lint` passes (no artifact collisions -- see Collision Resolution below)
 
+### Phase 7a: Pre-Submission Mechanical Sweep (MANDATORY)
+
+The 7-phase workflow is creative and structural; **this sweep is mechanical and deterministic.** It catches the boring failures that the Anchor predictably rejects: placeholder IDs that never got substituted, CONSUMES entries without API signatures, missing capstones, mis-pointed release-gate edges. These are not creative defects -- they are sequential-housekeeping defects, and they are the leading cause of Anchor rejection. **Run all six sweeps. If any fails, fix and re-run before submitting.**
+
+**Sweep 1 -- Placeholder ID substitution.**
+While authoring stories you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real `TIX-*` IDs, EVERY story body and dependency edge must reference real IDs. No exceptions.
+
+```bash
+# Capture all real IDs assigned by nd
+nd list --json | jq -r '.[].id' > /tmp/real_ids.txt
+
+# Scan every story body for placeholder patterns
+for id in $(cat /tmp/real_ids.txt); do
+  body=$(nd show "$id" --json | jq -r '.body')
+  # Look for tokens that look like authoring placeholders but are NOT real TIX-* IDs
+  echo "$body" | grep -oE '\b([a-z]{2,}-[0-9]{2}-[a-z-]+|STORY-[A-Z]|EPIC-[A-Z][A-Z-]*|TIX-[a-z0-9]+)\b' \
+    | sort -u \
+    | while read tok; do
+        if ! grep -qx "$tok" /tmp/real_ids.txt; then
+          echo "POTENTIAL PLACEHOLDER in $id: $tok"
+        fi
+      done
+done
+```
+
+Any line printed by this scan must be resolved -- either by substituting the real TIX-* ID via `nd update <id> -d` or by confirming it is a documented external reference (and even then, prefer to remove ambiguity).
+
+**Sweep 2 -- CONSUMES has API signatures.**
+For every CONSUMES entry across the backlog, verify it carries a contract line: `spec:`, `fields:`, `endpoint:`, `event:`, or equivalent. A bare module or story reference without a contract is a self-containment defect -- the developer would have to read ARCHITECTURE.md to know what to call. See *Pattern: CONSUMES with API Signatures* below for the required shape.
+
+```bash
+# Quick grep for CONSUMES blocks lacking a follow-on contract line
+nd list --json | jq -r '.[].id' | while read id; do
+  body=$(nd show "$id" --json | jq -r '.body')
+  echo "$body" | awk '
+    /^CONSUMES:/ {in_block=1; next}
+    in_block && /^- / {entry=$0; getline next_line; if (next_line !~ /^[[:space:]]+(spec|fields|endpoint|event|schema|source):/) print "MISSING SIGNATURE in '"$id"': " entry}
+    in_block && NF==0 {in_block=0}
+  '
+done
+```
+
+**Sweep 3 -- One capstone per epic.**
+Every epic MUST have exactly one capstone story (the demoable e2e slice that closes the milestone). Zero is a defect. Many is also a defect -- it means the epic was not properly decomposed.
+
+```bash
+for epic_id in $(nd list --type epic --json | jq -r '.[].id'); do
+  capstone_count=$(nd list --parent "$epic_id" --label capstone --json | jq 'length')
+  if [ "$capstone_count" != "1" ]; then
+    echo "DEFECT: epic $epic_id has $capstone_count capstone(s) (expected 1)"
+  fi
+done
+```
+
+**Sweep 4 -- Release-gate edge points to terminal capstone.**
+The release-gate story (final acceptance gate for the milestone) must depend on the capstone of the *terminal* epic in the dependency graph. A common defect is the release gate pointing at an arbitrary mid-stream story.
+
+```bash
+release_gate=$(nd list --label release-gate --json | jq -r '.[0].id')
+upstreams=$(nd dep show "$release_gate" --json | jq -r '.blocked_by[]')
+echo "Release gate $release_gate blocked_by: $upstreams"
+# Manually verify each upstream ID is a capstone of the terminal epic.
+```
+
+**Sweep 5 -- Decomposition balance.**
+Eyeball the per-epic story count. Significant imbalance (e.g., one epic with 14 stories, another with 2) is a flag, not necessarily a defect -- but you MUST justify it explicitly in the submission summary, otherwise the Anchor will rightly flag it.
+
+```bash
+nd list --type epic --json | jq -r '.[].id' | while read epic_id; do
+  count=$(nd list --parent "$epic_id" --json | jq 'length')
+  printf "%-12s %d stories\n" "$epic_id" "$count"
+done
+```
+
+If outliers exist, decide: (a) the small epic is under-decomposed -- split further; (b) scopes are genuinely different -- document why in the submission summary; (c) the large epic is bundling concerns -- split it.
+
+**Sweep 6 -- Terminology audit (referenced from Phase 7).**
+Re-run the terminology audit. Every column name, env var, header, schema field, and endpoint path must match ARCHITECTURE.md exactly. A single rename causes Anchor rejection and cascading developer failures.
+
+**Submission gate:** Do NOT proceed to "When ready" until all six sweeps pass clean. If any sweep flags an item that you decide is a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it.
+
 **When ready:**
 
 > Discovery & Framing is complete. The backlog is ready for execution.
@@ -846,6 +927,61 @@ to modify the same file independently, that is a design problem -- fix the desig
 
 ---
 
+## Pattern: CONSUMES with API Signatures
+
+When a story's IMPLEMENTATION depends on a module, function, schema, endpoint, or message envelope produced by another story, the CONSUMES section MUST capture the **exact contract** the developer will call. A bare reference like `STORY-A: AuthService module` is a self-containment defect -- the developer would have to open ARCHITECTURE.md or the upstream story body to learn the actual signature, which is precisely what self-contained stories are meant to prevent.
+
+**Extraction discipline.** When you write a CONSUMES entry, you are NOT designing the API. You are EXTRACTING a contract that ARCHITECTURE.md (or an upstream story it derives from) has already declared. **If ARCHITECTURE.md does not specify the contract, STOP. Do not invent it.** Raise the gap to the user or escalate to the Architect agent for ARCHITECTURE.md amendment, then resume.
+
+### ✅ GOOD CONSUMES Entry
+
+```
+CONSUMES:
+- TIX-a3b: lib/auth.ex -> AuthService.authenticate/2
+    spec: authenticate(email :: String.t(), password :: String.t()) :: {:ok, %User{}} | {:error, :invalid_credentials | :rate_limited}
+    source: ARCHITECTURE.md §5.1 (Authentication Service contract)
+- TIX-c8f: lib/users/schema.ex -> %User{} schema
+    fields: id :: Ecto.UUID.t(), email :: String.t(), password_hash :: String.t(), inserted_at :: DateTime.t()
+    source: ARCHITECTURE.md §4.2 (User schema)
+- TIX-d1e: POST /api/sessions
+    endpoint: POST /api/sessions
+    request: { email: string, password: string }
+    response 200: { token: string, user_id: string, expires_at: ISO8601 }
+    response 401: { error: "invalid_credentials" }
+    source: ARCHITECTURE.md §6.3 (Session API)
+- TIX-e9k: pubsub topic "user_events"
+    event: %UserRegistered{user_id :: String.t(), email :: String.t(), occurred_at :: DateTime.t()}
+    source: ARCHITECTURE.md §7.1 (Domain Events)
+```
+
+### ❌ BAD CONSUMES Entry
+
+```
+CONSUMES:
+- STORY-A: lib/auth.ex -> AuthService module
+- The user schema from the database story
+- Calls the registration endpoint
+```
+
+**Why bad:**
+- No real `TIX-*` ID (placeholders left over from authoring -- caught by Phase 7a Sweep 1).
+- No signature, no field list, no request/response shape (caught by Phase 7a Sweep 2).
+- No source citation -- reviewer cannot verify the contract is faithful to ARCHITECTURE.md.
+- "The user schema" / "the registration endpoint" -- vague references; developer must search.
+
+### Extraction Workflow
+
+For every CONSUMES reference:
+
+1. **Identify the producing story.** Must be a real `TIX-*` ID assigned by `pvg issues create`. Never a placeholder.
+2. **Locate the contract in ARCHITECTURE.md.** Find the function signature, schema fields, endpoint shape, message envelope, or event payload.
+3. **Copy the contract verbatim** into the CONSUMES entry under `spec:` / `fields:` / `endpoint:` / `event:` / `schema:`. Do not paraphrase types -- write them as ARCHITECTURE.md writes them.
+4. **Cite the ARCHITECTURE.md section** so the Anchor and the developer can verify.
+
+**If no contract exists in ARCHITECTURE.md:** that is an architecture gap, not a story gap. Do not write the story. Raise the gap to the user (request ARCHITECTURE.md amendment) or escalate to the Architect agent. Resume story authoring only after the contract is committed.
+
+---
+
 ## Related
 
 - [[Two-Level Branch Model]] — How stories are merged
@@ -859,6 +995,10 @@ to modify the same file independently, that is a design problem -- fix the desig
 
 ## Changelog
 
+- 2026-05-02: Added Phase 7a Pre-Submission Mechanical Sweep + CONSUMES API signature pattern
+  - Phase 7a: six mandatory mechanical sweeps (placeholder IDs, CONSUMES signatures, capstone-per-epic, release-gate edge, decomposition balance, terminology audit) with bash recipes
+  - Pattern: CONSUMES with API Signatures with good/bad examples and extraction workflow
+  - Targets known Anchor rejection patterns: placeholder IDs left in story bodies, CONSUMES entries without contract lines, mis-pointed release-gate edges
 - 2026-03-31: Added Artifact Collision Resolution section
   - Resolution strategies: establish chain, merge stories, split file
   - Added pvg lint check to Phase 7 checklist
