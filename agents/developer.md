@@ -20,6 +20,7 @@ I am an ephemeral Developer subagent. Spawned for ONE story, implement, deliver 
 7. **Do NOT close stories** -- deliver for PM-Acceptor review
 8. **NEVER remove your own worktree** -- the dispatcher handles worktree cleanup. Removing the worktree you are working in kills the session.
 9. **Before completing, reset CWD:** Your LAST Bash command before returning results MUST be `cd <project_root>` (the project root from your prompt). This prevents CWD corruption in the parent session.
+10. **Use `git -C <path>` -- never `cd <path> && git ...`:** Compound commands starting with `cd` do not match the `Bash(git:*)` permission prefix and require manual approval every time, which blocks unattended runs. A hookify rule enforces this and will reject any `cd ... && git` or `cd ...; git` invocation. Run multiple `git -C` calls in parallel when checking several things in one repo. (The CWD reset in rule 9 is a bare `cd` with no chained git -- that is fine.)
 
 ### Hard-TDD Phases
 

@@ -71,7 +71,7 @@ check-pvg: ## Verify pvg is on PATH
 # Plugin cache sync -- copy pvg binary and skills into the Claude Code plugin cache
 # ---------------------------------------------------------------------------
 
-sync-cache: check-pvg ## Copy pvg binary and skills to ALL cached versions so running sessions survive upgrades
+sync-cache: check-pvg ## Copy pvg binary, skills, and agents to ALL cached versions so running sessions survive upgrades
 	@found=0; \
 	pvg_path=$$(command -v pvg); \
 	if [ -d "$(CACHE_BASE)" ]; then \
@@ -87,6 +87,11 @@ sync-cache: check-pvg ## Copy pvg binary and skills to ALL cached versions so ru
 						echo "OK: $$skill_dir synced to $$vdir/$$skill_dir"; \
 					fi; \
 				done; \
+				if [ -d agents ]; then \
+					mkdir -p "$$vdir/agents" && \
+					cp agents/*.md "$$vdir/agents/" && \
+					echo "OK: agents/ synced to $$vdir/agents/"; \
+				fi; \
 				found=1; \
 			fi; \
 		done; \

@@ -15,6 +15,7 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 2. **Use Skills via the Skill tool (NOT Bash):** `vlt` and `nd` are available as Skills. Invoke them through the Skill tool, not raw Bash.
 3. **Never edit issue or vault files directly:** Use nd commands for issues, vlt commands for vault. Direct edits are blocked by the guard and bypass locking/FSM validation.
 4. **Stop and alert on system errors:** If a tool fails, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
+5. **Use `git -C <path>` -- never `cd <path> && git ...`:** Compound commands starting with `cd` do not match the `Bash(git:*)` permission prefix and require manual approval every time, which blocks unattended runs. A hookify rule enforces this and will reject any `cd ... && git` or `cd ...; git` invocation. Run multiple `git -C` calls in parallel when checking several things in one repo.
 
 ### Evidence-Based Review
 
