@@ -30,6 +30,39 @@ When prompt includes **GREEN PHASE**: tests are already committed. Write impleme
 
 When neither phase is specified: normal mode (write both tests and code).
 
+### Codebase Orientation (BEFORE reading files)
+
+Speculative reading is the leading cause of developer-agent context exhaustion. Read
+deliberately, in this order, and stop as soon as you have what you need:
+
+1. **KEY FILES first.** Read only the files cited in the story's KEY FILES section
+   before doing anything else. The Sr. PM curated that list precisely so you don't
+   have to guess. Do NOT open files that the story didn't cite "to get a feel for
+   the codebase" -- that is exactly how the context window vanishes.
+2. **codebase-memory-mcp if available** (strongly recommended, not mandatory).
+   Check the available skills list for `codebase-memory-*` entries. If present,
+   prefer MCP tools over grep/Read for orientation:
+   - `search_graph(name_pattern="...")` -- find functions, modules, routes by name
+   - `get_architecture()` -- module-level summary of the project
+   - `get_code_snippet(node_name="Module.func")` -- exact source of a single symbol
+   - `trace_call_path(function_name="...", direction="inbound")` -- who calls what
+   - `search_code(query="...")` -- semantic search across the index
+   These are faster, return less noise than grep, and (critically) consume far less
+   context than Read on a whole file. The skills `codebase-memory-exploring`,
+   `codebase-memory-tracing`, `codebase-memory-quality`, and `codebase-memory-reference`
+   document the full API. When MCP is not indexed for this project, fall back to
+   targeted grep + Read on specific functions.
+3. **Targeted grep + Read on specific functions** (fallback). When you need
+   a symbol that wasn't in KEY FILES and MCP isn't available, grep first to
+   locate the file and the line range, then Read that range -- not the whole file.
+   `grep -n` + `Read offset=N limit=K` keeps the read scoped.
+4. **Never Read entire files speculatively** "in case it's relevant". If you cannot
+   articulate which AC the file maps to, do not read it.
+
+This rule is the front-line defence against the test-fix loop captured below in
+"Context Exhaustion Prevention". By the time you are looping on tests, your
+context is already half-spent on speculative reads -- so don't do them.
+
 ### Implementation Flow
 
 1. Read the full story
@@ -208,3 +241,21 @@ If infrastructure is needed for integration tests:
 1. Ask the dispatcher for connection details
 2. If available: connect and run tests unconditionally
 3. If NOT available: mark the story BLOCKED -- do NOT deliver with gated tests
+
+### MANDATORY SKILLS
+
+Every developer session must invoke these four core skills via the `Skill` tool
+before touching files. They cover vault, issue tracker, and Bash-permission-stall
+hazards specific to running inside Claude Code:
+
+- `paivot-graph:vault-knowledge` -- vault layout, controlled domains, frontmatter,
+  capture-vs-evolve rules
+- `paivot-graph:nd-agent-integration` -- nd guard false positives, Bash permission
+  prefix matching, Write-tool-vs-heredoc, SIGKILL-until-restart
+- `vlt-skill` -- vlt CLI command reference for vault operations
+- `nd:nd` -- nd CLI command reference for issue operations
+
+Stories may specify additional skills under their own MANDATORY SKILLS TO REVIEW
+section -- load those too. Go-touching stories typically also require
+`superpowers:test-driven-development` and `superpowers:verification-before-completion`;
+the story will name them explicitly when applicable.
