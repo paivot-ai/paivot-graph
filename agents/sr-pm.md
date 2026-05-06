@@ -854,6 +854,7 @@ to modify the same file independently, that is a design problem -- fix the desig
 - [[Anchor Agent]] — Reviews backlog for gaps
 - [[Hard-TDD]] — When to use two-phase test/implementation
 - [[Session Operating Mode]] — Dispatcher orchestration
+- [[Session Naming]] — project: workstream convention for disambiguating parallel sessions
 
 ---
 
