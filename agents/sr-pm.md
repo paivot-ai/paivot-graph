@@ -557,16 +557,15 @@ pvg issues create "Set up PostgreSQL" --body "..."
 # Returns: bd-infra-001
 
 # Auth stories depend on infrastructure
-# NOTE: `nd dep add A B` semantics ("A depends on B") were ambiguous in migration
-# spec; preserved as-is pending arg-order verification.
-nd dep add bd-s003 bd-infra-001  # Walking skeleton depends on DB
-nd dep add bd-s001 bd-infra-001  # Other stories depend on DB
+# `pvg nd dep add <issue> <depends-on>`: <issue> depends on <depends-on>.
+pvg nd dep add bd-s003 bd-infra-001  # Walking skeleton depends on DB
+pvg nd dep add bd-s001 bd-infra-001  # Other stories depend on DB
 
 # Register must come before login (walking skeleton proves it)
-nd dep add bd-s004 bd-s003  # Register depends on walking skeleton
+pvg nd dep add bd-s004 bd-s003  # Register depends on walking skeleton
 
 # Login before logout
-nd dep add bd-s007 bd-s005  # Logout depends on login working
+pvg nd dep add bd-s007 bd-s005  # Logout depends on login working
 ```
 
 **Set priorities:**
@@ -584,98 +583,285 @@ Before declaring backlog ready, verify all of these:
 - ☐ All epics created with embedded context
 - ☐ All stories created with embedded context (developers don't read external files)
 - ☐ All epic acceptance criteria have corresponding stories
-- ☐ Walking skeleton story is FIRST in each milestone
-- ☐ No horizontal layers (all stories are vertical slices)
+- ☐ Walking skeleton story is FIRST in each milestone **and its AC require establishing the project's quality gate patterns** (`@spec`, DLP, rate limiting, audit, config registration, error handling)
+- ☐ No horizontal layers (all stories are vertical slices with a user-facing outcome)
+- ☐ Every epic has exactly one `capstone` story, **blocked_by every other story in the epic**
+- ☐ External-integration stories carry the label, a non-automatable real-endpoint AC, and **blocking** config sub-tasks (not docs)
+- ☐ Every CONSUMES references an upstream story that PRODUCES the named artifact
+- ☐ Every CONSUMES entry carries a signature line (`spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:`)
+- ☐ Cross-cutting concerns (DLP, rate-limit, audit, config) named in CONSUMES with the existing module's API
+- ☐ MANDATORY SKILLS section present in every story body
 - ☐ All dependencies established correctly
-- ☐ Zero dependency cycles (run: `nd dep cycles`)
-- ☐ All stories INVEST-compliant
+- ☐ Zero dependency cycles (run: `pvg nd dep cycles`)
+- ☐ All stories INVEST-compliant (atomic, no bundled scope)
 - ☐ All stories have testable acceptance criteria
 - ☐ Terminology audit passed (compare stories to ARCHITECTURE.md exactly)
 - ☐ Coverage checklist complete (every D&F point represented)
 - ☐ Backlog prioritized appropriately
-- ☐ Anchor pre-reviewed (if doing formal validation)
 - ☐ `pvg lint` passes (no artifact collisions -- see Collision Resolution below)
 
-### Phase 7a: Pre-Submission Mechanical Sweep (MANDATORY)
+### Phase 7a: Pre-Submission Mechanical Sweep (MANDATORY, Anchor-aligned)
 
-The 7-phase workflow is creative and structural; **this sweep is mechanical and deterministic.** It catches the boring failures that the Anchor predictably rejects: placeholder IDs that never got substituted, CONSUMES entries without API signatures, missing capstones, mis-pointed release-gate edges. These are not creative defects -- they are sequential-housekeeping defects, and they are the leading cause of Anchor rejection. **Run all six sweeps. If any fails, fix and re-run before submitting.**
+The 7-phase workflow is creative and structural; **this sweep is mechanical and deterministic.** It catches the boring failures that the Anchor predictably rejects. These are not creative defects -- they are sequential-housekeeping defects, and they are the leading cause of Anchor rejection.
 
-**Sweep 1 -- Placeholder ID substitution.**
-While authoring stories you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real `TIX-*` IDs, EVERY story body and dependency edge must reference real IDs. No exceptions.
+**Sweeps are ordered by the Anchor's rejection priority.** Higher-priority items cascade further: a walking-skeleton gap propagates into every downstream story; a stray placeholder ID is local to one body. **Fix in the order found** -- the Anchor caps its rejection report at 5 issues per round in the same priority order, so leaving a high-priority gap unfixed will re-trigger rejection no matter how clean the rest of the backlog is.
+
+> **Note for legacy projects (pre-Phase-7a backlogs).** The `capstone`,
+> `release-gate`, and `walking-skeleton` labels are net-new in Phase 7a. On any
+> backlog created before this protocol existed, Sweeps 2, 5, and 11 will report
+> review items for every epic and the release gate. This is expected, not a
+> regression: do a one-time labeling pass (assign `walking-skeleton` to the
+> first integration story in each epic, `capstone` to the demoable e2e story,
+> `release-gate` to the final acceptance story), then re-run the sweeps.
+
+---
+
+#### Anchor's Master Checklist (the bar you must clear)
+
+A verbatim mirror of `agents/anchor.md`'s Master Checklist + External Integration Verification, in the same priority order the Anchor enforces. Your backlog must clear every item before submission. The sweeps below give you mechanical recipes for each; fix in the order listed.
+
+1. **Context match with D&F docs.** Column names, HTTP headers, API fields, env vars, status codes, data types, component names -- exactly as ARCHITECTURE.md writes them.
+2. **Walking skeleton in every milestone epic, AND its AC explicitly require establishing ALL quality gate patterns** the project demands (`@spec`, DLP integration, rate limiting, audit logging, config registration, error handling). If the skeleton omits a pattern, every subsequent story propagates the gap.
+3. **Vertical slices, no horizontal layers.** Each story cuts through API → service → data → response and produces an observable user-facing outcome.
+4. **Stories atomic and INVEST-compliant.** No bundled scope (titles with " and ", "/"), no AC bloat.
+5. **E2e capstone in every epic, `blocked_by` every other story in that epic.** A capstone with missing dep edges could run before the work it integrates.
+6. **MANDATORY SKILLS section present in every story body** (even if "None identified").
+7. **External integration stories** carry: `external-integration` label, a non-automatable AC requiring real-endpoint verification, and **blocking config sub-tasks** (not doc notes) for any secret/env var the user must provision.
+8. **Boundary maps consistent.** Every CONSUMES entry references an upstream story (real `TIX-*`) that PRODUCES the named artifact.
+9. **CONSUMES entries carry API signatures** (`spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:`). Bare file paths = REJECTED.
+10. **Cross-cutting concerns (DLP, rate-limit, audit, config) named in CONSUMES** with the specific existing module and its call pattern. AC say "DLP scans X" but no CONSUMES entry for the DLP module = REJECTED.
+11. **Zero dependency cycles, no stale issues** (>14 days idle).
+12. **Security/compliance addressed** per BUSINESS.md.
+13. **D&F coverage complete** (Phase 5 checklist).
+
+Self-reject if you cannot tick every item. Pre-flighting in this order minimizes loop count.
+
+---
+
+**Sweep 1 -- Terminology audit (Anchor priority #1).**
+Every technical identifier in story bodies (column names, env vars, HTTP headers, API field names, endpoint paths, data types, component names) must match ARCHITECTURE.md verbatim. A single rename causes Anchor rejection and cascading developer failures. See *Terminology Audit (Before Submission)* below for the full extraction protocol. Quick mechanical pass:
 
 ```bash
-# Capture all real IDs assigned by nd
-nd list --json | jq -r '.[].id' > /tmp/real_ids.txt
-
-# Scan every story body for placeholder patterns
-for id in $(cat /tmp/real_ids.txt); do
-  body=$(nd show "$id" --json | jq -r '.body')
-  # Look for tokens that look like authoring placeholders but are NOT real TIX-* IDs
-  echo "$body" | grep -oE '\b([a-z]{2,}-[0-9]{2}-[a-z-]+|STORY-[A-Z]|EPIC-[A-Z][A-Z-]*|TIX-[a-z0-9]+)\b' \
-    | sort -u \
+# Pull candidate identifiers from ARCHITECTURE.md (UPPER_SNAKE and lower_snake
+# tokens are usually env vars, columns, headers). Compare against every story
+# body. Manual semantic review still required; this catches diverged spelling.
+arch_tokens=$(grep -oE '\b[A-Z_]{3,}_[A-Z_]+\b|\b[a-z_]{2,}_[a-z_]+\b' ARCHITECTURE.md | sort -u)
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  pvg issues show "$id" --json | jq -r '.body' \
+    | grep -oE '\b[A-Z_]{3,}_[A-Z_]+\b|\b[a-z_]{2,}_[a-z_]+\b' | sort -u \
     | while read tok; do
-        if ! grep -qx "$tok" /tmp/real_ids.txt; then
-          echo "POTENTIAL PLACEHOLDER in $id: $tok"
-        fi
+        echo "$arch_tokens" | grep -qx "$tok" || echo "DIVERGENCE in $id: '$tok' not in ARCHITECTURE.md"
       done
 done
 ```
 
-Any line printed by this scan must be resolved -- either by substituting the real TIX-* ID via `nd update <id> -d` or by confirming it is a documented external reference (and even then, prefer to remove ambiguity).
-
-**Sweep 2 -- CONSUMES has API signatures.**
-For every CONSUMES entry across the backlog, verify it carries a contract line: `spec:`, `fields:`, `endpoint:`, `event:`, or equivalent. A bare module or story reference without a contract is a self-containment defect -- the developer would have to read ARCHITECTURE.md to know what to call. See *Pattern: CONSUMES with API Signatures* below for the required shape.
+**Sweep 2 -- Walking skeleton present AND establishes all quality gate patterns.**
+The walking skeleton is the template every downstream developer copies. If it omits `@spec`, DLP integration, rate-limit hooks, audit-log calls, config registration, or the project's standard error-handling pattern, every subsequent story propagates the gap. Each milestone epic must contain a walking-skeleton story whose AC explicitly require establishing these patterns -- not just "system works end-to-end."
 
 ```bash
-# Quick grep for CONSUMES blocks lacking a follow-on contract line
-nd list --json | jq -r '.[].id' | while read id; do
-  body=$(nd show "$id" --json | jq -r '.body')
-  echo "$body" | awk '
-    /^CONSUMES:/ {in_block=1; next}
-    in_block && /^- / {entry=$0; getline next_line; if (next_line !~ /^[[:space:]]+(spec|fields|endpoint|event|schema|source):/) print "MISSING SIGNATURE in '"$id"': " entry}
-    in_block && NF==0 {in_block=0}
-  '
+# Adjust the quality_gates list to the patterns this project actually requires
+# (project-specific; common patterns shown below).
+quality_gates="@spec|DLP|rate.?limit|audit (log|trail)|config.?regist|error.?handling"
+for epic_id in $(pvg issues list --label milestone --json | jq -r '.[].id'); do
+  skeleton=$(pvg issues list --parent "$epic_id" --label walking-skeleton --json | jq -r '.[0].id // empty')
+  if [ -z "$skeleton" ]; then
+    echo "REVIEW: milestone $epic_id has no walking-skeleton story"
+    continue
+  fi
+  body=$(pvg issues show "$skeleton" --json | jq -r '.body')
+  missing=""
+  for pattern in $(echo "$quality_gates" | tr '|' ' '); do
+    echo "$body" | grep -qiE "$pattern" || missing="$missing $pattern"
+  done
+  [ -n "$missing" ] && echo "GAP in skeleton $skeleton: AC do not establish:$missing"
 done
 ```
 
-**Sweep 3 -- One capstone per epic.**
-Every epic MUST have exactly one capstone story (the demoable e2e slice that closes the milestone). Zero is a defect. Many is also a defect -- it means the epic was not properly decomposed.
+**Sweep 3 -- Vertical slices, not horizontal layers.**
+A horizontal layer story sounds like "Build the ReasoningEngine module" -- produces an isolated component with no demoable behavior. A vertical slice cuts API → service → data → response in one story and yields an observable outcome.
 
 ```bash
-for epic_id in $(nd list --type epic --json | jq -r '.[].id'); do
-  capstone_count=$(nd list --parent "$epic_id" --label capstone --json | jq 'length')
-  if [ "$capstone_count" != "1" ]; then
-    echo "DEFECT: epic $epic_id has $capstone_count capstone(s) (expected 1)"
+for id in $(pvg issues list --type story --json | jq -r '.[].id'); do
+  title=$(pvg issues show "$id" --json | jq -r '.title')
+  body=$(pvg issues show "$id" --json | jq -r '.body')
+  # Title patterns that read as horizontal-layer construction
+  if echo "$title" | grep -qiE 'build (the )?[A-Za-z]+ (service|module|layer|component|engine)'; then
+    echo "REVIEW: $id title reads horizontal: $title"
+  fi
+  # AC must contain at least one observable outcome
+  if ! echo "$body" | grep -qiE '(returns|displays|redirects|stores|emits|user (can|sees|submits))'; then
+    echo "REVIEW: $id has no user-facing outcome in body"
   fi
 done
 ```
 
-**Sweep 4 -- Release-gate edge points to terminal capstone.**
+**Sweep 4 -- Atomicity and INVEST.**
+Bundled scope hides multi-story work in one ticket; the Anchor will split it. Title-level red flags: ` and `, ` / `. Body-level: more than ~12 AC suggests bundling.
+
+```bash
+for id in $(pvg issues list --type story --json | jq -r '.[].id'); do
+  title=$(pvg issues show "$id" --json | jq -r '.title')
+  echo "$title" | grep -qE ' and | / ' && echo "REVIEW: $id title looks bundled: $title"
+  ac_count=$(pvg issues show "$id" --json | jq -r '.body' | grep -cE '^[[:space:]]*[0-9]+[.)]')
+  [ "${ac_count:-0}" -gt 12 ] && echo "REVIEW: $id has $ac_count AC -- consider splitting"
+done
+```
+
+**Sweep 5 -- Capstone present AND blocked-by every other story in the epic.**
+Every epic MUST have exactly one capstone story (the demoable e2e slice that closes the milestone). The capstone's `blocked_by` set must equal the set of all other stories in the epic -- otherwise the capstone could run before the work it integrates.
+
+```bash
+for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
+  capstones=$(pvg nd list --parent "$epic_id" --label capstone --json | jq -r '.[].id')
+  count=$(echo "$capstones" | grep -c .)
+  if [ "$count" != "1" ]; then
+    echo "REVIEW: epic $epic_id has $count capstone(s) (expected 1)"
+    continue
+  fi
+  capstone=$capstones
+  siblings=$(pvg nd list --parent "$epic_id" --json | jq -r '.[].id' | grep -v "^${capstone}\$")
+  blocked_by=$(pvg nd dep show "$capstone" --json | jq -r '.blocked_by[]?')
+  for s in $siblings; do
+    echo "$blocked_by" | grep -qx "$s" || echo "GAP: capstone $capstone missing blocked_by: $s"
+  done
+done
+```
+
+**Sweep 6 -- MANDATORY SKILLS section in every story.**
+
+```bash
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  pvg issues show "$id" --json | jq -r '.body' | grep -q "MANDATORY SKILLS" \
+    || echo "GAP: $id missing MANDATORY SKILLS section"
+done
+```
+
+**Sweep 7 -- External integration stories structurally complete.**
+Stories that touch external services (OAuth providers, payment gateways, email/SMS/messaging, third-party webhooks) require: (a) `external-integration` label, (b) a non-automatable AC requiring real-endpoint verification, (c) **blocking sub-tasks** for any secret/env var the user must provision (NOT documentation notes -- the sub-task itself blocks the integration story).
+
+```bash
+ext_kw="oauth|stripe|paypal|twilio|sendgrid|webhook|third.?party|external (service|api)"
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  data=$(pvg issues show "$id" --json)
+  body=$(echo "$data" | jq -r '.body')
+  labels=$(echo "$data" | jq -r '.labels[]?')
+  echo "$body" | grep -qiE "$ext_kw" || continue
+  echo "$labels" | grep -qx "external-integration" \
+    || echo "GAP: $id mentions external service but missing 'external-integration' label"
+  echo "$body" | grep -qiE "real (endpoint|service|api).*verif|manual.*verif|smoke.test" \
+    || echo "GAP: $id missing non-automatable real-endpoint AC"
+  # Heuristic: config sub-tasks should be referenced as blocking deps in the body
+  echo "$body" | grep -qiE "blocked.by.*config|sub.task.*(secret|api.?key|client.?id)|provisioned in .* console" \
+    || echo "GAP: $id may track config as docs instead of blocking sub-tasks"
+done
+```
+
+**Sweep 8 -- CONSUMES ↔ PRODUCES boundary match.**
+Every CONSUMES entry references an upstream story by `TIX-*` ID. That upstream story MUST have a PRODUCES block naming the consumed artifact. A dangling CONSUMES (upstream doesn't actually produce the named module/file) = REJECTED.
+
+```bash
+# Build a per-story index of PRODUCES blocks, then walk every CONSUMES TIX-ref
+# and verify the upstream story has any PRODUCES content. Manual review still
+# needed to confirm artifact name match -- this catches the "no PRODUCES at all"
+# case which is the most common dangling-reference defect.
+produces_index=$(mktemp)
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  body=$(pvg issues show "$id" --json | jq -r '.body')
+  echo "$body" | awk -v sid="$id" '
+    /^PRODUCES:/ {inp=1; next}
+    inp && /^- / {print sid"\t"$0}
+    inp && NF==0 {inp=0}
+  ' >> "$produces_index"
+done
+
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  pvg issues show "$id" --json | jq -r '.body' \
+    | awk '/^CONSUMES:/{inc=1;next} inc&&/^- TIX-/{print} inc&&NF==0{inc=0}' \
+    | while read line; do
+        ref=$(echo "$line" | grep -oE 'TIX-[a-zA-Z0-9]+' | head -1)
+        [ -z "$ref" ] && continue
+        grep -q "^${ref}	" "$produces_index" \
+          || echo "GAP in $id: CONSUMES $ref but $ref has no PRODUCES block"
+      done
+done
+rm -f "$produces_index"
+```
+
+**Sweep 9 -- CONSUMES entries carry API signatures.**
+Every CONSUMES entry must include at least one contract line: `spec:`, `fields:`, `endpoint:`, `event:`, `schema:`, or `source:`. Bare references = REJECTED. See *Pattern: CONSUMES with API Signatures* below for the required shape.
+
+```bash
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  pvg issues show "$id" --json | jq -r '.body' | awk -v sid="$id" '
+    /^CONSUMES:/ {inc=1; next}
+    inc && /^- / {
+      entry=$0; getline next_line
+      if (next_line !~ /^[[:space:]]+(spec|fields|endpoint|event|schema|source):/)
+        print "MISSING SIGNATURE in " sid ": " entry
+    }
+    inc && NF==0 {inc=0}
+  '
+done
+```
+
+**Sweep 10 -- Cross-cutting concerns named in CONSUMES.**
+When AC mention DLP scanning, rate limiting, audit logging, or config registration, the story MUST have a CONSUMES entry pointing at the specific existing module with its call pattern. AC say "DLP scans content" with no CONSUMES entry for the DLP module = REJECTED.
+
+```bash
+for id in $(pvg issues list --json | jq -r '.[].id'); do
+  body=$(pvg issues show "$id" --json | jq -r '.body')
+  ac=$(echo "$body" | awk '/^Acceptance Criteria/{ina=1;next} ina&&NF==0{ina=0} ina')
+  consumes=$(echo "$body" | awk '/^CONSUMES:/{inc=1;next} inc&&NF==0{inc=0} inc')
+  for kw in DLP "rate.?limit" "audit (log|trail)" "config.?regist"; do
+    if echo "$ac" | grep -qiE "$kw"; then
+      echo "$consumes" | grep -qiE "$kw" \
+        || echo "GAP in $id: AC mention '$kw' but CONSUMES does not name a corresponding module"
+    fi
+  done
+done
+```
+
+**Sweep 11 -- Release-gate edge points to terminal capstone.**
 The release-gate story (final acceptance gate for the milestone) must depend on the capstone of the *terminal* epic in the dependency graph. A common defect is the release gate pointing at an arbitrary mid-stream story.
 
 ```bash
-release_gate=$(nd list --label release-gate --json | jq -r '.[0].id')
-upstreams=$(nd dep show "$release_gate" --json | jq -r '.blocked_by[]')
+release_gate=$(pvg nd list --label release-gate --json | jq -r '.[0].id // empty')
+[ -z "$release_gate" ] && echo "REVIEW: no story carries the release-gate label"
+upstreams=$(pvg nd dep show "$release_gate" --json | jq -r '.blocked_by[]?')
 echo "Release gate $release_gate blocked_by: $upstreams"
 # Manually verify each upstream ID is a capstone of the terminal epic.
 ```
 
-**Sweep 5 -- Decomposition balance.**
+**Sweep 12 -- Decomposition balance.**
 Eyeball the per-epic story count. Significant imbalance (e.g., one epic with 14 stories, another with 2) is a flag, not necessarily a defect -- but you MUST justify it explicitly in the submission summary, otherwise the Anchor will rightly flag it.
 
 ```bash
-nd list --type epic --json | jq -r '.[].id' | while read epic_id; do
-  count=$(nd list --parent "$epic_id" --json | jq 'length')
+for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
+  count=$(pvg nd list --parent "$epic_id" --json | jq 'length')
   printf "%-12s %d stories\n" "$epic_id" "$count"
 done
 ```
 
 If outliers exist, decide: (a) the small epic is under-decomposed -- split further; (b) scopes are genuinely different -- document why in the submission summary; (c) the large epic is bundling concerns -- split it.
 
-**Sweep 6 -- Terminology audit (referenced from Phase 7).**
-Re-run the terminology audit. Every column name, env var, header, schema field, and endpoint path must match ARCHITECTURE.md exactly. A single rename causes Anchor rejection and cascading developer failures.
+**Sweep 13 -- Placeholder IDs substituted.**
+While authoring stories you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real `TIX-*` IDs, EVERY story body and dependency edge must reference real IDs. No exceptions. This sweep is housekeeping (smallest cascade) -- run it last so you do not waste effort substituting IDs in stories that will be rewritten by an earlier sweep.
 
-**Submission gate:** Do NOT proceed to "When ready" until all six sweeps pass clean. If any sweep flags an item that you decide is a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it.
+```bash
+pvg issues list --json | jq -r '.[].id' > /tmp/real_ids.txt
+for id in $(cat /tmp/real_ids.txt); do
+  pvg issues show "$id" --json | jq -r '.body' \
+    | grep -oE '\b([a-z]{2,}-[0-9]{2}-[a-z-]+|STORY-[A-Z]|EPIC-[A-Z][A-Z-]*|TIX-[a-z0-9]+)\b' \
+    | sort -u \
+    | while read tok; do
+        grep -qx "$tok" /tmp/real_ids.txt || echo "POTENTIAL PLACEHOLDER in $id: $tok"
+      done
+done
+```
+
+Any line printed must be resolved -- substitute the real `TIX-*` ID via `pvg issues update <id> --body ...` or confirm it is a documented external reference.
+
+**Submission gate:** Do NOT proceed to "When ready" until all thirteen sweeps pass clean **and** you have walked Anchor's Master Checklist (above) end-to-end. If any sweep flags an item that you decide is a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it. **Fix in sweep order**: a single unfixed Sweep-1 or Sweep-2 defect will re-trigger rejection no matter how clean the rest of the backlog is.
 
 **When ready:**
 
@@ -997,6 +1183,28 @@ For every CONSUMES reference:
 
 ## Changelog
 
+- 2026-05-19: Aligned Phase 7a with Anchor's Master Checklist
+  - Added "Anchor's Master Checklist (the bar you must clear)" section at the
+    top of Phase 7a -- verbatim mirror of `agents/anchor.md` review criteria
+    in the same priority order the Anchor uses
+  - Phase 7a expanded from 6 to 13 mechanical sweeps, **reordered by Anchor
+    rejection priority** (terminology first, walking-skeleton-quality-gates
+    second; placeholder IDs moved to last because it has the smallest cascade)
+  - New sweeps: walking-skeleton establishes quality gate patterns (Sweep 2),
+    vertical slices (Sweep 3), atomicity/INVEST (Sweep 4), capstone
+    `blocked_by` every sibling (Sweep 5 expanded), MANDATORY SKILLS section
+    present (Sweep 6), external integration completeness (Sweep 7),
+    CONSUMES↔PRODUCES round-trip (Sweep 8), cross-cutting concerns named in
+    CONSUMES (Sweep 10)
+  - Migrated raw `nd` calls to `pvg issues|nd` for consistency with the
+    provider-adapter migration; all bash recipes now use `pvg`
+  - Phase 7 checklist expanded to match the master checklist; removed
+    "Anchor pre-reviewed" item (Sr PM cannot self-Anchor by definition)
+  - Submission gate now requires walking the master checklist end-to-end +
+    fixing in sweep order (the Anchor's rejection cap is 5 per round in
+    priority order, so unfixed high-priority gaps re-trigger rejection)
+  - Goal: collapse 3-round Anchor loops to 1-2 by eliminating the language
+    drift between Sr PM's checklist and Anchor's actual rejection criteria
 - 2026-05-02: Added Phase 7a Pre-Submission Mechanical Sweep + CONSUMES API signature pattern
   - Phase 7a: six mandatory mechanical sweeps (placeholder IDs, CONSUMES signatures, capstone-per-epic, release-gate edge, decomposition balance, terminology audit) with bash recipes
   - Pattern: CONSUMES with API Signatures with good/bad examples and extraction workflow

@@ -204,11 +204,12 @@ Ensure at least one wikilink exists. If creating a new concept, link to related 
 ## How to Read
 
 ```bash
-# Single note
+# Single note (provider-abstracted; pass full path if not at vault root)
 pvg notes read "<Note Title>"
-# TODO: pvg notes addresses by full path; if the note is not at vault root, use the
-# full path. The `follow` and `backlinks` semantics have no pvg equivalent yet --
-# fall back to vlt for those:
+
+# Graph operations are vlt-specific (no provider abstraction): wikilink traversal
+# and backlink computation do not generalize to non-Markdown backends. Use these
+# escape hatches when you need transitive context from the Claude vault:
 vlt vault="Claude" read file="<Note Title>" follow      # graph traversal
 vlt vault="Claude" read file="<Note Title>" backlinks   # incoming links
 ```
@@ -247,9 +248,9 @@ pvg notes property:set "<Note Title>" "status" "superseded"
 2. Read project note + follow links:
    ```bash
    pvg notes read "<Project>"
-   # TODO: `follow` (auto-include linked notes) has no pvg equivalent yet --
-   # fall back to `vlt vault="Claude" read file="<Project>" follow` if you need
-   # the linked context in one call.
+   # For transitive expansion (linked decisions, patterns, debug, sessions),
+   # use the vlt escape hatch -- graph traversal is vlt-specific:
+   #   vlt vault="Claude" read file="<Project>" follow
    ```
 3. Check for project-specific knowledge in `.vault/knowledge/`
 

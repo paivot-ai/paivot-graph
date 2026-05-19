@@ -7,6 +7,11 @@ allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 
 Capture knowledge from the current session to the appropriate vault. Auto-derives tags, validates domains, suggests related links, and triages to the correct folder.
 
+> **Backend note.** Creation/append/search uses `pvg notes` (provider-abstracted).
+> `vlt vault="Claude" move` calls below are intentionally vlt-specific because the
+> global Claude vault is always vlt-backed and folder-move semantics do not
+> generalize to other backends (Linear/Confluence have no folder concept).
+
 ## Step 1: Load Context
 
 Load the vault-knowledge skill to understand the controlled domain vocabulary and note template:

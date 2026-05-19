@@ -7,7 +7,15 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Review the current session's work and refine the vault notes that power paivot-graph. This closes the feedback loop: work produces experience, experience refines the vault, refined vault improves future work.
 
-**Vault:** `vlt vault="Claude"` (resolves path dynamically)
+**Vault:** `vlt vault="Claude"` (resolves path dynamically).
+
+> **Backend note.** This command operates against vlt-backed vaults: the system
+> Claude vault (always vlt) and the project vault at `.vault/knowledge/` (vlt by
+> default). Section-anchored edits (`vlt patch`), full-file rewrites (`vlt write`),
+> and folder-scoped listings (`vlt files folder=`) have no clean
+> provider-abstracted equivalents and are intentionally vlt-specific. Projects
+> that reconfigure `.paivot/config.yaml` to point notes at a non-vlt backend will
+> need to author equivalent workflows.
 
 **Scope rules:**
 - `scope: system` (or no scope property) -- propose changes only; user must approve via `/vault-triage`
@@ -46,8 +54,9 @@ If you identify an improvement to agent behavior during vault-evolve:
 
 ```bash
 pvg notes read "Vault Knowledge Skill"
-# TODO: pvg notes addresses by full path; if "Vault Knowledge Skill" is not at vault root,
-# use the full path. The `follow` semantic has no pvg equivalent yet.
+# Note: `pvg notes read` addresses by full path; pass the full path if not at vault root.
+# For transitive expansion (auto-include linked notes), use the vlt escape hatch:
+#   vlt vault="Claude" read file="Vault Knowledge Skill" follow
 ```
 
 Look for:
@@ -59,7 +68,8 @@ Look for:
 
 ```bash
 pvg notes read "Session Operating Mode"
-# TODO: see note above about path vs. title and `follow`.
+# For transitive expansion (recommended here):
+#   vlt vault="Claude" read file="Session Operating Mode" follow
 ```
 This returns Session Operating Mode plus all linked notes (Pre-Compact Checklist, Stop Capture Checklist, etc.) in a single call.
 

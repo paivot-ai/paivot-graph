@@ -101,8 +101,8 @@ For vault operations (read notes, create notes, search, frontmatter), read the v
 Do NOT guess nd flags or command syntax. The skill has the complete CLI reference
 with examples. Common mistakes prevented by reading the skill:
 - Priority is numeric (0-4), not P-prefixed (P0-P4)
-- Dependencies use `nd dep add/rm`, not flags on `nd update`
-- Comments use `nd comments add` or `nd update --comment`
+- Dependencies use `pvg nd dep add/rm`, not flags on `pvg issues update`
+- Comments use `pvg issues comment <id> <body>` or `pvg nd comments add`
 
 ### Bug Triage (Overrides Iteration Protocol)
 

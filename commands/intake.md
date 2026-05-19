@@ -29,14 +29,19 @@ Before spawning the Sr. PM agent, YOU must gather context and pass it in the pro
 First, read the vault-backed operating mode and everything it links to:
 ```bash
 pvg notes read "Session Operating Mode"
-# TODO: pvg notes addresses by full path; if "Session Operating Mode" is not at vault root,
-# use the full path. The `follow` semantic (auto-include linked notes) has no pvg equivalent yet.
+# Note: `pvg notes read` addresses by full path; if the note is not at vault root,
+# pass the full path (e.g., "methodology/Session Operating Mode"). For transitive
+# expansion (auto-include linked notes), use the vlt escape hatch:
+#   vlt vault="Claude" read file="Session Operating Mode" follow
+# This is a vlt-specific operation and assumes the global Claude vault.
 ```
 
 Then read the project note with all linked context (decisions, patterns, session logs):
 ```bash
 pvg notes read "<project-name>"
-# TODO: see note above about path vs. title and `follow`.
+# For transitive expansion (recommended here -- pulls in all linked decisions,
+# patterns, debug insights, prior session logs):
+#   vlt vault="Claude" read file="<project-name>" follow
 ```
 
 This gives you the project note plus the full content of every note it references -- typically decisions, patterns, debug insights, and prior session logs -- in a single call.

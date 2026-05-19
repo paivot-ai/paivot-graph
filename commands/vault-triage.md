@@ -7,7 +7,14 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Review notes in `_inbox/` and move them to the correct folders. Also check for orphan notes and broken wikilinks.
 
-**Vault:** `vlt vault="Claude"` (resolves path dynamically)
+**Vault:** `vlt vault="Claude"` (resolves path dynamically).
+
+> **Backend note.** Read operations use `pvg notes` (provider-abstracted). Operations
+> below that invoke `vlt vault="Claude"` directly (`move`, `delete`, `orphans`,
+> `unresolved`) are intentionally vlt-specific: the global Claude vault is always
+> vlt-backed, and these verbs have no clean cross-backend abstraction (e.g.,
+> renaming files between folders or computing wikilink orphans does not generalize
+> to Linear/Confluence). Direct vlt is the supported mechanism here.
 
 ## Step 1: Check Inbox
 
