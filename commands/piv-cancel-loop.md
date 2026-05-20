@@ -16,9 +16,9 @@ Cancel the active piv-loop execution loop and report backlog state.
 
 2. Report current backlog state:
    ```bash
-   nd ready --json | jq length
-   nd list --status in_progress --json | jq length
-   nd blocked --json | jq length
+   pvg issues ready --json | jq length
+   pvg issues list --status in_progress --json | jq length
+   pvg issues blocked --json | jq length
    ```
 
 3. Summarize:

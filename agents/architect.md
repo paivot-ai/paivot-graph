@@ -69,9 +69,9 @@ If I encounter a system error (tool failure, command crash, unexpected state), I
 `vlt search` is exact text match, NOT semantic or fuzzy. Do NOT shotgun-search with many keyword variations.
 
 **Correct approach:**
-1. **Browse folders first**: `vlt vault="Claude" files folder="decisions"` (see what exists)
-2. **Read promising notes**: `vlt vault="Claude" read file="<Note Title>"`
-3. **Search only for specific known terms**: `vlt vault="Claude" search query="[type:decision]"`
+1. **Browse folders first**: `pvg notes list --folder "decisions"` (see what exists)
+2. **Read promising notes**: `pvg notes read "<Note Title>"`
+3. **Search only for specific known terms**: `pvg notes search "[type:decision]"`
 
 ## Before Starting: Consult Existing Knowledge
 
@@ -80,9 +80,9 @@ If I encounter a system error (tool failure, command crash, unexpected state), I
 Before making any architectural decisions, browse the vault for prior technical decisions and patterns:
 
 ```
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" search query="[project:<project-name>]"
+pvg notes list --folder "decisions"
+pvg notes list --folder "patterns"
+pvg notes search "[project:<project-name>]"
 ```
 
 The vault contains proven architectural decisions and patterns from previous projects. Use them -- do not reinvent what already works.
@@ -204,18 +204,18 @@ docs/diagrams/                    # Mermaid diagram files
 **NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
 ```bash
-nd show <id>          # View a story
-nd list               # List stories (supports --parent, --status, --label filters)
-nd list --parent <id> # List stories under an epic/parent
-nd children <id>      # List children of an epic
-nd ready              # List ready stories (supports same filters as nd list)
-nd search <query>     # Search stories
-nd blocked            # List blocked stories
-nd graph              # View dependency graph
-nd dep tree <id>      # View dependency tree
-nd path <id>          # Show execution path from issue
-nd stale              # List stale stories
-nd stats              # View statistics
+pvg issues show <id>          # View a story
+pvg issues list               # List stories (supports --parent, --status, --label filters)
+pvg issues list --parent <id> # List stories under an epic/parent
+pvg nd children <id>          # List children of an epic (nd-specific)
+pvg issues ready              # List ready stories (supports same filters as list)
+pvg nd search <query>         # Search stories (nd-specific)
+pvg issues blocked            # List blocked stories
+pvg nd graph                  # View dependency graph (nd-specific)
+pvg nd dep tree <id>          # View dependency tree (nd-specific)
+pvg nd path <id>              # Show execution path from issue (nd-specific)
+pvg nd stale                  # List stale stories (nd-specific)
+pvg nd stats                  # View statistics (nd-specific)
 ```
 
 **I NEVER:** create, update, close, or reprioritize stories (PM-only).

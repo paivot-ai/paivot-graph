@@ -7,7 +7,15 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep"]
 
 Review the current session's work and refine the vault notes that power paivot-graph. This closes the feedback loop: work produces experience, experience refines the vault, refined vault improves future work.
 
-**Vault:** `vlt vault="Claude"` (resolves path dynamically)
+**Vault:** `vlt vault="Claude"` (resolves path dynamically).
+
+> **Backend note.** This command operates against vlt-backed vaults: the system
+> Claude vault (always vlt) and the project vault at `.vault/knowledge/` (vlt by
+> default). Section-anchored edits (`vlt patch`), full-file rewrites (`vlt write`),
+> and folder-scoped listings (`vlt files folder=`) have no clean
+> provider-abstracted equivalents and are intentionally vlt-specific. Projects
+> that reconfigure `.paivot/config.yaml` to point notes at a non-vlt backend will
+> need to author equivalent workflows.
 
 **Scope rules:**
 - `scope: system` (or no scope property) -- propose changes only; user must approve via `/vault-triage`
@@ -28,9 +36,9 @@ Check which vault-backed content could be improved:
 ### Learned knowledge (patterns/, decisions/, debug/)
 
 ```bash
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="debug"
+pvg notes list --folder "patterns"
+pvg notes list --folder "decisions"
+pvg notes list --folder "debug"
 ```
 
 Agent operational prompts are self-contained in `agents/*.md` files (not in the vault).
@@ -45,7 +53,10 @@ If you identify an improvement to agent behavior during vault-evolve:
 ### Skill content (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Vault Knowledge Skill" follow
+pvg notes read "Vault Knowledge Skill"
+# Note: `pvg notes read` addresses by full path; pass the full path if not at vault root.
+# For transitive expansion (auto-include linked notes), use the vlt escape hatch:
+#   vlt vault="Claude" read file="Vault Knowledge Skill" follow
 ```
 
 Look for:
@@ -56,7 +67,9 @@ Look for:
 ### Behavioral notes (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Session Operating Mode" follow
+pvg notes read "Session Operating Mode"
+# For transitive expansion (recommended here):
+#   vlt vault="Claude" read file="Session Operating Mode" follow
 ```
 This returns Session Operating Mode plus all linked notes (Pre-Compact Checklist, Stop Capture Checklist, etc.) in a single call.
 
@@ -70,6 +83,9 @@ Look for:
 Check if the project has local knowledge:
 ```bash
 vlt vault=".vault/knowledge" files
+# Note: pvg notes addresses the configured vault only. Project-local vault access
+# at .vault/knowledge still uses vlt directly until the provider abstraction supports
+# explicit vault selection.
 ```
 
 Look for project-specific conventions, patterns, or decisions that need updating.
@@ -101,9 +117,9 @@ Criteria:
 
 To find candidates in the system vault:
 ```bash
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="debug"
+pvg notes list --folder "patterns"
+pvg notes list --folder "decisions"
+pvg notes list --folder "debug"
 ```
 
 To find candidates in the project vault:
@@ -111,6 +127,7 @@ To find candidates in the project vault:
 vlt vault=".vault/knowledge" files folder="patterns"
 vlt vault=".vault/knowledge" files folder="decisions"
 vlt vault=".vault/knowledge" files folder="debug"
+# Project-local vault still uses vlt directly (see note above).
 ```
 
 Read the notes and look for clusters -- multiple notes that share a common theme and together describe a repeatable process.
@@ -127,7 +144,7 @@ For each improvement identified, **read the target note's frontmatter first** an
 2. Create a proposal note in the vault `_inbox/`:
 
 ```bash
-vlt vault="Claude" create name="Proposal -- <Target Note>" path="_inbox/Proposal -- <Target Note>.md" content="---
+pvg notes create "_inbox/Proposal -- <Target Note>.md" --title "Proposal -- <Target Note>" --body "---
 type: proposal
 scope: system
 target: \"<full vault path of target note>\"
@@ -152,7 +169,8 @@ created: <YYYY-MM-DD>
 <full content of the target note at time of proposal>
 
 ## Impact
-Affects all projects using <Target Note>." silent
+Affects all projects using <Target Note>."
+# (vlt-only `silent` flag dropped)
 ```
 
 3. Tell the user: "Created proposal for <note>. Run /vault-triage to review and apply."
@@ -192,7 +210,7 @@ When updating any note, be conservative:
 For project-local notes identified as promotion candidates in Step 2, create a promotion proposal in the global vault's `_inbox/`:
 
 ```bash
-vlt vault="Claude" create name="Promotion -- <Note Title>" path="_inbox/Promotion -- <Note Title>.md" content="---
+pvg notes create "_inbox/Promotion -- <Note Title>.md" --title "Promotion -- <Note Title>" --body "---
 type: proposal
 scope: system
 promotion_from: project
@@ -219,7 +237,8 @@ Path: .vault/knowledge/<subfolder>/<Note>.md
 <target folder>/<Note>.md (e.g., patterns/, decisions/, debug/)
 
 ## Impact
-Would benefit all projects working with <relevant stack/domain>." silent
+Would benefit all projects working with <relevant stack/domain>."
+# (vlt-only `silent` flag dropped)
 ```
 
 Tell the user: "Created promotion proposal for <note>. Run /vault-triage to review."
@@ -270,7 +289,7 @@ Synthesized from:
 
 Create a proposal in the system vault `_inbox/`:
 ```bash
-vlt vault="Claude" create name="Skill Proposal -- <Name>" path="_inbox/Skill Proposal -- <Name>.md" content="---
+pvg notes create "_inbox/Skill Proposal -- <Name>.md" --title "Skill Proposal -- <Name>" --body "---
 type: skill-proposal
 scope: system
 source_notes:
@@ -298,7 +317,8 @@ created: <YYYY-MM-DD>
 <Step-by-step process>
 
 ## Source Notes
-<Full list of notes that informed this skill, with project context>" silent
+<Full list of notes that informed this skill, with project context>"
+# (vlt-only `silent` flag dropped)
 ```
 
 Tell the user: "Created skill proposal for <Name>. Run /vault-triage to review and apply."

@@ -135,14 +135,15 @@ These are structural checks that catch the most common developer omissions:
 
 - ACCEPT (two steps -- both mandatory):
   1. pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>
-     (Closing first keeps the nd FSM compatible with the Paivot label contract.)
-  2. pvg nd labels add <id> accepted
+     (Closing first keeps the nd FSM compatible with the Paivot label contract.
+     Kept on `pvg nd` because `--start` is nd-specific.)
+  2. pvg issues update <id> --add-label accepted
      (The merge gate also requires this label before merge.)
 - REJECT:
-  1. pvg nd update <id> --status=open --remove-label delivered --add-label rejected
-  2. pvg nd comments add <id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
-- Check milestone gate: pvg nd epic close-eligible
-- Add review notes: pvg nd comments add <id> "..."
+  1. pvg issues update <id> --status=open --remove-label delivered --add-label rejected
+  2. pvg issues comment <id> --body "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+- Check milestone gate: pvg nd epic close-eligible (nd-specific)
+- Add review notes: pvg issues comment <id> --body "..."
 
 ### Reporting Discovered Bugs (CRITICAL -- Setting-Dependent)
 
@@ -158,8 +159,8 @@ Otherwise: use the **centralized model** (output block for Sr PM).
 
 PM-Acceptor creates bugs directly with mandatory guardrails:
 
-1. Get story's parent epic: `nd show <story-id> --json` (extract parent field)
-2. Check for duplicates: `nd list --label discovered-by-pm --parent <EPIC_ID>`
+1. Get story's parent epic: `pvg issues show <story-id> --json` (extract parent field)
+2. Check for duplicates: `pvg issues list --label discovered-by-pm --parent <EPIC_ID>`
    If similar bug exists, reopen it instead of creating new.
 3. Create bug:
    - Title: `Bug: <symptom>` (brief, specific)
@@ -196,13 +197,13 @@ After accepting a story, check whether ALL siblings in the parent epic are now c
 
 ```bash
 # Get the parent epic
-PARENT=$(nd show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
 
 # If story has a parent, check if all children are closed
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
-  OPEN=$(nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
+  OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
-    nd close $PARENT --reason="All stories accepted"
+    pvg issues close $PARENT --reason="All stories accepted"
   fi
 fi
 ```
@@ -211,5 +212,5 @@ This is not optional. An epic with all children accepted must be closed immediat
 
 ### Decisions
 
-- ACCEPT: close with `nd close --reason --start`, then add `accepted` with `nd labels add <id> accepted` (see nd Commands above), then run Epic Auto-Close
-- REJECT: return the story to `open`, remove `delivered`, add `rejected`, then add 4-part notes via `nd comments add` (see nd Commands above)
+- ACCEPT: close with `pvg nd close --reason --start`, then add `accepted` with `pvg issues update <id> --add-label accepted` (see nd Commands above), then run Epic Auto-Close
+- REJECT: return the story to `open`, remove `delivered`, add `rejected`, then add 4-part notes via `pvg issues comment` (see nd Commands above)

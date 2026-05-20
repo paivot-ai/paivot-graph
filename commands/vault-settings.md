@@ -197,7 +197,7 @@ pvg settings proposal_expiry_days=14
 **If `workflow.fsm` was changed:**
 - `true` (enable):
   1. `pvg settings workflow.fsm=true` (pvg auto-syncs nd)
-  2. Verify nd is initialized: `nd stats`
+  2. Verify nd is initialized: `pvg nd stats` (nd-specific)
   3. Report: "FSM enabled. pvg guard will enforce nd status transitions: <sequence>."
   4. Report: "Paivot contract labels remain unchanged: delivered stays on in_progress, accepted on closed, rejected on open."
 - `false` (disable):

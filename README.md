@@ -138,6 +138,8 @@ Additional hook handlers are also registered for dispatcher tracking, user-promp
 
 | Command | What it does |
 |---------|--------------|
+| `/piv-loop` | Unattended execution loop -- drains ready stories through developer + PM-Acceptor cycles, handles bugs, and gates epic closure on E2E + Anchor review |
+| `/piv-cancel-loop` | Cancels an active execution loop without touching the backlog or vault |
 | `/vault-capture` | Deliberate knowledge capture pass -- routes knowledge to the global vault or project vault based on scope |
 | `/vault-evolve` | Identifies improvements to vault content; creates proposals for system notes, edits project notes directly |
 | `/vault-triage` | Reviews and accepts/rejects pending proposals for system-scoped vault notes |
@@ -147,13 +149,16 @@ Additional hook handlers are also registered for dispatcher tracking, user-promp
 
 ### Agents
 
-Eight specialized agents that read their full instructions from the vault at runtime:
+Eleven specialized agents that read their full instructions from the vault at runtime:
 
 | Agent | Role |
 |-------|------|
 | **business-analyst** | Discovery & framing -- asks clarifying questions until requirements are solid |
 | **architect** | System architecture, technical feasibility, ARCHITECTURE.md |
 | **designer** | UX/API/CLI design for any product type, DESIGN.md |
+| **ba-challenger** | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
+| **designer-challenger** | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
+| **architect-challenger** | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
 | **sr-pm** | Creates comprehensive backlogs from D&F documents |
 | **anchor** | Adversarial review of backlogs and milestones |
 | **developer** | Ephemeral -- implements one story with proof of passing tests |
@@ -222,6 +227,21 @@ No new agent types, hooks, or nd states. The mechanism is dispatcher orchestrati
 | **c4** | Optional architecture-as-code skill for `workspace.dsl`, diagram exports, and Architecture Contract maintenance when `architecture.c4` is enabled |
 | **vlt-skill** | Complete vlt command reference, agentic patterns, and advanced techniques (fetched from GitHub at install time) |
 
+### Provider abstraction (`pvg issues`, `pvg notes`)
+
+Agent prompts no longer call `nd` and `vlt` directly. They use `pvg issues` for backlog operations and `pvg notes` for knowledge-base operations -- a provider-abstracted layer that defaults to nd + vlt but can be reconfigured per project via `.paivot/config.yaml`:
+
+```yaml
+backlog:
+  primary:
+    adapter: nd            # default; or `linear`
+notes:
+  primary:
+    adapter: vlt           # default; placeholders for confluence, jira, notion
+```
+
+Reads always go to the primary adapter. Writes go to the primary first and then fan out best-effort to optional mirrors (useful for shadowing into Linear for visibility while keeping nd as the source of truth). Backend-specific operations that have no clean cross-backend abstraction -- nd dependency cycles, `vlt read --follow` graph traversal, heading-anchored `vlt patch` -- remain available via `pvg nd ...` and direct `vlt ...` calls. See [pvg's README](https://github.com/paivot-ai/pvg#provider-configuration) for the full schema.
+
 ## Knowledge governance
 
 Knowledge lives in three tiers with different governance rules:
@@ -229,12 +249,38 @@ Knowledge lives in three tiers with different governance rules:
 | Tier | Location | Scope | How changes are made |
 |------|----------|-------|---------------------|
 | **System** | Global Obsidian vault ("Claude") | All projects | Proposal workflow: `/vault-evolve` creates proposals, `/vault-triage` reviews them |
-| **Project** | `.vault/knowledge/` in each repo | One project | Via `vlt` commands only |
+| **Project** | `.vault/knowledge/` in each repo | One project | Via `pvg notes` (or `vlt` for backend-specific operations) |
 | **Session** | `~/.claude/projects/*/memory/` | One session | Ephemeral, managed by Claude Code |
 
 The nd live backlog is a separate execution concern from `.vault/knowledge/`.
 For concurrent multi-branch work, keep the mutable nd vault outside branch
 checkouts and share it across worktrees. See [docs/LIVE_SOR.md](docs/LIVE_SOR.md).
+
+### Convention: Paivot projects do not use a project-level `CLAUDE.md`
+
+A Paivot-managed project (any directory containing `.vault/issues/` or
+`.paivot/config.yaml`) deliberately has **no** project-level `CLAUDE.md`. The
+project vault and the agent prompts are the single source of truth -- a parallel
+`CLAUDE.md` creates two competing sources, drift, and rule duplication.
+
+If you want to record a project-specific hard rule (e.g., "no skip-if-missing
+integration tests", "all migrations must be reversible"), write it as a
+`scope: project` note under `.vault/knowledge/conventions/`. The Sr PM's
+Phase 1 hard-rule ingestion reads those notes automatically (alongside your
+user global `~/.claude/CLAUDE.md`) and feeds them into the Phase 7a Sweep 2
+quality gates.
+
+Recommended one-liner to add to your user global `~/.claude/CLAUDE.md` so any
+session understands this convention:
+
+> **Paivot project detection.** If the working directory or any ancestor
+> contains `.vault/issues/` or `.paivot/config.yaml`, treat it as a
+> Paivot-managed project: do not create or expect a project-level
+> `CLAUDE.md`. Project-specific conventions live under
+> `.vault/knowledge/conventions/`; methodology lives in the Paivot vault;
+> workflow is governed by the agent prompts in the `paivot-graph` plugin
+> (or `paivot-codex`). Hard rules that would normally live in a project
+> `CLAUDE.md` belong as `scope: project` vault notes instead.
 
 ### Why vlt-only access matters
 

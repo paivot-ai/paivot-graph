@@ -89,8 +89,8 @@ For the full nd CLI reference, read the nd skill. Key diagnostic commands:
 - MANDATORY SKILLS section in every story?
 - **External integration stories properly structured?** (see External Integration Verification below)
 - Security/compliance addressed?
-- Zero dependency cycles? (run `nd dep cycles`)
-- No stale issues? (run `nd stale --days=14`)
+- Zero dependency cycles? (run `pvg nd dep cycles`)
+- No stale issues? (run `pvg nd stale --days=14`)
 - **Boundary maps consistent?** Every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED.
 - **CONSUMES includes API signatures?** CONSUMES entries that name only a file path
   (without function signatures and usage examples) are INSUFFICIENT. Developers are

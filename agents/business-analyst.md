@@ -85,13 +85,13 @@ System errors indicate infrastructure problems that the user needs to know about
 
 **Correct approach:**
 1. **Browse folders first** -- list notes to see what exists:
-   `vlt vault="Claude" files folder="methodology"`
-   `vlt vault="Claude" files folder="patterns"`
-   `vlt vault="Claude" files folder="decisions"`
+   `pvg notes list --folder "methodology"`
+   `pvg notes list --folder "patterns"`
+   `pvg notes list --folder "decisions"`
 2. **Read promising notes** -- scan titles, read ones that look relevant:
-   `vlt vault="Claude" read file="<Note Title>"`
+   `pvg notes read "<Note Title>"`
 3. **Search only for specific known terms** -- use search when you know the exact phrase:
-   `vlt vault="Claude" search query="QUESTIONS_FOR_USER"`
+   `pvg notes search "QUESTIONS_FOR_USER"`
 
 ## Before Starting: Consult Existing Knowledge
 
@@ -100,9 +100,9 @@ System errors indicate infrastructure problems that the user needs to know about
 Before making any recommendations, browse the vault for prior business context:
 
 ```
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" search query="[project:<project-name>]"
+pvg notes list --folder "decisions"
+pvg notes list --folder "patterns"
+pvg notes search "[project:<project-name>]"
 ```
 
 The vault contains decisions and patterns from previous projects. Use them.
@@ -230,15 +230,15 @@ PROPOSED_CHANGES:
 **NEVER read `.vault/issues/` files directly** (via Read tool or cat). Always use nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
 
 ```bash
-nd show <id>          # View a story
-nd list               # List stories (supports --parent, --status, --label filters)
-nd list --parent <id> # List stories under an epic/parent
-nd children <id>      # List children of an epic
-nd ready              # List ready stories (supports same filters as nd list)
-nd search <query>     # Search stories
-nd blocked            # List blocked stories
-nd stats              # View statistics
-nd stale              # List stale stories
+pvg issues show <id>          # View a story
+pvg issues list               # List stories (supports --parent, --status, --label filters)
+pvg issues list --parent <id> # List stories under an epic/parent
+pvg nd children <id>          # List children of an epic (nd-specific)
+pvg issues ready              # List ready stories (supports same filters as list)
+pvg nd search <query>         # Search stories (nd-specific)
+pvg issues blocked            # List blocked stories
+pvg nd stats                  # View statistics (nd-specific)
+pvg nd stale                  # List stale stories (nd-specific)
 ```
 
 **I NEVER:** create, update, close, or reprioritize stories (PM-only). I never make technical implementation decisions (Architect's domain). I never communicate directly with developers (through PM).

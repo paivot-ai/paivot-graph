@@ -7,6 +7,11 @@ allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 
 Capture knowledge from the current session to the appropriate vault. Auto-derives tags, validates domains, suggests related links, and triages to the correct folder.
 
+> **Backend note.** Creation/append/search uses `pvg notes` (provider-abstracted).
+> `vlt vault="Claude" move` calls below are intentionally vlt-specific because the
+> global Claude vault is always vlt-backed and folder-move semantics do not
+> generalize to other backends (Linear/Confluence have no folder concept).
+
 ## Step 1: Load Context
 
 Load the vault-knowledge skill to understand the controlled domain vocabulary and note template:
@@ -66,7 +71,7 @@ Ask: "Would this knowledge help someone on a DIFFERENT project with a DIFFERENT 
 Before creating, search for related notes:
 
 ```bash
-vlt vault="Claude" search query="<keywords from title>" --json
+pvg notes search "<keywords from title>" --json
 ```
 
 Present top 5 matches:
@@ -140,7 +145,8 @@ created: YYYY-MM-DD
 Create in `_inbox/` first:
 
 ```bash
-vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="<full-content>" silent timestamps
+pvg notes create "_inbox/<Title>.md" --title "<Title>" --body "<full-content>"
+# (vlt-only flags `silent` and `timestamps` dropped: no provider-abstracted equivalent yet)
 ```
 
 ## Step 8: Triage Immediately
@@ -163,7 +169,7 @@ Folder mapping:
 Append a session update to the project note:
 
 ```bash
-vlt vault="Claude" append file="<Project>" content="
+pvg notes append "<Project>" --body "
 
 ## Session $(date +%Y-%m-%d)
 - <brief summary of what was done>
@@ -173,7 +179,7 @@ vlt vault="Claude" append file="<Project>" content="
 If project note doesn't exist, create it:
 
 ```bash
-vlt vault="Claude" create name="<Project>" path="projects/<Project>.md" content="---
+pvg notes create "projects/<Project>.md" --title "<Project>" --body "---
 type: project
 project: <project>
 stack: [<detected-stack>]
@@ -193,7 +199,8 @@ created: $(date +%Y-%m-%d)
 
 ## Tags
 
-#<project-domain-tag>" silent timestamps
+#<project-domain-tag>"
+# (vlt-only flags `silent` and `timestamps` dropped: no provider-abstracted equivalent yet)
 ```
 
 ## Step 10: Report Summary
