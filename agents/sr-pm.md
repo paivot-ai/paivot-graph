@@ -414,25 +414,52 @@ Read and extract from all D&F documents:
 - Security requirements (OAuth, JWT, encryption)
 - Performance requirements (latency SLAs)
 
-**CLAUDE.md (project hard rules) -- MANDATORY when present:**
+**Project hard rules -- MANDATORY ingestion before any other Phase:**
 
-If the project root (or any ancestor) contains `CLAUDE.md`, read it before any other Phase. CLAUDE.md is where the project encodes **non-negotiable rules** the dispatcher and every agent must honor: "no mocks in integration tests", "no skip-if-missing", "always TDD", "no commits without passing CI", etc. These rules are not optional and not advisory.
+Projects encode **non-negotiable rules** the dispatcher and every agent must honor: "no mocks in integration tests", "no skip-if-missing", "always TDD", "no commits without passing CI", etc. These rules are not optional and not advisory. Source them from THREE places, in order. **Skipping this step means the project's own hard rules will not be enforced by your pre-flight, and the Anchor will catch them at extra cost.**
 
-Extract every imperative rule into a project-specific `quality_gates` list. Phase 7a Sweep 2 will grep walking-skeleton ACs for these rules in addition to the generic defaults, so a CLAUDE.md violation in the skeleton fails the sweep mechanically. Common extraction patterns:
+Source 1: **Project-level `.vault/knowledge/conventions/*.md`** (Paivot-managed projects).
+Paivot-managed projects (any directory containing `.vault/issues/` or `.paivot/config.yaml`) do not use a project-level `CLAUDE.md` by convention; project-specific rules live as `scope: project` vault notes under `.vault/knowledge/conventions/`. Read every note there.
+
+Source 2: **Project root `CLAUDE.md`** (non-Paivot projects, or projects that explicitly opt in to one).
+If a `CLAUDE.md` exists at the git root, read it.
+
+Source 3: **User global `~/.claude/CLAUDE.md`**.
+The user's personal universals (UNIX philosophy, testing pyramid, language conventions). Always present; always relevant.
 
 ```bash
-# Find CLAUDE.md (current dir or any ancestor)
-claude_md=$(git rev-parse --show-toplevel 2>/dev/null)/CLAUDE.md
-[ ! -f "$claude_md" ] && claude_md=~/.claude/CLAUDE.md
-[ ! -f "$claude_md" ] && echo "NOTE: no CLAUDE.md found"
+project_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-# Extract imperative rules: lines containing "no <X>", "always <X>",
-# "must <X>", "never <X>", "MUST", "NEVER", "REQUIRED"
-grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$claude_md" 2>/dev/null \
-  | head -50
+# Source 1: project vault conventions (Paivot project case)
+conventions_dir="$project_root/.vault/knowledge/conventions"
+project_paivot=0
+if [ -d "$project_root/.vault/issues" ] || [ -f "$project_root/.paivot/config.yaml" ]; then
+  project_paivot=1
+  if [ -d "$conventions_dir" ]; then
+    for note in "$conventions_dir"/*.md; do
+      [ -f "$note" ] || continue
+      echo "=== convention: $(basename "$note") ==="
+      grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$note"
+    done
+  else
+    echo "NOTE: Paivot project but no $conventions_dir -- only global rules will apply"
+  fi
+fi
+
+# Source 2: project CLAUDE.md (non-Paivot, or explicit opt-in)
+if [ "$project_paivot" = "0" ] && [ -f "$project_root/CLAUDE.md" ]; then
+  echo "=== project CLAUDE.md ==="
+  grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$project_root/CLAUDE.md" | head -50
+fi
+
+# Source 3: user global (always)
+if [ -f ~/.claude/CLAUDE.md ]; then
+  echo "=== user global CLAUDE.md ==="
+  grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' ~/.claude/CLAUDE.md | head -50
+fi
 ```
 
-Translate each rule into a grep pattern and append to the project `quality_gates` list passed into Sweep 2. **Skipping this step means the project's own hard rules will not be enforced by your pre-flight, and the Anchor will catch them at extra cost.**
+Translate every imperative rule into a grep pattern and append to the project-specific `quality_gates` list passed into Sweep 2. **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
 
 ### Phase 2: Identify Gaps and Ambiguities
 
@@ -617,7 +644,7 @@ Before declaring backlog ready, verify all of these:
 - ☐ All stories have testable acceptance criteria
 - ☐ Terminology audit passed (compare stories to ARCHITECTURE.md exactly)
 - ☐ **Brownfield filesystem audit passed** (every path/module referenced in stories exists on disk OR is declared in a PRODUCES block)
-- ☐ **CLAUDE.md hard rules extracted in Phase 1** and incorporated into Sweep 2 quality_gates
+- ☐ **Project hard rules extracted in Phase 1** from `.vault/knowledge/conventions/*.md` (Paivot project) OR project `CLAUDE.md` (non-Paivot) PLUS the user global, and incorporated into Sweep 2 quality_gates
 - ☐ Coverage checklist complete (every D&F point represented)
 - ☐ Backlog prioritized appropriately
 - ☐ `pvg lint` passes (no artifact collisions -- see Collision Resolution below)
@@ -713,9 +740,9 @@ The walking skeleton is the template every downstream developer copies. If it om
 
 **Source the `quality_gates` list from TWO places:**
 1. **Generic defaults** (always apply): `@spec`, `DLP`, `rate-limit`, `audit`, `config-register`, `error-handling`
-2. **Project-specific rules from CLAUDE.md** (extracted in Phase 1): "no skip-if-missing", "no mocks in integration", "always TDD", etc.
+2. **Project-specific rules** (extracted in Phase 1 from the three-source ingestion -- `.vault/knowledge/conventions/*.md` for Paivot projects, project root `CLAUDE.md` for non-Paivot, and the user global): "no skip-if-missing", "no mocks in integration", "always TDD", etc.
 
-The CLAUDE.md rules are **more important** than the defaults -- they encode this specific project's non-negotiable constraints. If a CLAUDE.md rule is violated in the walking skeleton, every downstream story propagates the violation.
+The project-specific rules are **more important** than the defaults -- they encode this specific project's non-negotiable constraints. If a project-rule is violated in the walking skeleton, every downstream story propagates the violation.
 
 ```bash
 # Defaults
@@ -1283,6 +1310,19 @@ For every CONSUMES reference:
 
 ## Changelog
 
+- 2026-05-19 (evening): Paivot-project convention: no project CLAUDE.md
+  - Paivot-managed projects (detected by `.vault/issues/` or `.paivot/config.yaml`)
+    do not use a project-level `CLAUDE.md` by convention -- project hard rules
+    live as `scope: project` notes under `.vault/knowledge/conventions/`
+  - **Phase 1 hard-rule ingestion**: rewritten from "read CLAUDE.md" to a
+    three-source protocol -- (1) `.vault/knowledge/conventions/*.md` for
+    Paivot projects, (2) project root `CLAUDE.md` for non-Paivot projects,
+    (3) user global `~/.claude/CLAUDE.md` (always). Project notes win when
+    a rule appears in both a project convention and the global
+  - Sweep 2 quality_gates source label updated to reflect the new ingestion
+    path; Phase 7 checklist item rewritten
+  - Goal: keep Paivot's single-source-of-truth (vault notes + agent prompts)
+    discipline intact -- a Paivot project should never need a CLAUDE.md
 - 2026-05-19 (afternoon): Closed Sr PM judgment-gap surfaced in a live brownfield Anchor pass
   - Anchor caught 5 defects on first pass with v1.53.11 loaded; analysis showed
     the 13 mechanical sweeps have a hard ceiling at judgment-bound defects

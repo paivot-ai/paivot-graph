@@ -236,6 +236,32 @@ The nd live backlog is a separate execution concern from `.vault/knowledge/`.
 For concurrent multi-branch work, keep the mutable nd vault outside branch
 checkouts and share it across worktrees. See [docs/LIVE_SOR.md](docs/LIVE_SOR.md).
 
+### Convention: Paivot projects do not use a project-level `CLAUDE.md`
+
+A Paivot-managed project (any directory containing `.vault/issues/` or
+`.paivot/config.yaml`) deliberately has **no** project-level `CLAUDE.md`. The
+project vault and the agent prompts are the single source of truth -- a parallel
+`CLAUDE.md` creates two competing sources, drift, and rule duplication.
+
+If you want to record a project-specific hard rule (e.g., "no skip-if-missing
+integration tests", "all migrations must be reversible"), write it as a
+`scope: project` note under `.vault/knowledge/conventions/`. The Sr PM's
+Phase 1 hard-rule ingestion reads those notes automatically (alongside your
+user global `~/.claude/CLAUDE.md`) and feeds them into the Phase 7a Sweep 2
+quality gates.
+
+Recommended one-liner to add to your user global `~/.claude/CLAUDE.md` so any
+session understands this convention:
+
+> **Paivot project detection.** If the working directory or any ancestor
+> contains `.vault/issues/` or `.paivot/config.yaml`, treat it as a
+> Paivot-managed project: do not create or expect a project-level
+> `CLAUDE.md`. Project-specific conventions live under
+> `.vault/knowledge/conventions/`; methodology lives in the Paivot vault;
+> workflow is governed by the agent prompts in the `paivot-graph` plugin
+> (or `paivot-codex`). Hard rules that would normally live in a project
+> `CLAUDE.md` belong as `scope: project` vault notes instead.
+
 ### Why vlt-only access matters
 
 When dozens of agents run concurrently -- developers implementing stories, PM-Acceptors reviewing deliveries, the retro agent extracting learnings -- they all read and write vault notes. vlt write paths use advisory file locking (`.vlt.lock`), and pvg hook write paths acquire that lock explicitly before mirroring session state. Direct file I/O (Edit, Write, `cat >`) bypasses that protection, creating race conditions where one agent's write silently overwrites another's.
