@@ -414,6 +414,26 @@ Read and extract from all D&F documents:
 - Security requirements (OAuth, JWT, encryption)
 - Performance requirements (latency SLAs)
 
+**CLAUDE.md (project hard rules) -- MANDATORY when present:**
+
+If the project root (or any ancestor) contains `CLAUDE.md`, read it before any other Phase. CLAUDE.md is where the project encodes **non-negotiable rules** the dispatcher and every agent must honor: "no mocks in integration tests", "no skip-if-missing", "always TDD", "no commits without passing CI", etc. These rules are not optional and not advisory.
+
+Extract every imperative rule into a project-specific `quality_gates` list. Phase 7a Sweep 2 will grep walking-skeleton ACs for these rules in addition to the generic defaults, so a CLAUDE.md violation in the skeleton fails the sweep mechanically. Common extraction patterns:
+
+```bash
+# Find CLAUDE.md (current dir or any ancestor)
+claude_md=$(git rev-parse --show-toplevel 2>/dev/null)/CLAUDE.md
+[ ! -f "$claude_md" ] && claude_md=~/.claude/CLAUDE.md
+[ ! -f "$claude_md" ] && echo "NOTE: no CLAUDE.md found"
+
+# Extract imperative rules: lines containing "no <X>", "always <X>",
+# "must <X>", "never <X>", "MUST", "NEVER", "REQUIRED"
+grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$claude_md" 2>/dev/null \
+  | head -50
+```
+
+Translate each rule into a grep pattern and append to the project `quality_gates` list passed into Sweep 2. **Skipping this step means the project's own hard rules will not be enforced by your pre-flight, and the Anchor will catch them at extra cost.**
+
 ### Phase 2: Identify Gaps and Ambiguities
 
 ⚠️ **CRITICAL:** Before creating backlog, ask clarifying questions.
@@ -596,9 +616,12 @@ Before declaring backlog ready, verify all of these:
 - ☐ All stories INVEST-compliant (atomic, no bundled scope)
 - ☐ All stories have testable acceptance criteria
 - ☐ Terminology audit passed (compare stories to ARCHITECTURE.md exactly)
+- ☐ **Brownfield filesystem audit passed** (every path/module referenced in stories exists on disk OR is declared in a PRODUCES block)
+- ☐ **CLAUDE.md hard rules extracted in Phase 1** and incorporated into Sweep 2 quality_gates
 - ☐ Coverage checklist complete (every D&F point represented)
 - ☐ Backlog prioritized appropriately
 - ☐ `pvg lint` passes (no artifact collisions -- see Collision Resolution below)
+- ☐ **Phase 7b adversarial self-review completed** with a per-story verdict line in the run summary
 
 ### Phase 7a: Pre-Submission Mechanical Sweep (MANDATORY, Anchor-aligned)
 
@@ -638,7 +661,11 @@ Self-reject if you cannot tick every item. Pre-flighting in this order minimizes
 
 ---
 
-**Sweep 1 -- Terminology audit (Anchor priority #1).**
+**Sweep 1 -- Terminology + filesystem audit (Anchor priority #1).**
+
+Anchor's #1 rejection cause is **context divergence**: identifiers in story bodies that do not match the source of truth. The source depends on the project type. Run BOTH sub-sweeps below.
+
+*Sweep 1a -- Terminology audit against ARCHITECTURE.md (greenfield default).*
 Every technical identifier in story bodies (column names, env vars, HTTP headers, API field names, endpoint paths, data types, component names) must match ARCHITECTURE.md verbatim. A single rename causes Anchor rejection and cascading developer failures. See *Terminology Audit (Before Submission)* below for the full extraction protocol. Quick mechanical pass:
 
 ```bash
@@ -655,13 +682,52 @@ for id in $(pvg issues list --json | jq -r '.[].id'); do
 done
 ```
 
+*Sweep 1b -- Brownfield filesystem audit (MANDATORY when porting, migrating, refactoring, or extending existing code).*
+
+For brownfield work, **ARCHITECTURE.md is aspirational; the existing codebase is reality.** Fabricated paths and module names are the most common rejection cause. Every `path/file.ext` reference in a story body must resolve to a real file (or be marked as an explicit creation by THIS story). Determine brownfield mode heuristically -- if the repo has substantial history, run the audit:
+
+```bash
+# Heuristic: more than a few hundred commits OR an explicit brownfield flag.
+commits=$(git log --oneline 2>/dev/null | wc -l)
+if [ "${commits:-0}" -gt 50 ] || [ "${BROWNFIELD:-0}" = "1" ]; then
+  for id in $(pvg issues list --json | jq -r '.[].id'); do
+    pvg issues show "$id" --json | jq -r '.body' \
+      | grep -oE '\b([a-zA-Z_][a-zA-Z0-9_]*/)+[a-zA-Z_][a-zA-Z0-9_]*\.(py|ts|tsx|js|ex|exs|go|rs|rb|java|kt|swift|c|cpp|h|hpp|sql|yml|yaml|json|toml|md)\b' \
+      | sort -u \
+      | while read path; do
+          # Allow if file exists OR if the story explicitly PRODUCES it
+          [ -e "$path" ] && continue
+          produces=$(pvg issues show "$id" --json | jq -r '.body' \
+            | awk '/^PRODUCES:/{inp=1;next} inp&&/^- /{print} inp&&NF==0{inp=0}')
+          echo "$produces" | grep -q "$path" && continue
+          echo "FABRICATED PATH in $id: $path (does not exist; not in PRODUCES)"
+        done
+  done
+fi
+```
+
+A path that appears in a story body without existing on disk AND without being declared in the story's PRODUCES block is a fabrication. Anchor will catch it; this sweep catches it first.
+
 **Sweep 2 -- Walking skeleton present AND establishes all quality gate patterns.**
 The walking skeleton is the template every downstream developer copies. If it omits `@spec`, DLP integration, rate-limit hooks, audit-log calls, config registration, or the project's standard error-handling pattern, every subsequent story propagates the gap. Each milestone epic must contain a walking-skeleton story whose AC explicitly require establishing these patterns -- not just "system works end-to-end."
 
+**Source the `quality_gates` list from TWO places:**
+1. **Generic defaults** (always apply): `@spec`, `DLP`, `rate-limit`, `audit`, `config-register`, `error-handling`
+2. **Project-specific rules from CLAUDE.md** (extracted in Phase 1): "no skip-if-missing", "no mocks in integration", "always TDD", etc.
+
+The CLAUDE.md rules are **more important** than the defaults -- they encode this specific project's non-negotiable constraints. If a CLAUDE.md rule is violated in the walking skeleton, every downstream story propagates the violation.
+
 ```bash
-# Adjust the quality_gates list to the patterns this project actually requires
-# (project-specific; common patterns shown below).
-quality_gates="@spec|DLP|rate.?limit|audit (log|trail)|config.?regist|error.?handling"
+# Defaults
+quality_gates_default="@spec|DLP|rate.?limit|audit (log|trail)|config.?regist|error.?handling"
+
+# Project-specific (extracted in Phase 1 from CLAUDE.md; example patterns)
+# Each project's list will differ. These should reflect the imperative rules
+# (no/always/must/never/MUST/NEVER/REQUIRED) you extracted in Phase 1.
+quality_gates_project="no.skip.if.missing|no mocks? in integration|always TDD|integration tests? must"
+
+quality_gates="${quality_gates_default}|${quality_gates_project}"
+
 for epic_id in $(pvg issues list --label milestone --json | jq -r '.[].id'); do
   skeleton=$(pvg issues list --parent "$epic_id" --label walking-skeleton --json | jq -r '.[0].id // empty')
   if [ -z "$skeleton" ]; then
@@ -676,6 +742,8 @@ for epic_id in $(pvg issues list --label milestone --json | jq -r '.[].id'); do
   [ -n "$missing" ] && echo "GAP in skeleton $skeleton: AC do not establish:$missing"
 done
 ```
+
+Note: pattern presence is necessary but not sufficient. Sweep 2 catches *omission*; Phase 7b's adversarial self-review (below) catches *thinness* -- AC that mention the patterns by keyword but do not actually establish them in code.
 
 **Sweep 3 -- Vertical slices, not horizontal layers.**
 A horizontal layer story sounds like "Build the ReasoningEngine module" -- produces an isolated component with no demoable behavior. A vertical slice cuts API → service → data → response in one story and yields an observable outcome.
@@ -861,7 +929,39 @@ done
 
 Any line printed must be resolved -- substitute the real `TIX-*` ID via `pvg issues update <id> --body ...` or confirm it is a documented external reference.
 
-**Submission gate:** Do NOT proceed to "When ready" until all thirteen sweeps pass clean **and** you have walked Anchor's Master Checklist (above) end-to-end. If any sweep flags an item that you decide is a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it. **Fix in sweep order**: a single unfixed Sweep-1 or Sweep-2 defect will re-trigger rejection no matter how clean the rest of the backlog is.
+---
+
+### Phase 7b: Adversarial Self-Review (MANDATORY judgment pass)
+
+Phase 7a's 13 sweeps catch **mechanical** defects (placeholder IDs, missing signatures, miscounted capstones, fabricated paths, missing CLAUDE.md gates). They do NOT catch **judgment** defects -- "this walking skeleton looks too thin", "this scope exclusion is artificial", "the AC enumerate only the happy path". The Anchor catches those, but every Anchor finding costs a round-trip.
+
+**Before submitting, do one judgment pass yourself.** Read each story end-to-end while wearing the Anchor's hat. Mechanical sweeps run with `grep`; this pass runs in your head. Be honest -- the goal is to find what you would find if you had not authored these stories.
+
+For every story, answer the following in writing in your run summary (not in the story body):
+
+1. **Reality check (depth).** Does this story reference any file path, module name, function, env var, or external service that I have not personally verified exists? If yes, stop and verify with `git grep`, `ls`, or `pvg issues show`. Sweep 1b catches some of these; this pass catches the ones that did not match its regex (e.g., constants, function names without file extensions).
+
+2. **Skeleton depth.** Re-read the walking skeleton. Does it actually exercise every layer end-to-end with non-trivial behavior, or is the AC a list of stubs? The Anchor asks: "Would a developer copying this pattern produce production-ready code, or shovelware?" If the skeleton's AC are "service responds 200", "endpoint registered", "config loaded" -- that is shovelware. Push for real behavior: "user submits X, receives Y validated against Z, stored in W, emits event V".
+
+3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include.
+
+4. **Coverage enumeration.** Do the ACs enumerate every test scenario the developer must implement (happy path, validation failures, error paths, edge cases, security boundaries), or do they list only the happy path? Anchor will flag "tests pass" or "integration test passes" as vacuous. List the negative paths explicitly.
+
+5. **CLAUDE.md compliance (re-check).** Re-read the project's CLAUDE.md hard rules extracted in Phase 1. For each story, does any AC, testing strategy, or implementation note violate one? Common violations to look for explicitly: skip-if-missing tests, mocks in integration tests, "TODO: add tests later", tests gated on env vars, commits that would skip CI. Sweep 2 catches violations in the walking skeleton; this pass catches them in every other story.
+
+If any answer surfaces a defect, fix it before submitting. The goal is for the Anchor's first-pass finding count to drop substantially because you found the judgment defects yourself.
+
+**Document your self-review verdict in the submission summary** with one line per story:
+
+```
+TIX-abc: self-review verdict = clean | fixed (description) | accepted with rationale (description)
+```
+
+This both forces the pass to actually happen and gives the Anchor (and the orchestrator) visibility that you did the work. A run summary without Phase 7b verdicts is incomplete and should be treated as a structural defect.
+
+---
+
+**Submission gate:** Do NOT proceed to "When ready" until: (a) all thirteen Phase 7a sweeps pass clean (including Sweep 1b for brownfield projects); (b) you have walked Anchor's Master Checklist end-to-end; (c) Phase 7b adversarial self-review has produced a per-story verdict line. If any sweep or self-review item flags something you decide is a false positive, document the rationale in the submission summary so the Anchor can verify rather than re-flag. **Fix in sweep order**: a single unfixed Sweep-1 or Sweep-2 defect will re-trigger rejection no matter how clean the rest of the backlog is.
 
 **When ready:**
 
@@ -1183,6 +1283,34 @@ For every CONSUMES reference:
 
 ## Changelog
 
+- 2026-05-19 (afternoon): Closed Sr PM judgment-gap surfaced in a live brownfield Anchor pass
+  - Anchor caught 5 defects on first pass with v1.53.11 loaded; analysis showed
+    the 13 mechanical sweeps have a hard ceiling at judgment-bound defects
+    (thin walking skeletons, fabricated paths in brownfield work, missing
+    CLAUDE.md hard rules, artificial scope exclusion, coverage enumeration)
+  - **Phase 1**: added MANDATORY CLAUDE.md ingestion step -- extract imperative
+    rules ("no skip-if-missing", "no mocks in integration", "always TDD") and
+    append to the Sweep 2 `quality_gates` list
+  - **Sweep 1 split into 1a + 1b**: 1a remains the ARCHITECTURE.md terminology
+    audit (greenfield default); 1b is a new brownfield filesystem audit that
+    verifies every `path/file.ext` referenced in a story body resolves to a
+    real file (or is declared in PRODUCES). Triggered when the repo has > 50
+    commits or BROWNFIELD=1
+  - **Sweep 2**: now sources `quality_gates` from generic defaults PLUS the
+    CLAUDE.md-extracted project-specific rules
+  - **Phase 7b (NEW)**: mandatory judgment pass after the 13 sweeps. Sr PM
+    reads each story while wearing the Anchor's hat and answers five
+    judgment questions (reality, depth, scope honesty, coverage enumeration,
+    CLAUDE.md compliance). Produces a per-story verdict line in the run
+    summary so the orchestrator can see the pass happened
+  - **Submission gate** updated to require Phase 7b verdicts in the summary
+  - **Phase 7 checklist**: added brownfield-filesystem-audit, CLAUDE.md-extracted,
+    and Phase-7b-completed items
+  - Goal: catch the judgment defects Sweep 1-13 cannot catch by design.
+    Mechanical sweeps catch mechanical defects cheaply; the judgment pass
+    catches what only model judgment can catch. Anchor's role remains, but
+    its first-pass findings should now skew toward genuinely hard calls
+    rather than reality-checks and CLAUDE.md violations
 - 2026-05-19: Aligned Phase 7a with Anchor's Master Checklist
   - Added "Anchor's Master Checklist (the bar you must clear)" section at the
     top of Phase 7a -- verbatim mirror of `agents/anchor.md` review criteria
