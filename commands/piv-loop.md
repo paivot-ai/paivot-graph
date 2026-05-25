@@ -230,6 +230,19 @@ The developer prompt MUST include the worktree path so they know where to work:
 Work in: /path/to/repo/.claude/worktrees/dev-STORY_ID
 ```
 
+Pre-spawn invariant for every Developer and Conflict-fix agent:
+
+- parent dispatcher CWD is the project root
+- `story/STORY_ID` exists before the agent is spawned
+- `.claude/worktrees/dev-STORY_ID` exists and is checked out to `story/STORY_ID`
+- the developer prompt says `Work in: /abs/path/.claude/worktrees/dev-STORY_ID`
+- the developer is told not to create or checkout another branch
+
+For a parallel wave, create all story branches and all `dev-STORY_ID` worktrees
+before spawning the developers. Each developer gets exactly one distinct worktree
+path. If any worktree cannot be created, do not spawn the wave; repair the branch
+or worktree state first.
+
 **CRITICAL: Never use `isolation: "worktree"` for Developer or Conflict-fix agents.**
 It creates an auto-generated `worktree-agent-*` branch DISCONNECTED from the story
 branch. Commits on this orphan branch are lost when cleaned up. Always create developer
@@ -728,6 +741,32 @@ pvg loop cancel
 Developer and conflict-fix worktrees are dispatcher-managed on the story branch.
 PM-Acceptor uses Claude Code's `isolation: "worktree"` for automatic lifecycle
 management (see "PM Isolation" below).
+
+### Parallel Developer Waves
+
+Parallel fanout is allowed only when each developer has a dispatcher-managed
+story worktree:
+
+```bash
+git worktree add .claude/worktrees/dev-STORY_A story/STORY_A
+git worktree add .claude/worktrees/dev-STORY_B story/STORY_B
+git worktree add .claude/worktrees/dev-STORY_C story/STORY_C
+```
+
+Then spawn one Developer per worktree. Every prompt must include the unique
+absolute `Work in:` path. A post-fix wave must not create `-v2`/`-v3` collision
+recovery branches, must not leave developer commits on `worktree-agent-*`
+branches, and must not show staged files from a sibling story.
+
+Smoke test:
+
+```bash
+scripts/smoke_parallel_dev_worktrees.sh
+```
+
+This script simulates a three-developer wave with staged and committed files in
+separate story worktrees, then verifies there are no sibling staged files,
+collision-recovery branch suffixes, or developer `worktree-agent-*` branches.
 
 ### Full Flow
 
