@@ -134,6 +134,18 @@ MANDATORY SKILLS TO REVIEW:
 [skill-name if applicable, or "None identified"]
 ```
 
+### Paivot Dispatcher Bug Rule
+
+When writing stories about parallel Developer or Conflict-fix execution, require
+dispatcher-managed story worktrees, not native agent worktree isolation.
+
+- Correct mechanism: `git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID`
+- Developer prompt must include the absolute `Work in:` path.
+- Native `isolation: "worktree"` is for PM-Acceptor/read-only review only,
+  because it creates `worktree-agent-*` branches that are not `story/STORY_ID`.
+- Acceptance criteria should flag post-fix `-v2`/`-v3` collision-recovery
+  branches as regressions.
+
 ---
 
 ## EARS Reference
@@ -1310,6 +1322,14 @@ For every CONSUMES reference:
 
 ## Changelog
 
+- 2026-05-25: Added Paivot dispatcher bug rule for parallel developers
+  - Sr PM must specify dispatcher-managed `dev-STORY_ID` worktrees for
+    code-writing developer/conflict-fix stories, with the absolute `Work in:`
+    path in the prompt.
+  - Native `isolation: "worktree"` is reserved for PM-Acceptor/read-only review
+    because it creates `worktree-agent-*` branches outside the story branch.
+  - Post-fix `-v2`/`-v3` branch suffixes are a regression signal for parallel
+    developer collision bugs.
 - 2026-05-19 (evening): Paivot-project convention: no project CLAUDE.md
   - Paivot-managed projects (detected by `.vault/issues/` or `.paivot/config.yaml`)
     do not use a project-level `CLAUDE.md` by convention -- project hard rules
