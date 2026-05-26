@@ -742,6 +742,22 @@ Developer and conflict-fix worktrees are dispatcher-managed on the story branch.
 PM-Acceptor uses Claude Code's `isolation: "worktree"` for automatic lifecycle
 management (see "PM Isolation" below).
 
+### Cross-Session Isolation
+
+Multiple Claude Code windows may run Paivot against the same repository at the
+same time. This is supported only because every code-writing agent receives a
+dedicated story worktree under `.claude/worktrees/`; the parent checkout's HEAD
+must remain on the dispatcher branch and must not be used for agent work.
+
+Never check out `worktree-agent-*` branches in the parent repository. Those are
+Claude Code's transient isolation branches for PM/review shells, not story
+branches. `pvg`'s PreToolUse guard blocks `git checkout worktree-agent-*` and
+`git switch worktree-agent-*` while dispatcher mode is active, because that
+operation can reset a sibling Paivot window's shared HEAD and make in-flight
+edits appear to vanish. Stale `worktree-agent-*` branches may be deleted
+directly via `git branch -D` or `git push origin --delete`; they must not be
+checked out.
+
 ### Parallel Developer Waves
 
 Parallel fanout is allowed only when each developer has a dispatcher-managed
