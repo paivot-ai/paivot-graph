@@ -257,6 +257,14 @@ Then create a worktree for the developer on the story branch:
 git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
 
+**Never re-spawn a developer into a worktree whose previous occupant may
+still be alive.** A killed or "completed" background developer can leave a
+long-running build or test process (e.g. an in-container `mix test`) holding
+build locks; a second developer in the same worktree then deadlocks on the
+shared build state. Before reusing a worktree: verify the prior agent is
+gone, stop any containers it started (`docker compose down` in the
+worktree), and prefer removing and re-creating the worktree over reuse.
+
 The developer prompt MUST include the worktree path so they know where to work:
 ```
 Work in: /path/to/repo/.claude/worktrees/dev-STORY_ID
@@ -472,8 +480,8 @@ git branch -D epic/EPIC_ID
 requires the epic to be closed BEFORE the `accepted` label is added -- two
 canonical steps, in this order:
 ```bash
-pvg issues close EPIC_ID --reason="All stories accepted, gate passed"
-pvg issues update EPIC_ID --add-label accepted
+pvg nd close EPIC_ID --reason="All stories accepted, gate passed"
+pvg nd update EPIC_ID --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
@@ -484,11 +492,15 @@ git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
 tracked snapshot. Run it on main after every epic merge and commit the result:
 
 ```bash
-pvg nd sync
-git add .vault/backlog-snapshot
-git commit -m "chore(paivot): backlog snapshot after EPIC_ID"
+pvg nd sync --commit   # export + stage + commit in one atomic step
 git push origin main   # skip if local-only
 ```
+
+Sync and commit must never be separated: a tracked snapshot left dirty
+breaks worktree-cleanliness checks and shows as phantom modifications on
+every checkout. If you ever find `.vault/backlog-snapshot/` dirty mid-loop,
+run `pvg nd sync --commit` immediately (never `git checkout --` it away --
+that discards the freshest export, not the noise).
 
 (`pvg nd restore` re-imports the snapshot into an empty live vault after a
 fresh clone -- see docs/LIVE_SOR.md.)

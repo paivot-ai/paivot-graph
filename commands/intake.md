@@ -111,11 +111,11 @@ light stacks (Python, non-CF TypeScript/JavaScript) allow 4 developers / 2 PM-Ac
 Work through the approved backlog top-to-bottom. For each story:
 
 1. **Spawn a developer agent** to implement the story. The developer will:
-   - Read the full story (`pvg issues show <id>`) and claim it (`pvg issues update <id> --status=in_progress`)
+   - Read the full story (`pvg nd show <id>`) and claim it (`pvg nd update <id> --status in_progress`)
    - Load mandatory skills from the story's MANDATORY SKILLS TO REVIEW section
    - Implement the change, write tests, run CI locally
    - Leave breadcrumb notes: `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."` (nd-specific)
-   - Mark as delivered with proof (`pvg issues update <id> --add-label delivered`)
+   - Mark as delivered with proof (`pvg nd update <id> --add-label delivered`)
    - The developer does NOT close stories
 
 2. **Spawn a PM-Acceptor agent** to review the delivered story. The PM-Acceptor will:

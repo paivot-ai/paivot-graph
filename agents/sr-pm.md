@@ -509,7 +509,7 @@ pvg issues create "User Authentication" \
 # (--type=epic and --priority=1 dropped: no provider-abstracted equivalent yet)
 
 # Returns: bd-epic-001
-pvg issues update bd-epic-001 --add-label milestone
+pvg nd update bd-epic-001 --add-label milestone
 ```
 
 **Create 1 epic per major theme.** Each epic represents a cohesive piece of functionality.

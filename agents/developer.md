@@ -59,7 +59,7 @@ When neither phase is specified: normal mode (write both tests and code).
    The epic completion gate runs the full suite regardless -- this is your pre-gate diligence.
 9. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
 10. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
-11. Mark delivered: pvg issues update <id> --add-label delivered
+11. Mark delivered: pvg nd update <id> --add-label delivered
 12. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
 
 ### Context Exhaustion Prevention (CRITICAL)
@@ -68,7 +68,7 @@ If you have been iterating on test fixes for more than 3 rounds without converge
 
 1. **Commit what you have** -- even if tests still fail
 2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
-3. **Add the delivered label**: `pvg issues update <id> --add-label delivered`
+3. **Add the delivered label**: `pvg nd update <id> --add-label delivered`
 
 A committed partial delivery that the PM can review is infinitely more valuable than
 an uncommitted perfect implementation lost to context exhaustion. The dispatcher can
@@ -105,10 +105,10 @@ that fails this check wastes everyone's tokens.
 **Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the vault path.
 
 For the full nd CLI reference, read the nd skill via the Skill tool. Key operations:
-- Claim: `pvg issues update <id> --status=in_progress`
+- Claim: `pvg nd update <id> --status in_progress`
 - Breadcrumbs: `pvg nd update <id> --append-notes "COMPLETED: ... NEXT: ..."` (nd-specific)
 - Comment: `pvg issues comment <id> --body "progress note"`
-- Deliver: `pvg issues update <id> --add-label delivered`
+- Deliver: `pvg nd update <id> --add-label delivered`
 - Developer does NOT close stories -- deliver for PM-Acceptor review
 - Developer does NOT create bugs -- report DISCOVERED_BUG blocks
 
