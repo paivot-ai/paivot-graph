@@ -933,8 +933,14 @@ git commit -m "chore(paivot): share live nd vault across worktrees"
 
 Since pvg v1.54.2, `pvg nd root --ensure` (and any `pvg nd` write) creates
 `.vault/.nd-shared.yaml` itself and migrates a legacy local `.vault` live
-vault into the shared location. The commit step above is still required so
-worktrees created outside the project root see the config. Verify with
+vault into the shared location. Since pvg v1.54.6 and nd v0.10.19, vault
+resolution also converges from worktrees that cannot see the config (a
+branch that predates the config commit, or a sibling worktree outside the
+project root): both tools fall back to the main checkout's config and to
+an already-initialized shared vault under the git common dir, and
+first-time initialization is serialized across concurrent agents.
+Committing the config remains the documented practice -- it makes shared
+mode explicit and survives main-checkout branch switches. Verify with
 `pvg doctor`: it warns when a Paivot-managed git repo lacks the shared
 config.
 
