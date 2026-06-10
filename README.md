@@ -267,8 +267,8 @@ If you want to record a project-specific hard rule (e.g., "no skip-if-missing
 integration tests", "all migrations must be reversible"), write it as a
 `scope: project` note under `.vault/knowledge/conventions/`. The Sr PM's
 Phase 1 hard-rule ingestion reads those notes automatically (alongside your
-user global `~/.claude/CLAUDE.md`) and feeds them into the Phase 7a Sweep 2
-quality gates.
+user global `~/.claude/CLAUDE.md`) and registers them in the
+`lint.quality_gates` setting enforced by `pvg lint --backlog`.
 
 Recommended one-liner to add to your user global `~/.claude/CLAUDE.md` so any
 session understands this convention:

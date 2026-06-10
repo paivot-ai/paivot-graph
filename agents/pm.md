@@ -203,7 +203,9 @@ PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
+    # Canonical two-step: the label contract requires closed BEFORE accepted
     pvg issues close $PARENT --reason="All stories accepted"
+    pvg issues update $PARENT --add-label accepted
   fi
 fi
 ```

@@ -87,16 +87,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pvg hook memory-read",
-            "timeout": 10
-          }
-        ]
-      },
-      {
         "matcher": "Write",
         "hooks": [
           {

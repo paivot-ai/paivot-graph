@@ -1,6 +1,6 @@
 ---
 description: Capture UX/visual/functional feedback and turn it into a prioritized backlog of high-quality stories using the Sr. PM agent
-allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
+allowed-tools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Skill", "Agent", "Task", "AskUserQuestion"]
 ---
 
 # Intake -- Feedback to Backlog
@@ -102,23 +102,9 @@ After the Sr. PM agent returns, present the backlog to the user:
 
 ### Concurrency Limits (HARD RULE)
 
-Unless the user has explicitly said otherwise for this session, limits are **stack-dependent**.
-Detect from project files (Cargo.toml, *.xcodeproj, *.csproj, wrangler.toml/wrangler.jsonc,
-pyproject.toml, package.json, etc.).
-
-**Heavy stacks** (Rust, iOS/Swift, C#, CloudFlare Workers):
-- **Maximum 2 developer agents** simultaneously
-- **Maximum 1 PM-Acceptor agent** simultaneously
-- **Total active subagents (all types) must not exceed 3**
-
-**Light stacks** (Python, non-CF TypeScript/JavaScript):
-- **Maximum 4 developer agents** simultaneously
-- **Maximum 2 PM-Acceptor agents** simultaneously
-- **Total active subagents (all types) must not exceed 6**
-
-When a project mixes stacks, use the most restrictive limit.
-- Wait for an agent to finish before spawning another if at the limit
-- These limits prevent context and machine resource exhaustion.
+Limits are stack-dependent -- see the Concurrency Limits table in `/piv-loop`, which is authoritative.
+Summary: heavy stacks (Rust, iOS/Swift, C#, CloudFlare Workers) allow 2 developers / 1 PM-Acceptor / 3 total;
+light stacks (Python, non-CF TypeScript/JavaScript) allow 4 developers / 2 PM-Acceptors / 6 total. Mixed stacks use the most restrictive limit.
 
 ### Execution Loop
 

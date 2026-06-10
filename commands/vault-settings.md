@@ -98,10 +98,24 @@ dnf.max_iterations: 3
 architecture.c4: false
 
 # Whether to persist execution loop state across sessions
-# When false (default), loop state is cleared when session exits, even if work remains
-# When true, loop can resume from where it left off in the next session
+# When true (default), the loop survives session boundaries -- background agent
+# completions resume it where it left off
+# When false, loop state is cleared when session exits, even if work remains
 # Options: true, false
-loop.persist_across_sessions: false
+loop.persist_across_sessions: true
+
+# Extra quality-gate patterns (pipe-separated) that the walking-skeleton check
+# of `pvg lint --backlog` requires in every skeleton's AC, on top of its
+# generic defaults. Populate from the project hard rules extracted in the
+# Sr PM's Phase 1 ingestion.
+# Example: "no.skip.if.missing|no mocks? in integration|always TDD"
+lint.quality_gates:
+
+# Force the paths-exist lint check on (brownfield mode), regardless of the
+# >50-commits heuristic. The check verifies every path referenced in a story
+# body exists on disk or in a PRODUCES block.
+# Options: true, false
+lint.brownfield: false
 ```
 
 ## Step 2: Present Current Configuration
@@ -130,7 +144,9 @@ Show the user the current state:
 | dnf.specialist_review    | false     | Adversarial challengers review each D&F document |
 | dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
-| loop.persist_across_sessions | false | Whether execution loop state persists across sessions |
+| loop.persist_across_sessions | true  | Loop survives session boundaries; background completions resume it |
+| lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
+| lint.brownfield          | false     | Force the paths-exist lint check on (brownfield mode) |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```
@@ -214,11 +230,19 @@ pvg settings proposal_expiry_days=14
   2. No files are deleted.
 
 **If `loop.persist_across_sessions` was changed:**
-- `true` (enable):
-  1. Report: "Loop state persistence enabled. The execution loop will resume from where it left off in the next session."
+- `true` (enable -- default):
+  1. Report: "Loop state persistence enabled. The loop survives session boundaries; background agent completions resume it from where it left off."
 - `false` (disable):
-  1. Report: "Loop state persistence disabled. The execution loop will clear its state on session exit."
+  1. Report: "Loop state persistence disabled. The execution loop will clear its state on session exit, even if work remains."
   2. No side effects -- takes effect on next loop stop.
+
+**If `lint.quality_gates` was changed:**
+- Report: "Walking-skeleton lint check will additionally require these patterns in every skeleton's AC: <patterns>."
+- No side effects -- `pvg lint --backlog` reads this at runtime.
+
+**If `lint.brownfield` was changed:**
+- `true`: Report: "Brownfield mode forced on. The paths-exist lint check will run regardless of commit count."
+- `false`: Report: "Brownfield mode not forced. The paths-exist lint check falls back to the >50-commits heuristic."
 
 ## Step 5: Report
 

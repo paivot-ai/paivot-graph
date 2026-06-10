@@ -1,7 +1,7 @@
 ---
 description: Run unattended execution loop until blocked or all work is done
 model: opus
-allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Task", "AskUserQuestion"]
+allowed-tools: ["Bash", "Read", "Glob", "Grep", "Skill", "Agent", "Task", "AskUserQuestion"]
 args: "[EPIC_ID] [--all] [--max-iterations|--max N]"
 ---
 
@@ -83,6 +83,31 @@ This returns a JSON decision. Follow it:
 Do NOT query nd directly with `pvg issues ready --json` or `pvg issues list --json` for
 choosing what to work on next. Those queries are unscoped and will return stories from
 ALL epics, breaking containment.
+
+### Wave Dispatch (multiple ready stories)
+
+When the current epic has multiple ready stories and the concurrency limit allows
+k more developers, request a wave instead of looping one action at a time:
+
+```bash
+pvg loop next --json --n k
+```
+
+This returns up to k distinct actions in an `actions` array (at most one
+pm_review per wave, then developers from the rejected/ready queues). The `next`
+field still carries the first action. Spawn one developer per entry in
+`actions[]` -- each gets its own story branch and dispatcher-managed worktree
+exactly as described under Story Branch Setup. The single-source-of-truth rule
+is unchanged: the wave comes from `pvg loop next`, never from unscoped nd queries.
+
+### Background Spawning (REQUIRED for concurrency)
+
+Spawn Developer and PM-Acceptor agents with `run_in_background: true`. This is
+what lets multiple agents execute concurrently and lets the stop hook's
+wait/escape-valve machinery work as designed: the harness re-invokes the
+dispatcher when background agents complete, and `wait` decisions resolve
+naturally. Foreground spawning is acceptable only for strictly sequential
+single-agent steps (e.g., a lone conflict-fix or the Anchor milestone review).
 
 You MAY use the issues CLI directly for:
 - Reading story content before spawning a developer (`pvg issues show STORY_ID`)
@@ -174,6 +199,13 @@ Paivot uses a two-level branching strategy: `main -> epic -> story`. See [[Two-L
 The branch model does not change the live source of record requirement: when nd
 backs execution, the mutable backlog must live in a branch-independent vault
 shared across worktrees, not in branch-local `.vault/issues/` copies.
+
+**`.vault/` tracking:** developers never stage anything under `.vault/` (see
+Git Hygiene in agents/developer.md). `.vault/knowledge/` and
+`.vault/backlog-snapshot/` ARE tracked, but they are committed only by the
+DISPATCHER on main -- after retro and at the `pvg nd sync` snapshot step of the
+epic completion gate. Runtime state under `.vault/` (issues, locks, guard logs)
+stays gitignored.
 
 ### Remote Detection (MANDATORY first step)
 
@@ -436,13 +468,30 @@ git push origin --delete epic/EPIC_ID
 git branch -D epic/EPIC_ID
 ```
 
-**After** branch cleanup succeeds, close the epic in nd:
+**After** branch cleanup succeeds, close the epic in nd. The label contract
+requires the epic to be closed BEFORE the `accepted` label is added -- two
+canonical steps, in this order:
 ```bash
-pvg issues update EPIC_ID --status closed --add-label accepted
+pvg issues close EPIC_ID --reason="All stories accepted, gate passed"
+pvg issues update EPIC_ID --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
 errors, Claude Code cancels sibling parallel calls -- losing the nd update.
+
+**Then snapshot the backlog for git durability.** The live nd vault lives under
+git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
+tracked snapshot. Run it on main after every epic merge and commit the result:
+
+```bash
+pvg nd sync
+git add .vault/backlog-snapshot
+git commit -m "chore(paivot): backlog snapshot after EPIC_ID"
+git push origin main   # skip if local-only
+```
+
+(`pvg nd restore` re-imports the snapshot into an empty live vault after a
+fresh clone -- see docs/LIVE_SOR.md.)
 
 Then clean up all story branches for this epic:
 
@@ -501,6 +550,17 @@ Epic: EPIC_ID
 
 The retro agent is ephemeral -- it runs, captures knowledge, and is disposed.
 Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
+
+**After retro completes**, commit any new `.vault/knowledge/` files it produced
+to main. Knowledge notes are tracked; runtime state under `.vault/` (issues,
+locks, guard logs) remains gitignored. Agents never commit `.vault/` files --
+this commit is the dispatcher's job, on main:
+
+```bash
+git add .vault/knowledge
+git commit -m "chore(paivot): retro knowledge for EPIC_ID"
+git push origin main   # skip if local-only
+```
 
 **After retro**: if `epic_complete` included a `next_epic`, run
 `pvg loop rotate <next_epic>` to transition the loop state, then resume
@@ -683,7 +743,7 @@ termination automatically:
 | No actionable epics remain AND epic branch merged | Allow exit, remove state |
 | Current epic blocked, no other epics | Allow exit |
 | Max iterations reached | Allow exit, remove state |
-| Too many consecutive waits (3) | Allow exit |
+| Too many consecutive waits (3) | Allow exit (escape valve) -- loop state is PRESERVED; background agent completions re-invoke the dispatcher and resume the loop |
 | Current epic has actionable work | Block exit, continue |
 | Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
 | Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
@@ -860,6 +920,17 @@ the CWD corruption risk for PM operations entirely. However, Claude Code auto-cl
 
 ### PM Isolation
 
+**Prerequisite (shared live nd vault):** PM isolation requires the shared live
+nd vault -- a tracked `.vault/.nd-shared.yaml` pointing at git-common-dir.
+Without it, the PM's isolated worktree cannot resolve `.vault` (the live vault
+is gitignored and absent from the fresh checkout). One-time setup:
+
+```bash
+pvg nd root --ensure
+git add .vault/.nd-shared.yaml
+git commit -m "chore(paivot): share live nd vault across worktrees"
+```
+
 Spawn PM-Acceptors with `isolation: "worktree"`:
 
 ```
@@ -899,7 +970,7 @@ For bulk cleanup after context loss, use `pvg loop recover` instead of manual
 
 ## Post-Compaction Recovery
 
-**STRUCTURAL ENFORCEMENT:** The `pvg` pre-compact hook now emits a mandatory `pvg loop recover` reminder before every compaction. This reminder survives in the compaction summary. You MUST run `pvg loop recover` as the FIRST command after any compaction -- before touching git, before spawning agents, before inspecting branches.
+**STRUCTURAL ENFORCEMENT:** The PreCompact hook's output is user-visible only -- it does NOT reach the model and does NOT survive in the compaction summary. What actually survives is the SessionStart hook: it fires again immediately after compaction (source `compact`) and re-injects the dispatcher rules plus the `pvg loop recover` instruction directly into context. You MUST run `pvg loop recover` as the FIRST command after any compaction -- before touching git, before spawning agents, before inspecting branches.
 
 After context compaction, you lose track of running agents and their worktrees.
 Run recovery instead of doing manual cleanup:

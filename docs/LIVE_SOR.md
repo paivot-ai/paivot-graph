@@ -48,6 +48,21 @@ Git remains useful for:
 
 But those snapshots are exports of the live queue, not the live queue itself.
 
+## Durability
+
+The live vault lives under git-common-dir and is not part of git history -- a
+fresh clone does not contain it. Durability comes from snapshots:
+
+- `pvg nd sync` exports the live vault into a tracked snapshot at
+  `.vault/backlog-snapshot/`. The dispatcher runs it at each epic completion
+  gate and commits the snapshot on main.
+- `pvg nd restore` re-imports the snapshot into an empty live vault after a
+  fresh clone.
+
+The snapshot is an export, never the live queue. Agents keep reading and
+writing through `pvg nd` against the shared live vault; the snapshot exists
+only so the backlog survives clone boundaries and machine loss.
+
 ## Separation
 
 - `.vault/knowledge/` is project knowledge and has its own git policy
