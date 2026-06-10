@@ -931,6 +931,13 @@ git add .vault/.nd-shared.yaml
 git commit -m "chore(paivot): share live nd vault across worktrees"
 ```
 
+Since pvg v1.54.2, `pvg nd root --ensure` (and any `pvg nd` write) creates
+`.vault/.nd-shared.yaml` itself and migrates a legacy local `.vault` live
+vault into the shared location. The commit step above is still required so
+worktrees created outside the project root see the config. Verify with
+`pvg doctor`: it warns when a Paivot-managed git repo lacks the shared
+config.
+
 Spawn PM-Acceptors with `isolation: "worktree"`:
 
 ```
