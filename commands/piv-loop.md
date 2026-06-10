@@ -156,6 +156,25 @@ Merge below). Complete the merge -- including conflict resolution if needed --
 before running `pvg loop next --json` again. An accepted story with an unmerged
 branch is incomplete work.
 
+Pre-merge checklist (each step its own command -- see Shell Chaining below):
+
+1. **Release the story branch**: `git worktree list` -- if any worktree
+   (including a lingering PM isolation worktree that checked out the story
+   branch) still holds `story/<ID>`, remove it with
+   `pvg worktree remove <path>` first. A held branch blocks deletion after
+   merge, and a PM worktree left on the story branch is NOT auto-cleaned.
+2. **Verify a clean tree**: `git status --porcelain` must be empty (untracked
+   noise aside). If `.vault/backlog-snapshot/` is dirty, run
+   `pvg nd sync --commit` -- never `git checkout --` it away.
+3. Checkout the epic branch, THEN merge -- as separate commands.
+
+**Shell Chaining (HARD RULE):** never chain `git checkout` and `git merge`
+with `;` -- if the checkout aborts (dirty tree), the merge still runs on
+whatever branch HEAD is actually on. This has landed a story directly on
+main. Use separate Bash calls (preferred) or `&&`. The merge guard rejects
+`;`-chained checkout+merge structurally, judging the merge against the real
+current branch.
+
 ## Epic Flow
 
 The loop drains one epic at a time:
@@ -989,6 +1008,9 @@ Agent(
   prompt="Review story STORY_ID. First checkout the story branch:
     git checkout story/STORY_ID
   Then proceed with your review protocol.
+  When your review is COMPLETE (after accept/approve-red/reject), run:
+    git checkout --detach
+  so the worktree releases the story branch.
   Project root: $PROJECT_ROOT
   ..."
 )
