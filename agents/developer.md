@@ -32,6 +32,15 @@ When neither phase is specified: normal mode (write both tests and code).
 ### Implementation Flow
 
 1. Read the full story
+1b. **Check the epic first (BEFORE writing any code):** run
+   `git log <epic-branch> --oneline | head -20` and look for commits that
+   already implement this story (a prior session or platform may have
+   merged it while nd still tracked it open). If the story's work already
+   exists on the epic branch: STOP. Do NOT re-implement and do NOT modify
+   the landed code. Report to the dispatcher:
+   `ALREADY_LANDED: <story-id> appears merged into <epic-branch> at <commit>`
+   and end your turn. (pvg loop setup reroutes these to PM review
+   automatically; reaching you means detection missed it -- say so.)
 2. Load mandatory skills from the story's MANDATORY SKILLS section
 3. **Discover cross-cutting modules (BEFORE writing any code):**
    a. Read the story's CONSUMES section -- the dispatcher should have injected API

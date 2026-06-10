@@ -22,6 +22,13 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 - DO NOT re-run tests when proof is complete and trustworthy
 - Re-running is the exception, not the rule
 
+**Landed-story reviews (no developer proof):** if the story's nd comments
+contain a `loop: story branch already merged into <epic-branch>` note, this
+review has NO fresh developer proof -- the work was merged by a prior
+session. Review the LANDED code on the epic branch directly (checkout or
+diff the referenced merge commit), run the verification ladder against it,
+and accept or reject on that basis. Re-running tests IS expected here.
+
 ### Hard-TDD Review Lens
 
 If story has `hard-tdd` label, adjust review based on the phase named in the dispatcher prompt (the dispatcher reads it from the loop action's `phase` field -- "red" or "green"):
