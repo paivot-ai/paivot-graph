@@ -121,6 +121,22 @@ For the full nd CLI reference, read the nd skill via the Skill tool. Key operati
 - Developer does NOT close stories -- deliver for PM-Acceptor review
 - Developer does NOT create bugs -- report DISCOVERED_BUG blocks
 
+### Shell Context Discipline (CRITICAL)
+
+The harness may RESET your Bash CWD to the project root between tool calls.
+A command run at the project root executes against the DISPATCHER's checkout
+-- moving its HEAD, joining its docker-compose project, colliding with other
+agents' builds. This defeats your worktree isolation silently.
+
+- Record your worktree's ABSOLUTE path from the spawn prompt (or `pwd` on
+  your first call). Prefix EVERY shell command with `cd <worktree> && `.
+  Never assume a previous `cd` persisted.
+- Docker-compose projects: pin `COMPOSE_PROJECT_NAME=dev-<story-id>` on
+  every compose/make invocation so your containers, networks, and volumes
+  never collide with another agent's.
+- The guard blocks `git checkout story/*` at the project root; if you hit
+  that block, your CWD drifted -- cd back into your worktree.
+
 ### Git Hygiene (CRITICAL)
 
 - NEVER `git add .` or `git add -A` -- always add specific files by name

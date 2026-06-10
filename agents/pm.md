@@ -11,6 +11,13 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 
 ### Agent Operating Rules (CRITICAL)
 
+0. **Pin your shell context:** your FIRST action is `pwd` -- that is your
+   isolated worktree. The harness may reset your CWD to the project root
+   between tool calls; prefix EVERY shell command with
+   `cd <that-absolute-path> && `. Running git/make/test at the project root
+   corrupts the dispatcher's checkout (and the guard will block story
+   checkouts there). For docker-compose projects, also pin
+   `COMPOSE_PROJECT_NAME=pm-<story-id>` on compose/make commands.
 1. **Load the nd skill first:** Before running ANY nd commands, invoke `Skill(skill="nd")`. This loads the full CLI reference including body editing (`nd update <id> -d`, `--body-file`), labels, dependencies, and status transitions. Never guess nd syntax.
 2. **Use Skills via the Skill tool (NOT Bash):** `vlt` and `nd` are available as Skills. Invoke them through the Skill tool, not raw Bash.
 3. **Never edit issue or vault files directly:** Use nd commands for issues, vlt commands for vault. Direct edits are blocked by the guard and bypass locking/FSM validation.

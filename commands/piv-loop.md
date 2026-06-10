@@ -253,23 +253,28 @@ The examples below show the remote case. Adapt for local-only as described above
 
 Before spawning a developer:
 
+Branch creation is NON-SWITCHING (`git branch`, never `git checkout -b`):
+the dispatcher's HEAD stays on main, and a checked-out story branch would
+also block the `git worktree add` that follows. The guard rejects story/*
+checkouts at the project root structurally.
+
 **With remote:**
 ```bash
 git fetch origin
 if ! git rev-parse --verify origin/epic/EPIC_ID >/dev/null 2>&1; then
-  git checkout -b epic/EPIC_ID origin/main
+  git branch epic/EPIC_ID origin/main
   git push -u origin epic/EPIC_ID
 fi
-git checkout -b story/STORY_ID origin/epic/EPIC_ID
+git branch story/STORY_ID origin/epic/EPIC_ID
 git push -u origin story/STORY_ID
 ```
 
 **Local-only (no remote):**
 ```bash
 if ! git rev-parse --verify epic/EPIC_ID >/dev/null 2>&1; then
-  git checkout -b epic/EPIC_ID main
+  git branch epic/EPIC_ID main
 fi
-git checkout -b story/STORY_ID epic/EPIC_ID
+git branch story/STORY_ID epic/EPIC_ID
 ```
 
 Then CLAIM the story and create a worktree for the developer on the story branch:
@@ -292,6 +297,15 @@ build locks; a second developer in the same worktree then deadlocks on the
 shared build state. Before reusing a worktree: verify the prior agent is
 gone, stop any containers it started (`docker compose down` in the
 worktree), and prefer removing and re-creating the worktree over reuse.
+
+**Shell-context pinning (REQUIRED in every spawn prompt):** the harness can
+reset an agent's Bash CWD to the project root between tool calls, silently
+defeating worktree isolation -- an "isolated" agent then runs git/make/test
+against the dispatcher's checkout. Every PM/developer prompt MUST instruct:
+prefix EVERY shell command with `cd <worktree-absolute-path> &&`; never rely
+on a previous cd. For docker-compose projects, also pin
+`COMPOSE_PROJECT_NAME=<story-id>` in those commands so concurrent agents
+never join each other's compose project.
 
 The developer prompt MUST include the worktree path so they know where to work:
 ```
@@ -1005,8 +1019,13 @@ Spawn PM-Acceptors with `isolation: "worktree"`:
 Agent(
   subagent_type="paivot-graph:pm",
   isolation="worktree",
-  prompt="Review story STORY_ID. First checkout the story branch:
-    git checkout story/STORY_ID
+  prompt="Review story STORY_ID.
+  FIRST ACTION: run pwd -- that is your isolated worktree. Prefix EVERY
+  subsequent shell command with cd <that-absolute-path> && ; the harness may
+  reset your CWD to the project root between calls, and running git/make
+  there corrupts the dispatcher's checkout (the guard will block you).
+  Then check out the story branch IN YOUR WORKTREE:
+    cd <your-worktree> && git checkout story/STORY_ID
   Then proceed with your review protocol.
   When your review is COMPLETE (after accept/approve-red/reject), run:
     git checkout --detach
