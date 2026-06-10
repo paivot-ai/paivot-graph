@@ -24,9 +24,10 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 
 ### Hard-TDD Review Lens
 
-If story has `hard-tdd` label, adjust review based on the phase named in the dispatcher prompt:
+If story has `hard-tdd` label, adjust review based on the phase named in the dispatcher prompt (the dispatcher reads it from the loop action's `phase` field -- "red" or "green"):
 - **Test Review** (`RED PHASE`): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
-- **Implementation Review** (`GREEN PHASE`): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
+  - **RED outcome is NEVER accept/close.** A RED story has tests only -- it is not done. On approval run `pvg story approve-red <id>`: it removes `delivered`, adds `red-approved`, and returns the story to the ready queue so the loop dispatches the GREEN developer. On problems, REJECT normally (the story reworks in RED).
+- **Implementation Review** (`GREEN PHASE`): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection. Acceptance here is the standard close + `accepted`.
 - **No hard-tdd label**: standard review below.
 
 ### Verification Ladder (review in this order -- cheapest first)
@@ -225,5 +226,6 @@ This is not optional. An epic with all children accepted must be closed immediat
 
 ### Decisions
 
-- ACCEPT: close with `pvg nd close --reason --start`, then add `accepted` with `pvg nd update <id> --add-label accepted`, then verify with `pvg nd show <id>` (see nd Commands above), then run Epic Auto-Close
+- APPROVE RED (hard-tdd `phase: red` only): `pvg story approve-red <id>` -- never close, never `accepted`
+- ACCEPT: close with `pvg nd close --reason --start`, then add `accepted` with `pvg nd update <id> --add-label accepted`, then verify with `pvg nd show <id>` (see nd Commands above), then run Epic Auto-Close. (`pvg story accept <id> [--next <id>]` performs the same transition atomically.)
 - REJECT: return the story to `open`, remove `delivered`, add `rejected`, then add 4-part notes via `pvg nd comments add` (see nd Commands above)

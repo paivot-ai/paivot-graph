@@ -68,7 +68,9 @@ Each iteration, run:
 pvg loop next --json
 ```
 
-This returns a JSON decision. Follow it:
+This returns a JSON decision. On actions, `priority` is the STORY's nd
+priority (0 = P0); queue precedence is the `queue` field (delivered >
+rejected > ready). Follow it:
 
 | Decision | Action |
 |----------|--------|
@@ -251,11 +253,18 @@ fi
 git checkout -b story/STORY_ID epic/EPIC_ID
 ```
 
-Then create a worktree for the developer on the story branch:
+Then CLAIM the story and create a worktree for the developer on the story branch:
 
 ```bash
+pvg story claim STORY_ID    # status -> in_progress; MANDATORY before spawning
 git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
+
+**Claiming at dispatch is not optional.** Until a story leaves the ready
+queue, `pvg loop next` will keep offering it -- in wave dispatch that means
+duplicate developers on the same story. The claim closes that window the
+moment you decide to spawn, instead of whenever the developer first mutates
+nd. This applies to EVERY developer spawn, including each entry of a wave.
 
 **Never re-spawn a developer into a worktree whose previous occupant may
 still be alive.** A killed or "completed" background developer can leave a
@@ -734,11 +743,26 @@ pvg issues show <id> --json | grep -q '"hard-tdd"'
 **If `hard-tdd` label is ABSENT** (the default): spawn ONE developer agent in normal mode.
 The developer writes both implementation and tests in a single pass. This is the standard flow.
 
-**If `hard-tdd` label is PRESENT**: run the two-phase flow:
-1. RED phase: spawn developer with "RED PHASE" in the prompt (tests only)
-2. PM-Acceptor reviews tests
-3. GREEN phase: spawn developer with "GREEN PHASE" in the prompt (implementation only)
-4. PM-Acceptor reviews implementation
+**If `hard-tdd` label is PRESENT**: run the two-phase flow. The phase is
+tracked in nd by the `red-approved` label and carried on every loop action
+as `phase` ("red" or "green") -- trust the loop output, do not infer:
+
+1. RED phase: `pvg loop next` returns `developer_new` with `"phase":"red"`.
+   Spawn developer with "RED PHASE" in the prompt (tests only). Developer
+   delivers via `pvg story deliver`.
+2. RED review: the loop returns `pm_review` with `"phase":"red"`. The PM
+   validates the tests are properly RED (cover ACs, fail for the right
+   reason) and approves with `pvg story approve-red STORY_ID` -- this
+   removes `delivered`, adds `red-approved`, and returns the story to the
+   ready queue. A RED story is NEVER closed or labeled `accepted`.
+3. GREEN phase: the loop returns `developer_new` with `"phase":"green"`
+   (same story, now labeled `red-approved`). Spawn developer with
+   "GREEN PHASE" in the prompt (implementation only; RED tests untouched).
+4. GREEN review: the loop returns `pm_review` with `"phase":"green"`.
+   Standard acceptance applies (close + `accepted`).
+
+A rejected story keeps its `red-approved` label, so rework actions carry the
+correct phase automatically.
 
 **Do NOT default to hard-TDD.** The user's general TDD preference (writing tests alongside
 code) is satisfied by normal mode. Hard-TDD is a stricter discipline where tests and
