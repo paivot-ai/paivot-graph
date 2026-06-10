@@ -5,7 +5,7 @@ CACHE_BASE  := $(HOME)/.claude/plugins/cache/$(PLUGIN_NAME)/$(PLUGIN_NAME)
 CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
 .PHONY: install update uninstall test check-deps check-pvg \
-        fetch-vlt-skill update-vlt-skill help sync-cache bump
+        fetch-tools fetch-vlt-skill update-vlt-skill help sync-cache bump
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -100,18 +100,22 @@ sync-cache: check-pvg ## Copy pvg binary and skills to ALL cached versions so ru
 # Install / update / uninstall
 # ---------------------------------------------------------------------------
 
-install: check-deps check-pvg fetch-vlt-skill ## Full install: deps, pvg check, marketplace, plugin, cache sync
+install: check-pvg fetch-tools check-deps ## Install or update: tools + skills, marketplace, plugin, cache sync
 	@claude plugin marketplace add "$(PLUGIN_DIR)" 2>/dev/null \
 		&& echo "Marketplace registered." \
 		|| echo "Marketplace already registered."
-	@claude plugin install "$(PLUGIN_NAME)@$(PLUGIN_NAME)" 2>/dev/null \
-		&& echo "Plugin installed." \
-		|| echo "Plugin already installed -- run 'make update' to pick up changes."
+	@if claude plugin install "$(PLUGIN_NAME)@$(PLUGIN_NAME)" 2>/dev/null; then \
+		echo "Plugin installed."; \
+	else \
+		echo "Plugin already installed -- updating to v$(VERSION)..."; \
+		claude plugin marketplace update "$(PLUGIN_NAME)" && \
+		claude plugin update "$(PLUGIN_NAME)@$(PLUGIN_NAME)"; \
+	fi
 	@$(MAKE) --no-print-directory sync-cache
 	@echo ""
 	@echo "Install complete (v$(VERSION)). Restart Claude Code sessions for hooks to take effect."
 
-update: check-deps check-pvg update-vlt-skill ## Update plugin, vlt skill, and sync binary to cache
+update: check-pvg fetch-tools check-deps ## Update plugin, tools + skills, and sync binary to cache
 	claude plugin marketplace update "$(PLUGIN_NAME)"
 	claude plugin update "$(PLUGIN_NAME)@$(PLUGIN_NAME)"
 	@$(MAKE) --no-print-directory sync-cache
@@ -124,8 +128,16 @@ uninstall: ## Remove plugin and marketplace
 	@echo "$(PLUGIN_NAME) removed."
 
 # ---------------------------------------------------------------------------
-# vlt skill management
+# Companion tool management (vlt + nd binaries and their skills)
 # ---------------------------------------------------------------------------
+
+fetch-tools: check-pvg ## Install/update vlt + nd binaries and their skills from latest releases
+	@if pvg help 2>&1 | grep -q fetch-tools; then \
+		pvg fetch-tools; \
+	else \
+		echo "WARN: installed pvg lacks fetch-tools (run a pvg update); fetching vlt skill only"; \
+		pvg fetch-vlt-skill; \
+	fi
 
 fetch-vlt-skill: check-pvg ## Fetch and install the vlt skill from GitHub (skips if present)
 	pvg fetch-vlt-skill
