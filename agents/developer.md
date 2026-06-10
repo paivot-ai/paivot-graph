@@ -121,6 +121,25 @@ For the full nd CLI reference, read the nd skill via the Skill tool. Key operati
 - Developer does NOT close stories -- deliver for PM-Acceptor review
 - Developer does NOT create bugs -- report DISCOVERED_BUG blocks
 
+### Synchronous Execution (CRITICAL -- you are EPHEMERAL)
+
+Ending your turn DISPOSES you. Only the main session is re-invoked when a
+background task finishes -- subagents never are. Therefore:
+
+- NEVER run Bash with `run_in_background`, never spawn Monitor/Task watchers,
+  never end your turn to "wait for the build". All of these abandon your
+  story mid-flight with uncommitted work. (The guard blocks backgrounded
+  Bash in dispatcher mode -- hitting that block means you were about to
+  abandon yourself.)
+- Run long builds/tests SYNCHRONOUSLY with an explicit timeout (up to
+  600000 ms = 10 minutes). If a pipeline can exceed that, split it into
+  stages each under the limit (deps -> compile -> test, or per-directory
+  test runs); incremental compilation makes re-runs cheap.
+- **Commit-first under load:** on heavy stacks or saturated hosts, commit
+  your implementation to the story branch BEFORE the long verification run,
+  then run verification and commit/amend the results. An uncommitted
+  worktree dies with you; a committed one survives any abandonment.
+
 ### Shell Context Discipline (CRITICAL)
 
 The harness may RESET your Bash CWD to the project root between tool calls.

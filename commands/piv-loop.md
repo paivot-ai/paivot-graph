@@ -111,6 +111,28 @@ dispatcher when background agents complete, and `wait` decisions resolve
 naturally. Foreground spawning is acceptable only for strictly sequential
 single-agent steps (e.g., a lone conflict-fix or the Anchor milestone review).
 
+### Abandonment Detection (after every agent completion)
+
+An "Agent completed" notification does NOT mean the work finished. An
+ephemeral agent that backgrounds a long build (or otherwise ends its turn
+to "wait") is silently disposed -- typically a few minutes in, with intact
+but uncommitted work. The guard blocks backgrounded Bash in dispatcher
+mode, but verify anyway. On every developer completion:
+
+1. Check for a terminal outcome: `delivered` label (`pvg nd show <id>`),
+   or an explicit report in the agent output (ALREADY_LANDED,
+   DISCOVERED_BUG, CONTEXT_BUDGET note).
+2. If none AND the story branch has no new commits: the agent was
+   abandoned. Re-spawn into the same worktree ONLY after the worktree-reuse
+   safety steps (verify no processes, stop its containers), with explicit
+   instructions: fully synchronous execution, explicit timeouts, COMMIT the
+   work before any long verification.
+3. If work was committed but not delivered: spawn a deliver-only follow-up
+   (verify + `pvg story deliver`), which is cheap on a warm build.
+
+PM completions: verify the decision actually landed (`pvg nd show <id>`
+must show closed+accepted, rejected, or red-approved) before acting on it.
+
 You MAY use the issues CLI directly for:
 - Reading story content before spawning a developer (`pvg issues show STORY_ID`)
 - Checking story labels (`pvg issues show STORY_ID --json`)
@@ -307,7 +329,10 @@ on a previous cd. For docker-compose projects, also pin
 `COMPOSE_PROJECT_NAME=<story-id>` in those commands so concurrent agents
 never join each other's compose project.
 
-The developer prompt MUST include the worktree path so they know where to work:
+The developer prompt MUST include the worktree path so they know where to
+work, and MUST state: run everything synchronously with explicit timeouts
+(never `run_in_background` -- ending your turn disposes you), and commit
+work to the story branch before long verification runs:
 ```
 Work in: /path/to/repo/.claude/worktrees/dev-STORY_ID
 ```
