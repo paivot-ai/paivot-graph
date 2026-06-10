@@ -104,10 +104,11 @@ install: check-pvg fetch-tools check-deps ## Install or update: tools + skills, 
 	@claude plugin marketplace add "$(PLUGIN_DIR)" 2>/dev/null \
 		&& echo "Marketplace registered." \
 		|| echo "Marketplace already registered."
-	@if claude plugin install "$(PLUGIN_NAME)@$(PLUGIN_NAME)" 2>/dev/null; then \
-		echo "Plugin installed."; \
+	@claude plugin install "$(PLUGIN_NAME)@$(PLUGIN_NAME)" 2>/dev/null || true
+	@if [ -d "$(CACHE_DIR)" ]; then \
+		echo "Plugin v$(VERSION) installed."; \
 	else \
-		echo "Plugin already installed -- updating to v$(VERSION)..."; \
+		echo "Plugin out of date -- updating to v$(VERSION)..."; \
 		claude plugin marketplace update "$(PLUGIN_NAME)" && \
 		claude plugin update "$(PLUGIN_NAME)@$(PLUGIN_NAME)"; \
 	fi
