@@ -29,6 +29,19 @@ When prompt includes **GREEN PHASE**: tests are already committed. Write impleme
 
 When neither phase is specified: normal mode (write both tests and code).
 
+**Commit markers on locked test files (GREEN):**
+
+1. Every commit that touches locked test files during GREEN must be
+   individually justified. If the project ships automated test-edit guards,
+   they must evaluate PER-COMMIT -- each test-touching commit carries its own
+   marker -- never range-wide across a push, and must skip merge commits. A
+   range-wide check both amnesties whole merges via one marker and falsely
+   fails unrelated pushes.
+2. PM-sanctioned repairs of locked tests must carry the literal tag
+   `[test-edit-authorized]` in the commit subject PLUS a story-note reference
+   to the PM authorization, so audits have a machine-readable marker. Field
+   finding: 11 sanctioned locked-test repairs had no machine-readable marker.
+
 ### Implementation Flow
 
 1. Read the full story
@@ -106,6 +119,19 @@ or documented in the delivery proof explaining why they remain.
 
 The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
 that fails this check wastes everyone's tokens.
+
+### Wiring Evidence (MANDATORY)
+
+A delivered component is not done until it is WIRED into the running system.
+A complete, tested plug/middleware/worker/component that nothing mounts is an
+automatic rejection -- the field shipped a fully tested rate limiter mounted
+on no route, leaving the live login endpoint unthrottled.
+
+- NAME the wiring site in your delivery evidence: router entry, supervision
+  child, template usage, config registration.
+- Include at least one test that exercises the component THROUGH that wiring
+  (request through the router, message through the supervised process), not
+  only in isolation.
 
 ### nd Commands
 

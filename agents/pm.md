@@ -47,6 +47,13 @@ If story has `hard-tdd` label, adjust review based on the phase named in the dis
 - **Test Review** (`RED PHASE`): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
   - **RED outcome is NEVER accept/close.** A RED story has tests only -- it is not done. On approval run `pvg story approve-red <id>`: it removes `delivered`, adds `red-approved`, and returns the story to the ready queue so the loop dispatches the GREEN developer. On problems, REJECT normally (the story reworks in RED).
 - **Implementation Review** (`GREEN PHASE`): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection. Acceptance here is the standard close + `accepted`.
+- **Authorizing a locked-test repair** (GREEN phase, when a RED test is genuinely
+  wrong): record the authorization in the story notes
+  (`pvg nd comments add <id> "TEST-EDIT AUTHORIZED: <file> -- <reason>"`) and
+  instruct the developer to carry the literal tag `[test-edit-authorized]` in
+  the commit subject of each repair commit. Audits need the machine-readable
+  marker -- an untagged repair of a locked test is indistinguishable from
+  tampering.
 - **No hard-tdd label**: standard review below.
 
 ### Verification Ladder (review in this order -- cheapest first)
@@ -95,6 +102,15 @@ These are structural checks that catch the most common developer omissions:
 3. **Config registration (when story adds config keys):** Verify new config keys
    appear in ALL required locations (runtime keys list, defaults, env var reader).
    Incomplete config registration causes runtime errors.
+
+4. **Wiring evidence (built but not mounted = REJECT):** When the story delivers
+   a plug, middleware, worker, or component, verify it is actually MOUNTED --
+   router entry, supervision-tree child, template/config usage. Grep for the
+   component's module name outside its own file and its tests; zero call sites
+   means built but not mounted. Then verify at least one test exercises the
+   component THROUGH that wiring, not only in isolation. A complete, tested
+   component on no route is not delivered -- REJECT and name the missing
+   wiring site in the rejection notes.
 
 **Tier 2: Command (deterministic -- check CI evidence)**
 
@@ -198,6 +214,10 @@ PM-Acceptor creates bugs directly with mandatory guardrails:
    - Parent: set to story's epic (extracted in step 1)
    - Priority: ALWAYS P0 (hardcoded, non-negotiable)
    - Description: must include symptoms + possible causes
+   - Body uses plain labels (`Description:`, `SYMPTOMS:`) -- NEVER markdown
+     headings named Description, Acceptance Criteria, Design, Notes, History,
+     Links, or Comments (any level). Those collide with nd's structural
+     sections and corrupt heading-targeted writes.
    - Labels: always add `discovered-by-pm`
 4. Report to user what was created.
 

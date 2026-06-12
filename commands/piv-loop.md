@@ -498,6 +498,25 @@ Every test must pass -- unit, integration, AND e2e. If any test fails:
 
 Do NOT skip this gate. Do NOT proceed to Step 2 with failing tests.
 
+**Step 1b: Deferral Sweep (STRUCTURAL -- before Step 2)**
+
+Before the gate may pass, sweep ALL accepted stories in the epic for named
+deferral targets:
+
+```bash
+pvg nd children EPIC_ID --json    # enumerate the epic's stories
+pvg nd show <id>                  # inspect each story's notes and evidence
+```
+
+Search story notes, comments, and delivery evidence for phrases like
+"deferred to epic gate", "deferred to story X", "will be verified at epic
+close". Every named deferral target must have demonstrably FIRED -- the
+deferred verification actually ran, with evidence (test output, demo result,
+verification note). An unfired deferral is a gate FAILURE: spawn a developer
+to execute the deferred verification, or escalate to the user via
+AskUserQuestion. Field finding: an epic closed with named deferrals that
+never fired.
+
 **Step 2: Anchor Milestone Review**
 
 Spawn `paivot-graph:anchor` in milestone review mode:
@@ -510,6 +529,13 @@ Validate that the completed epic delivered real value:
 - Verify skills were consulted where stories required them
 - Check that boundary maps are satisfied (PRODUCES/CONSUMES)
 - Validate hard-TDD two-commit pattern where applicable
+- Verify wiring evidence: every delivered plug/middleware/worker/component
+  is MOUNTED (router entry, supervision-tree child, template/config usage)
+  with at least one test exercising it THROUGH the wiring
+- Audit deferrals: every named deferral target across accepted stories has
+  FIRED (independent re-check of the dispatcher's deferral sweep)
+- Verify remote CI: gh run list shows green for the epic's merged work --
+  container-local test runs are insufficient
 
 Epic branch: epic/EPIC_ID
 ```
@@ -542,6 +568,22 @@ git push origin main
 git push origin --delete epic/EPIC_ID
 git branch -D epic/EPIC_ID
 ```
+
+**Remote CI verification (precondition of declaring the gate passed):**
+container-local test runs do NOT count as "CI green". After pushing main,
+verify the REMOTE CI is green for the pushed SHA:
+
+```bash
+gh run list --branch main --limit 5
+```
+
+Check that the latest run for the pushed SHA concluded `success`. If it is
+still running, wait and poll until it concludes. If the repo has no remote
+or no CI workflows, note that explicitly in the gate output and continue.
+Otherwise a red or missing remote CI run BLOCKS the gate: spawn a developer
+to fix the failure (treat it like a Step 1 verification failure) before
+closing the epic. Field finding: an epic closed with 3 total GitHub runs,
+all red, while every "CI green" claim was container-local.
 
 **After** branch cleanup succeeds, close the epic in nd. The label contract
 requires the epic to be closed BEFORE the `accepted` label is added -- two

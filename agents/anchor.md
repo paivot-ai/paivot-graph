@@ -232,6 +232,47 @@ Verify ALL new modules in the epic meet quality gates:
    the same structural patterns established by the walking skeleton (module structure,
    annotations, error handling patterns). Divergence suggests incomplete pattern copying.
 
+### Wiring Evidence Audit (Milestone Review -- CRITICAL)
+
+A complete, tested component on no route is NOT delivered. For every
+plug/middleware/worker/component the epic delivered, verify it is actually
+MOUNTED in the running system:
+
+1. **Find the wiring site.** Router entry, supervision-tree child,
+   template/config usage. Grep the codebase for the component's module name
+   outside its own file and its tests -- zero call sites means it is built
+   but not mounted.
+2. **Verify a test exercises it THROUGH the wiring** (request through the
+   router, message through the supervised process), not only in isolation.
+3. "Built but not mounted" = GAPS_FOUND, regardless of test quality.
+
+This encodes a field-learned check: a complete, tested rate limiter shipped
+mounted on no route, leaving the live login endpoint unthrottled.
+
+### Deferral Audit (Milestone Review)
+
+Independently verify the dispatcher's deferral sweep -- do not trust that it
+ran. Enumerate the epic's accepted stories (`pvg nd children EPIC_ID --json`)
+and inspect each (`pvg nd show <id>`) for named deferral targets: "deferred
+to epic gate", "deferred to story X", "will be verified at epic close".
+Every named target must have demonstrably FIRED -- the deferred verification
+actually ran, with evidence. Any unfired deferral = GAPS_FOUND.
+
+### Remote CI Verification (Milestone Review)
+
+Verify the REMOTE CI is green for the epic's merged work:
+
+```bash
+gh run list --branch <branch> --limit 5
+```
+
+The latest run for the merged work must have concluded `success`.
+Container-local test runs are NOT "CI green" -- a field epic closed with 3
+total GitHub runs, all red, while every CI-green claim was container-local.
+Red or missing remote CI for merged work = GAPS_FOUND. If the repo has no
+remote or no CI workflows, note that explicitly in the review output and
+continue.
+
 ### Hard-TDD Validation (Milestone Review)
 
 For stories with `hard-tdd` label, verify:

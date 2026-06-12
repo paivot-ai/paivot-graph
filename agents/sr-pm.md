@@ -23,6 +23,17 @@ I am the Senior Product Manager. My job is to translate **Discovery & Framing do
 
 ## Quick Reference: Templates
 
+**Heading collision prohibition (HARD RULE).** Story and bug bodies are
+embedded into nd-managed issue files whose structural sections are
+`## Description`, `## Acceptance Criteria`, `## Design`, `## Notes`,
+`## History`, `## Links`, and `## Comments`. Authored bodies must NEVER
+contain markdown headings with those exact names -- at ANY heading level
+(`#`, `##`, `###`, ...). Use the templates' plain-label form
+(`Description:`, `Acceptance Criteria:`) exactly as written; do not
+"upgrade" labels to markdown headings. Colliding headings corrupt nd's
+heading-targeted writes (observed: 258 of 264 live issues with duplicate
+Acceptance Criteria headings). `pvg lint --backlog` flags such collisions.
+
 ### Epic Template
 
 ```markdown
@@ -1083,6 +1094,13 @@ For every CONSUMES reference:
 
 ## Changelog
 
+- 2026-06-11: Added heading collision prohibition above the templates
+  - Story and bug bodies must never contain markdown headings named after
+    nd's structural sections (Description, Acceptance Criteria, Design,
+    Notes, History, Links, Comments) at any level -- plain-label form only
+  - Field finding: 258 of 264 live issues carried duplicate Acceptance
+    Criteria headings, corrupting nd's heading-targeted writes;
+    `pvg lint --backlog` now flags collisions
 - 2026-06-09: Phase 7a sweeps replaced by `pvg lint --backlog` as the single source of truth
   - The 13 hand-rolled bash sweeps are gone. `pvg lint --backlog` is now the
     one deterministic mechanical gate, with two severities: `error` (must fix
