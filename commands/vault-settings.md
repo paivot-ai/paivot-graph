@@ -122,6 +122,44 @@ lint.brownfield: false
 # Updates are never applied automatically; the nudge suggests `pvg update`.
 # Options: true, false
 update.nudge: true
+
+# Per-role model overrides for Paivot agents. Each agent's model is set in its
+# agents/*.md frontmatter by default; these settings override it at spawn time
+# WITHOUT editing any agent file (the override survives plugin updates).
+# Empty (default) = no override, the agent's built-in model wins.
+# Allowed values: opus, sonnet, haiku, fable, inherit, or a full claude-* model id.
+model.developer:
+model.pm:
+model.sr_pm:
+model.anchor:
+model.retro:
+model.ba:
+model.designer:
+model.architect:
+model.ba_challenger:
+model.designer_challenger:
+model.architect_challenger:
+
+# Metric quality gates on delivered code (pvg gates). These compute code
+# metrics by shelling out to real analyzers, compare them to thresholds, and
+# return PASS/FAIL. A BLOCK finding fails the gate (exit 1); WARN findings are
+# reported but do not fail. When an analyzer tool is ABSENT, the gate is
+# SKIPPED and noted -- never a silent pass.
+#
+# Mode keys take: off | warn | block.
+#   complexity  -- cyclomatic complexity per function (lizard, then gocyclo/radon)
+#   duplication -- copy-paste duplication (jscpd)
+#   file_loc    -- non-blank lines per file (built-in, no external tool)
+gates.complexity: block
+gates.complexity.warn_cc: 15
+gates.complexity.block_cc: 30
+gates.duplication: block
+gates.duplication.max_pct: 10
+gates.duplication.min_lines: 50
+gates.file_loc: warn
+gates.file_loc.max: 400
+# Comma-separated globs/path-substrings dropped before any metric runs.
+gates.exclude: vendor/,node_modules/,*.generated.*,*.pb.go,migrations/,*.lock,*.min.*,dist/,build/
 ```
 
 ## Step 2: Present Current Configuration
@@ -154,6 +192,16 @@ Show the user the current state:
 | lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
 | lint.brownfield          | false     | Force the paths-exist lint check on (brownfield mode) |
 | update.nudge             | true      | Session-start nudge when pvg is behind the channel |
+| model.<role>             | (empty)   | Per-role agent model override; empty = agent's built-in default |
+| gates.complexity         | block     | Cyclomatic-complexity gate mode (off/warn/block)  |
+| gates.complexity.warn_cc | 15        | CCN at/above which a complexity WARN fires        |
+| gates.complexity.block_cc| 30        | CCN at/above which a complexity BLOCK fires (block mode) |
+| gates.duplication        | block     | Copy-paste duplication gate mode (off/warn/block) |
+| gates.duplication.max_pct| 10        | Total duplication % at/above which a finding fires |
+| gates.duplication.min_lines | 50     | A single clone of >= this many lines fires a finding |
+| gates.file_loc           | warn      | File-size gate mode (off/warn/block)              |
+| gates.file_loc.max       | 400       | Non-blank lines per file at/above which a finding fires |
+| gates.exclude            | vendor/,...| Comma-separated globs/path-substrings dropped before metrics run |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```
@@ -250,6 +298,68 @@ pvg settings proposal_expiry_days=14
 **If `lint.brownfield` was changed:**
 - `true`: Report: "Brownfield mode forced on. The paths-exist lint check will run regardless of commit count."
 - `false`: Report: "Brownfield mode not forced. The paths-exist lint check falls back to the >50-commits heuristic."
+
+**If a `model.<role>` key was changed:**
+- Sets the model used when that role's agent is spawned, overriding the agent's
+  `agents/*.md` frontmatter without editing any file (the override survives
+  plugin updates).
+- Allowed values: `opus`, `sonnet`, `haiku`, `fable`, `inherit`, or a full
+  `claude-*` model id. Empty clears the override (the agent's built-in default
+  wins). Invalid values (e.g. a typo like `sonet`) are rejected by `pvg settings`.
+- Roles: `developer`, `pm`, `sr_pm`, `anchor`, `retro`, `ba`, `designer`,
+  `architect`, `ba_challenger`, `designer_challenger`, `architect_challenger`.
+- For Developer and PM-Acceptor, the loop surfaces the override on each
+  `pvg loop next` action as a `model` field; the dispatcher passes it as the
+  Agent tool `model` parameter. For agents spawned outside the loop, the
+  dispatcher reads `pvg settings model.<role>` and passes it at spawn time.
+- Example: `pvg settings model.developer=sonnet`
+
+**If a `gates.*` key was changed:**
+- These configure `pvg gates` -- deterministic metric quality gates on
+  delivered code (cyclomatic complexity, copy-paste duplication, file size).
+  A `[BLOCK]` finding fails the gate (exit 1); `[WARN]` findings are reported
+  but do not fail. When an analyzer tool is ABSENT, the gate is SKIPPED and
+  noted in the report (`[SKIP] complexity: lizard not found`) -- never a silent
+  pass and never a failure.
+- Mode keys (`gates.complexity`, `gates.duplication`, `gates.file_loc`) take
+  `off`, `warn`, or `block`. `pvg settings` rejects any other value (e.g. a
+  typo like `blok`). The threshold keys take integers.
+  - `gates.complexity` (default `block`): per-function cyclomatic complexity via
+    `lizard` (multi-language), falling back to `gocyclo` (.go) and `radon`
+    (.py). `gates.complexity.warn_cc` (default 15) and `gates.complexity.block_cc`
+    (default 30) set the WARN/BLOCK bands. In `warn` mode no BLOCK finding is
+    ever produced, even above `block_cc`.
+  - `gates.duplication` (default `block`): copy-paste detection via `jscpd`. A
+    finding fires when total duplication `>= gates.duplication.max_pct`
+    (default 10) OR any single clone has `>= gates.duplication.min_lines`
+    (default 50) duplicated lines.
+  - `gates.file_loc` (default `warn`): built-in non-blank line count per file;
+    a finding fires when a file's LOC `>= gates.file_loc.max` (default 400). No
+    external tool, so this gate is never skipped.
+  - `gates.exclude` (default
+    `vendor/,node_modules/,*.generated.*,*.pb.go,migrations/,*.lock,*.min.*,dist/,build/`):
+    comma-separated globs/path-substrings; any in-scope file matching is dropped
+    before any metric runs. Directory substrings (`vendor/`) and basename globs
+    (`*.pb.go`) are both supported.
+- No side effects -- `pvg gates` reads these at runtime.
+- Example: `pvg settings gates.duplication=warn`
+
+**Installing the analyzers (the complexity and duplication gates need them):**
+
+| Tool    | Purpose                          | Languages                              | Install                                                  | In Ubuntu apt? |
+|---------|----------------------------------|----------------------------------------|----------------------------------------------------------|----------------|
+| lizard  | cyclomatic complexity            | multi (C/C++, Java, JS/TS, Python, Go, Swift, ...) | `pip install lizard`                          | NO             |
+| jscpd   | duplication / copy-paste         | multi                                  | `npm install -g jscpd`                                   | NO             |
+| gocyclo | complexity (Go fallback)         | Go only                                | `go install github.com/fzipp/gocyclo/cmd/gocyclo@latest` | NO             |
+| radon   | complexity (Python fallback)     | Python only                            | `pip install radon`                                      | YES (`apt install python3-radon`) |
+
+apt alone is not enough: only `radon` ships in the Ubuntu repos. The two
+recommended, multi-language tools come from pip (`lizard`) and npm (`jscpd`),
+which are present on most dev machines. Installing just `lizard` + `jscpd`
+lights up the full gate on virtually any stack; gocyclo/radon are niche
+single-language fallbacks you only need if you skip lizard. Run `pvg doctor` to
+see which analyzers are present, and `pvg setup` nudges you to install missing
+ones.
 
 ## Step 5: Report
 

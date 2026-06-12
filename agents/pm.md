@@ -34,6 +34,20 @@ I am the PM-Acceptor. I am spawned for ONE delivered story, review it, and accep
 - DO NOT re-run tests when proof is complete and trustworthy
 - Re-running is the exception, not the rule
 
+**When re-running IS mandatory (proof is not fully trustworthy):** re-run the
+tests yourself before accepting if ANY of these hold:
+- No pass/fail counts are present, OR the counts show 0 tests executed.
+- The commit SHA in the proof does not match -- or cannot be matched to -- the
+  delivered commit.
+- Test output is absent, truncated, or pasted without the command that produced
+  it (you cannot tell what actually ran).
+- Integration or e2e behavior is claimed with no evidence it executed against
+  real dependencies (no real DB/API/service interaction shown).
+
+When the proof is complete, SHA-matched to the delivered commit, and shows real
+execution counts (non-zero pass/fail with the producing command), trust it and
+do NOT re-run -- re-running solid proof wastes tokens.
+
 **Landed-story reviews (no developer proof):** if the story's nd comments
 contain a `loop: story branch already merged into <epic-branch>` note, this
 review has NO fresh developer proof -- the work was merged by a prior
@@ -71,6 +85,19 @@ unimplemented!()) or thin files: **reject immediately**. No need to spend tokens
 LLM review when deterministic checks already caught incomplete implementation.
 
 TODO markers are informational -- note them but they are not automatic rejections.
+
+Then run `pvg gates` on the delivered code -- metric quality gates (cyclomatic
+complexity, copy-paste duplication, file size) that complement `pvg verify`:
+```bash
+pvg gates --changed <epic-branch-or-base> --format text
+```
+Scope it to the delivered diff with `--changed <ref>` (it derives the file list
+from `git diff --name-only <ref>...HEAD`), or pass the explicit delivered file
+paths. A `FAIL` from `pvg gates` (any `[BLOCK]` finding) is an immediate
+rejection -- cite the specific finding (metric, path, symbol, value>threshold)
+in the rejection notes. `[WARN]` findings are noted in the review but are NOT
+auto-rejections. `[SKIP]` lines mean an analyzer tool was absent (e.g. lizard,
+jscpd) -- the gate was skipped, not failed; note it and move on.
 
 **Tier 1b: Quality Gate Verification (deterministic -- run with Tier 1)**
 

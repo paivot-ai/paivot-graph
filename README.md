@@ -159,6 +159,19 @@ The plugin assigns models to balance cost and capability:
 
 Rate limits are per-model. Challengers and Retro run on Sonnet to preserve Opus headroom for the judgment-heavy agents.
 
+**Per-role model override.** The models above are defaults baked into each
+agent's `agents/*.md` frontmatter. You can override any role per project with
+`pvg settings model.<role>=<model>` -- without editing agent files and the
+override survives plugin updates. Roles are `developer`, `pm`, `sr_pm`,
+`anchor`, `retro`, `ba`, `designer`, `architect`, and the three `*_challenger`
+variants; values are `opus`, `sonnet`, `haiku`, `fable`, `inherit`, or a full
+`claude-*` id. An empty value clears the override (the agent's built-in default
+wins). The dispatcher surfaces the choice as a `model` field on each loop
+action and passes it at spawn time. Model choice affects only which model runs
+each agent -- it does not change the structural story/epic gates below. See
+[commands/vault-settings.md](commands/vault-settings.md) for the full key
+reference.
+
 ### Execution workflow
 
 The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Two structural gates enforce quality:
@@ -174,6 +187,29 @@ The execution loop (`/piv-loop`) drives stories through development, review, and
    - `false`: create a PR for team review
 
 Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
+
+### Quality gates
+
+Beyond the structural story/epic gates, the PM-Acceptor runs `pvg gates` on the
+delivered diff in Tier 1 of its review -- a deterministic, metric-based gate on
+delivered code. It measures **copy-paste duplication**, **cyclomatic
+complexity**, and **file size (LOC)** against tunable `gates.*` thresholds, and
+emits `[BLOCK]`/`[WARN]`/`[SKIP]` lines with a PASS/FAIL summary:
+
+- `[BLOCK]` (any block-severity finding) => the PM-Acceptor rejects the story,
+  citing the metric/path/value.
+- `[WARN]` => noted in the review, not an auto-rejection.
+- `[SKIP]` => the analyzer tool was absent; the gate is skipped, never failed.
+
+Complexity and duplication shell out to external analyzers. Installing `lizard`
+(`pip install lizard`) and `jscpd` (`npm install -g jscpd`) lights up the full
+gate on virtually any stack -- **apt alone is not enough; only `radon` ships in
+the Ubuntu repos.** Defaults: `gates.duplication=block`, `gates.complexity=block`
+(BLOCK at CCN >= 30, WARN band 15-30), `gates.file_loc=warn`. Every threshold is
+tunable via `pvg settings gates.*`.
+
+See [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) for the analyzer matrix,
+install instructions, the full `gates.*` key reference, and example output.
 
 ### Hard-TDD mode (optional)
 

@@ -74,7 +74,7 @@ rejected > ready). Follow it:
 
 | Decision | Action |
 |----------|--------|
-| `act` | Spawn the agent specified in `next` (developer or pm_acceptor) |
+| `act` | Spawn the agent specified in `next` (developer or pm_acceptor). If the action carries a non-empty `model` field, pass it as the Agent tool `model` parameter for that spawn; if `model` is absent/empty, spawn normally (the agent's frontmatter default applies) |
 | `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
 | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user via AskUserQuestion |
 | `wait` | Agents are working in the current epic. Do nothing. Wait for completions |
@@ -101,6 +101,10 @@ field still carries the first action. Spawn one developer per entry in
 `actions[]` -- each gets its own story branch and dispatcher-managed worktree
 exactly as described under Story Branch Setup. The single-source-of-truth rule
 is unchanged: the wave comes from `pvg loop next`, never from unscoped nd queries.
+
+Each entry of `actions[]` carries the same optional `model` field as the
+single-action `next`. Apply it per entry: pass a non-empty `model` as the Agent
+tool `model` parameter for that spawn; omit it when empty.
 
 ### Background Spawning (REQUIRED for concurrency)
 
@@ -831,6 +835,23 @@ dispatcher ensures the context is actually complete.
 | Developer | `paivot-graph:developer` | Ready or rejected stories |
 | Retro | `paivot-graph:retro` | After epic completion gate passes (before rotation) |
 | Anchor | `paivot-graph:anchor` | Backlog review or milestone review during epic gate |
+
+### Per-Role Model Overrides
+
+Each agent's model is set in its `agents/*.md` frontmatter by default. Projects
+can override the model per role via `pvg settings model.<role>` (empty = use the
+agent's built-in default). The override is passed at spawn time as the Agent tool
+`model` parameter; no agent file is edited and the override survives plugin updates.
+
+- **Agents spawned by the loop** (Developer, PM-Acceptor): the override is
+  surfaced directly on each loop action as the `model` field -- pass it through
+  as described under the `act` decision and Wave Dispatch. Do not read settings
+  yourself for these.
+- **Agents spawned OUTSIDE the loop** (Sr-PM bug triage, Anchor, Retro, BLT
+  agents): resolve the model yourself by reading `pvg settings model.<role>`
+  (e.g. `pvg settings model.sr_pm`, `pvg settings model.anchor`,
+  `pvg settings model.retro`) and pass it as the spawn-time `model` parameter
+  when non-empty. When empty, spawn normally.
 
 ## Developer Spawning: Normal vs Hard-TDD
 
