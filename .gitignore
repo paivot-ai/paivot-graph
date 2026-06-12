@@ -19,6 +19,7 @@ Thumbs.db
 
 # Paivot runtime state (managed by pvg)
 .vault/issues/
+.vault/.nd-shared.yaml
 .vault/.nd.yaml
 .vault/.piv-loop-state.json
 .vault/.piv-loop-snapshot.json
