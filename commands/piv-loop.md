@@ -171,6 +171,22 @@ BUG TRIAGE MODE. Create properly structured bugs for these discovered issues:
 Wait for Sr. PM to finish before continuing. Bugs need epic placement and
 dependency chains before other work can be prioritized correctly.
 
+**Refresh the snapshot after mid-epic creation.** The Sr. PM writes new bugs
+(or stories) to the live nd vault, which is NOT part of git history. After the
+Sr. PM finishes -- and after any other mid-epic story creation -- run the
+snapshot export on main so the tracked snapshot reflects the new work. The
+dispatcher's HEAD is on main between agents, so this is safe:
+
+```bash
+pvg nd sync --commit   # export + stage + commit on main
+git push origin main   # skip if local-only
+```
+
+This is the same export the epic completion gate runs; doing it mid-epic just
+closes the gap between live creation and the durable snapshot (and keeps
+`pvg doctor`'s `snapshot-drift` check quiet). Never copy files out of the live
+vault by hand -- always go through `pvg nd sync`.
+
 **Note:** When `bug_fast_track` is enabled (or story has `pm-creates-bugs` label),
 PM-Acceptor creates bugs directly during review. Only bugs from Developer agents
 or from PM-Acceptor in centralized mode (the default) appear as DISCOVERED_BUG blocks.
