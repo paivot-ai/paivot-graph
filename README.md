@@ -77,6 +77,18 @@ Install via `.mcp.json` in your project or `~/.claude/settings.json`. After inde
 
 Without a codebase indexing server, agents fall back to grep/ripgrep. This works but is slower, less precise on call graph analysis, and cannot verify module counts as reliably.
 
+### 4. Toolchain containers (if your build runs in a container)
+
+If your project's lint/test toolchain runs inside a container (for example
+Elixir/`mix` inside `docker compose`), `pvg` and `nd` must be on `PATH` *inside*
+the container too -- vault-backed lints shell out to `pvg nd list --json`, and a
+host-only install dies with `:enoent` in the container. Either install the
+(static Go) binaries into the toolchain image at build time, or read-only
+bind-mount the host binaries when host and container share the same
+architecture. See [docs/CONTAINER_TOOLCHAIN.md](docs/CONTAINER_TOOLCHAIN.md) for
+the two supported wirings, the architecture caveat, and the `.git/`-in-mount +
+committed `.vault/.nd-shared.yaml` vault-resolution requirements.
+
 ## If something goes wrong
 
 If a session gets into a bad state, use the smallest escape hatch that solves the problem:
@@ -402,6 +414,7 @@ a single topic each:
 | [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, snapshot-is-export, the dependency-edge lifecycle (`all_blocked_by`), and snapshot-drift (see [Knowledge governance](#knowledge-governance)) |
 | [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |
 | [docs/PARALLEL_DEV_WORKTREES.md](docs/PARALLEL_DEV_WORKTREES.md) | Why code-writing developers get dispatcher-managed worktrees, and the required developer flow |
+| [docs/CONTAINER_TOOLCHAIN.md](docs/CONTAINER_TOOLCHAIN.md) | Running Paivot when the build/lint/test toolchain lives in a container -- installing `pvg`/`nd` in the image vs. bind-mounting, the arch caveat, and in-container vault resolution (see [Toolchain containers](#4-toolchain-containers-if-your-build-runs-in-a-container)) |
 | [docs/SEEDING.md](docs/SEEDING.md) | What `pvg seed` deploys into the system vault and how it relates to self-contained agent prompts |
 | [docs/BUG_CREATION_EVOLUTION.md](docs/BUG_CREATION_EVOLUTION.md) | Background: the move from distributed bug creation to the centralized Sr PM model (and `bug_fast_track`) |
 | [docs/D_AND_F_GUARD_RAILS.md](docs/D_AND_F_GUARD_RAILS.md) | Background: the move from per-document challengers to the Anchor review model (and `dnf.specialist_review`) |
