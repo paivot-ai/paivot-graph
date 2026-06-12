@@ -1,0 +1,140 @@
+# Smoke-tests the stable channel manifest before it lands.
+#
+# Every combo on main has passed this workflow: the manifest parses, every
+# pinned tool release exists and its linux_amd64 binary runs at the pinned
+# version, every pinned plugin matches its committed manifest, and every
+# pinned skill matches its SKILL.md frontmatter at the pinned tag.
+#
+# stable.json may only reference ALREADY-RELEASED versions -- if a pinned tag
+# does not exist yet, this workflow fails by design. Release first, pin after.
+
+name: channel-verify
+
+on:
+  push:
+    paths:
+      - "channel/**"
+  pull_request:
+    paths:
+      - "channel/**"
+
+permissions:
+  contents: read
+
+env:
+  MANIFEST: channel/stable.json
+
+jobs:
+  validate-manifest:
+    name: Validate stable.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse and check schema
+        run: |
+          set -euo pipefail
+          jq empty "$MANIFEST"
+          schema=$(jq -r '.schema' "$MANIFEST")
+          test "$schema" = "1" || { echo "FAIL: schema is $schema, expected 1"; exit 1; }
+          channel=$(jq -r '.channel' "$MANIFEST")
+          test "$channel" = "stable" || { echo "FAIL: channel is $channel, expected stable"; exit 1; }
+          jq -e '.tools | length > 0' "$MANIFEST" >/dev/null || { echo "FAIL: no tools pinned"; exit 1; }
+          jq -e '.plugins | length > 0' "$MANIFEST" >/dev/null || { echo "FAIL: no plugins pinned"; exit 1; }
+          echo "OK: stable.json parses, schema 1, channel stable"
+
+  verify-tools:
+    name: Verify tool releases
+    runs-on: ubuntu-latest
+    needs: validate-manifest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download, checksum-verify, and run each pinned tool
+        run: |
+          set -euo pipefail
+          while read -r tool repo tag; do
+            ver="${tag#v}"
+            asset="${tool}_${ver}_linux_amd64.tar.gz"
+            echo "--- $tool $tag ($repo) ---"
+
+            gh release view "$tag" -R "$repo" >/dev/null \
+              || { echo "FAIL: release $tag does not exist in $repo"; exit 1; }
+            echo "OK: release $tag exists"
+
+            dir=$(mktemp -d)
+            gh release download "$tag" -R "$repo" -p "$asset" -p checksums.txt -D "$dir" \
+              || { echo "FAIL: could not download $asset or checksums.txt from $repo $tag"; exit 1; }
+            echo "OK: $asset and checksums.txt downloaded"
+
+            (cd "$dir" && sha256sum --check --ignore-missing checksums.txt) \
+              || { echo "FAIL: sha256 mismatch for $asset"; exit 1; }
+            echo "OK: sha256 verified"
+
+            tar xzf "$dir/$asset" -C "$dir"
+            out=$("$dir/$tool" --version)
+            echo "$out" | grep -F "$ver" >/dev/null \
+              || { echo "FAIL: '$out' does not contain pinned version $ver"; exit 1; }
+            echo "OK: $tool --version reports $ver"
+          done < <(jq -r '.tools | to_entries[] | "\(.key) \(.value.repo) \(.value.version)"' "$MANIFEST")
+
+  verify-plugins:
+    name: Verify plugin manifests
+    runs-on: ubuntu-latest
+    needs: validate-manifest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare pinned versions against committed plugin manifests
+        run: |
+          set -euo pipefail
+          while read -r plugin marketplace pinned; do
+            echo "--- $plugin $pinned ($marketplace) ---"
+
+            case "$plugin" in
+              paivot-graph) path=".claude-plugin/plugin.json" ;;
+              nd)           path="nd-skill/.claude-plugin/plugin.json" ;;
+              *) echo "FAIL: no known manifest path for plugin '$plugin'"; exit 1 ;;
+            esac
+
+            branch=$(gh api "repos/$marketplace" --jq .default_branch)
+            actual=$(curl -fsSL "https://raw.githubusercontent.com/$marketplace/$branch/$path" | jq -r .version) \
+              || { echo "FAIL: could not fetch $path from $marketplace@$branch"; exit 1; }
+
+            test "$actual" = "$pinned" \
+              || { echo "FAIL: $plugin manifest at HEAD of $branch is $actual, pinned $pinned"; exit 1; }
+            echo "OK: $plugin manifest version matches ($pinned)"
+          done < <(jq -r '.plugins | to_entries[] | "\(.key) \(.value.marketplace) \(.value.version)"' "$MANIFEST")
+
+  verify-skills:
+    name: Verify skill versions
+    runs-on: ubuntu-latest
+    needs: validate-manifest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare pinned versions against SKILL.md frontmatter at the pinned tag
+        run: |
+          set -euo pipefail
+          while read -r skill repo tag; do
+            ver="${tag#v}"
+            echo "--- $skill $tag ($repo) ---"
+
+            case "$skill" in
+              # The vlt skill lives at docs/vlt-skill/ in the vlt repo.
+              vlt-skill) path="docs/vlt-skill/SKILL.md" ;;
+              *) echo "FAIL: no known SKILL.md path for skill '$skill'"; exit 1 ;;
+            esac
+
+            actual=$(curl -fsSL "https://raw.githubusercontent.com/$repo/$tag/$path" \
+              | awk 'NR > 1 && /^---$/ { exit } /^version:/ { print $2 }') \
+              || { echo "FAIL: could not fetch $path from $repo at $tag"; exit 1; }
+
+            test "$actual" = "$ver" \
+              || { echo "FAIL: $skill SKILL.md frontmatter is '$actual', pinned $ver"; exit 1; }
+            echo "OK: $skill frontmatter version matches ($ver)"
+          done < <(jq -r '.skills | to_entries[] | "\(.key) \(.value.repo) \(.value.version)"' "$MANIFEST")

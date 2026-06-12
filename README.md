@@ -2,64 +2,69 @@
 
 A [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) plugin that turns an Obsidian vault into a living runtime for AI agents. Agents read their instructions from the vault, capture knowledge as they work, and refine their own prompts based on experience. The vault evolves with every session.
 
+## Installation
+
+One command installs everything:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paivot-ai/pvg/main/install.sh | sh
+```
+
+The installer reads the stable channel manifest ([channel/stable.json](channel/stable.json)) published by this repository and converges your machine onto that pinned, CI-verified combination:
+
+| Component | What it is |
+|-----------|------------|
+| **[pvg](https://github.com/paivot-ai/pvg)** | The shared control plane for guardrails, live nd routing, loop recovery, story helpers, and updates. All hooks shell out to it. |
+| **[vlt](https://github.com/paivot-ai/vlt)** | The fast, standalone CLI that all hooks, commands, and agents use to interact with your Obsidian vault. Without it, agents fall back to grep/cat -- slower, no alias resolution, no concurrent-access locking. |
+| **[nd](https://github.com/paivot-ai/nd)** | The issue tracker Paivot uses for execution -- git-native markdown work items. For multi-branch execution see [docs/LIVE_SOR.md](docs/LIVE_SOR.md). |
+| **paivot-graph plugin** | This plugin, installed from the GitHub-source marketplace `paivot-ai/paivot-graph`. |
+| **nd plugin** | The nd skill and guard hooks, installed from the GitHub-source marketplace `paivot-ai/nd`. |
+| **vlt skill** | Complete vlt command reference and agentic patterns, installed to `~/.claude/skills/vlt-skill`. |
+
+Marketplaces are GitHub sources -- no repository clones are needed on consumer machines. Restart any open Claude Code sessions for hooks to take effect.
+
+### Updating
+
+```bash
+pvg update
+```
+
+`pvg update` re-reads the stable channel at `main` and converges tools, plugins, and skills onto the pinned combo. Updates are **pin + nudge, never silent**: pvg notices when the channel has moved past your installed combo and tells you, but nothing changes until you run `pvg update` yourself.
+
+| Command | What it does |
+|---------|--------------|
+| `pvg update` | Converge onto the current stable channel (`main` of this repo) |
+| `pvg update --to <git-ref>` | Converge onto the channel as of any git ref of this repo (commit SHA, tag, or branch). This is also the rollback mechanism -- every combo that was ever on `main` passed the same CI smoke test. |
+| `pvg update --pin <git-ref>` | Hold the machine at a specific combo and suppress update nudges |
+
+See [channel/README.md](channel/README.md) for how the channel works and how a combo gets stamped.
+
+### Development install
+
+For working on the plugin itself, install from a clone:
+
+```bash
+git clone https://github.com/paivot-ai/paivot-graph.git
+cd paivot-graph
+make install
+```
+
+This checks that vlt, pvg, and Claude Code are installed, fetches companion tools and skills (`make fetch-tools` -- the development-clone equivalent of what `pvg update` does for consumers), registers this checkout as a local marketplace, and installs the plugin from it.
+
 ## Prerequisites
 
-### 1. vlt (required)
+### 1. Claude Code
 
-**You must install [vlt](https://github.com/paivot-ai/vlt) before using this plugin.** vlt is the fast, standalone CLI that all hooks, commands, and agents use to interact with your Obsidian vault.
+This is a Claude Code plugin. You need [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) installed.
 
-```bash
-# From source (requires Go 1.24+)
-git clone https://github.com/paivot-ai/vlt.git
-cd vlt
-make install
+### 2. Obsidian vault
 
-# Verify
-vlt version   # should print vlt 0.9.0+
-```
+You need an Obsidian vault that vlt can discover. The plugin expects a vault named "Claude" by default. If you don't have one:
 
-Pre-built binaries are available at [vlt releases](https://github.com/paivot-ai/vlt/releases) if you don't have Go installed.
+1. Open Obsidian and create a new vault named "Claude"
+2. Verify vlt can see it: `vlt vaults`
 
-Without vlt, the plugin falls back to direct filesystem operations (grep, cat) which are slower, lack vault-aware features (alias resolution, wikilink repair, backlink tracking), and miss the inert zone masking that prevents false positives.
-
-### 2. nd (recommended for execution)
-
-**[nd](https://github.com/paivot-ai/nd) is the issue tracker Paivot uses for execution.** The on-disk format is git-native markdown, but for multi-branch execution the live backlog should be branch-independent rather than copied into each story branch checkout. See [docs/LIVE_SOR.md](docs/LIVE_SOR.md).
-
-```bash
-# From source (requires Go 1.22+)
-git clone https://github.com/paivot-ai/nd.git
-cd nd
-make build
-make install    # Installs to ~/.local/bin/nd
-
-# Verify
-nd --help
-```
-
-Pre-built binaries are available at [nd releases](https://github.com/paivot-ai/nd/releases).
-
-Without nd, the vault-knowledge and vault-lifecycle features still work (hooks, commands, skills), but the execution agents (developer, PM, Sr PM, anchor, retro) cannot manage work items.
-
-### 3. pvg (required)
-
-**[pvg](https://github.com/paivot-ai/pvg) is the shared control plane Paivot uses for guardrails, live nd routing, loop recovery, and story helpers.** `paivot-graph` shells out to the installed `pvg` binary; `make install` checks that it is already on your `PATH`.
-
-```bash
-# Pre-built binaries
-gh release download -R paivot-ai/pvg -p '*darwin*arm64*' -D /tmp
-tar xzf /tmp/pvg_*.tar.gz -C ~/go/bin
-
-# Or from source (requires Go 1.24+)
-git clone https://github.com/paivot-ai/pvg.git
-cd pvg
-make install
-
-# Verify
-pvg version
-```
-
-### 4. Codebase indexing MCP server (strongly recommended)
+### 3. Codebase indexing MCP server (strongly recommended)
 
 **A codebase indexing MCP server dramatically improves story quality.** When available, Paivot agents use it for API signature verification, cross-cutting concern discovery, and module count validation instead of grep. This prevents the most common class of Anchor rejections: hallucinated API signatures.
 
@@ -71,34 +76,6 @@ Any MCP server that provides `search_graph`, `get_code_snippet`, and `trace_call
 Install via `.mcp.json` in your project or `~/.claude/settings.json`. After indexing, agents automatically prefer MCP tools over grep for codebase queries.
 
 Without a codebase indexing server, agents fall back to grep/ripgrep. This works but is slower, less precise on call graph analysis, and cannot verify module counts as reliably.
-
-### 5. Obsidian vault
-
-You need an Obsidian vault that vlt can discover. The plugin expects a vault named "Claude" by default. If you don't have one:
-
-1. Open Obsidian and create a new vault named "Claude"
-2. Verify vlt can see it: `vlt vaults`
-
-### 6. Claude Code
-
-This is a Claude Code plugin. You need [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) installed.
-
-## Installation
-
-```bash
-git clone https://github.com/paivot-ai/paivot-graph.git
-cd paivot-graph
-make install
-```
-
-This does four things:
-
-1. Checks that vlt and Claude Code are installed
-2. Verifies that `pvg` is on `PATH`
-3. Fetches the [vlt skill](https://github.com/paivot-ai/vlt) from GitHub and installs it to `~/.claude/skills/vlt-skill` (teaches Claude how to use vlt effectively)
-4. Registers the plugin with Claude Code's marketplace and installs it
-
-Restart any open Claude Code sessions for hooks to take effect.
 
 ## If something goes wrong
 
@@ -358,15 +335,19 @@ _templates/   -- Note templates
 
 ```bash
 make help              # show all targets
-make test              # run all checks (shellcheck + functional)
-make lint              # shellcheck on all scripts
+make test              # run all checks (functional)
 make check-deps        # verify vlt and claude are installed
+make fetch-tools       # install/update vlt + nd binaries and their skills
 make fetch-vlt-skill   # fetch vlt skill from GitHub (skips if present)
 make update-vlt-skill  # force-update vlt skill from GitHub
-make install           # check deps + fetch vlt skill + install plugin
+make install           # check deps + fetch tools + install plugin
 make update            # push local changes to installed plugin
 make uninstall         # remove plugin
+make bump v=X.Y.Z      # bump VERSION + plugin.json + marketplace.json atomically
+make channel-check     # validate channel/stable.json against VERSION before pushing
 ```
+
+Releases follow the channel discipline: bump and release this plugin first, then update [channel/stable.json](channel/stable.json) to pin the new version. `make channel-check` catches pin/VERSION skew locally; the `channel-verify` and `version-sync` CI workflows enforce it on push. See [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) for the full distribution design.
 
 ## Verifying the installation
 

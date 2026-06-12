@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "channel": "stable",
+  "updated": "2026-06-11",
+  "tools": {
+    "pvg": {"repo": "paivot-ai/pvg", "version": "v1.55.0"},
+    "nd": {"repo": "paivot-ai/nd", "version": "v0.10.20"},
+    "vlt": {"repo": "paivot-ai/vlt", "version": "v0.11.0"}
+  },
+  "plugins": {
+    "paivot-graph": {"marketplace": "paivot-ai/paivot-graph", "version": "1.55.0"},
+    "nd": {"marketplace": "paivot-ai/nd", "version": "0.10.20"}
+  },
+  "skills": {
+    "vlt-skill": {"repo": "paivot-ai/vlt", "version": "v0.11.0"}
+  }
+}

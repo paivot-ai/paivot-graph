@@ -52,8 +52,10 @@ followed by `pvg seed --force`.
 
 ## When to Re-Seed
 
-After upgrading the plugin, run `pvg seed --force` so the behavioral notes and
-reference copies match the installed version.
+After upgrading the plugin (normally via `pvg update`, which converges onto
+the pinned combo in `channel/stable.json` -- see
+[DISTRIBUTION.md](DISTRIBUTION.md)), run `pvg seed --force` so the behavioral
+notes and reference copies match the installed version.
 
 ---
 

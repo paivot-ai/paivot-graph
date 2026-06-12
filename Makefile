@@ -5,7 +5,8 @@ CACHE_BASE  := $(HOME)/.claude/plugins/cache/$(PLUGIN_NAME)/$(PLUGIN_NAME)
 CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
 .PHONY: install update uninstall test check-deps check-pvg \
-        fetch-tools fetch-vlt-skill update-vlt-skill help sync-cache bump
+        fetch-tools fetch-vlt-skill update-vlt-skill help sync-cache bump \
+        channel-check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -35,6 +36,30 @@ f = open('.claude-plugin/marketplace.json','w'); \
 json.dump(m, f, indent=2); f.write('\n'); f.close(); \
 print('OK: marketplace.json -> $(v)')"
 	@echo "All versions synced to $(v)"
+
+channel-check: ## Validate channel/stable.json parses and its paivot-graph pin matches VERSION (run before pushing channel changes)
+	@python3 -c "\
+import json; \
+m = json.load(open('channel/stable.json')); \
+assert m['schema'] == 1, f\"schema is {m['schema']}, expected 1\"; \
+print('OK: stable.json parses, schema 1')"
+	@python3 -c "\
+import json; \
+m = json.load(open('channel/stable.json')); \
+pinned = m['plugins']['paivot-graph']['version']; \
+v_file = open('VERSION').read().strip(); \
+assert pinned == v_file, \
+    f'Pin mismatch: stable.json pins paivot-graph {pinned}, VERSION is {v_file}'; \
+print(f'OK: stable.json paivot-graph pin matches VERSION ({v_file})')"
+	@python3 -c "\
+import json; \
+m = json.load(open('channel/stable.json')); \
+pvg_tag = m['tools']['pvg']['version'].lstrip('v'); \
+pg = m['plugins']['paivot-graph']['version']; \
+assert pvg_tag == pg, \
+    f'Pin mismatch: stable.json pins pvg v{pvg_tag} but paivot-graph {pg} (pvg must match the plugin version)'; \
+print(f'OK: stable.json pvg pin matches paivot-graph pin ({pg})')"
+	@echo "channel-check passed. CI (channel-verify) will verify releases exist."
 
 # ---------------------------------------------------------------------------
 # Dependency checks
@@ -132,6 +157,9 @@ uninstall: ## Remove plugin and marketplace
 # Companion tool management (vlt + nd binaries and their skills)
 # ---------------------------------------------------------------------------
 
+# NOTE: for consumers, `pvg update` supersedes fetch-tools -- it converges
+# tools, plugins, and skills onto the pinned combo in channel/stable.json.
+# fetch-tools remains for development installs from a clone.
 fetch-tools: check-pvg ## Install/update vlt + nd binaries and their skills from latest releases
 	@if pvg help 2>&1 | grep -q fetch-tools; then \
 		pvg fetch-tools; \

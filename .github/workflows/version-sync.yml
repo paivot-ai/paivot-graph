@@ -1,0 +1,41 @@
+# Version-sync gate for this repo.
+#
+# VERSION, .claude-plugin/plugin.json, and .claude-plugin/marketplace.json
+# must always carry the same version (use `make bump v=X.Y.Z` -- never edit
+# them by hand). The stable channel pins the plugin by the committed manifest
+# version, so a skew here is exactly the bug class that breaks consumers.
+
+name: version-sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "VERSION"
+      - ".claude-plugin/**"
+  pull_request:
+    paths:
+      - "VERSION"
+      - ".claude-plugin/**"
+
+permissions:
+  contents: read
+
+jobs:
+  version-sync:
+    name: VERSION == plugin.json == marketplace.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert all three version files agree
+        run: |
+          set -euo pipefail
+          v_file=$(tr -d '[:space:]' < VERSION)
+          v_plugin=$(jq -r .version .claude-plugin/plugin.json)
+          v_market=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
+          echo "VERSION=$v_file plugin.json=$v_plugin marketplace.json=$v_market"
+          test "$v_file" = "$v_plugin" && test "$v_file" = "$v_market" \
+            || { echo "FAIL: version skew -- run 'make bump v=$v_file' and recommit"; exit 1; }
+          echo "OK: all versions in sync ($v_file)"

@@ -116,6 +116,12 @@ lint.quality_gates:
 # body exists on disk or in a PRODUCES block.
 # Options: true, false
 lint.brownfield: false
+
+# Whether the session-start hook prints a one-line nudge when the installed
+# pvg version is behind the distribution channel (channel/stable.json).
+# Updates are never applied automatically; the nudge suggests `pvg update`.
+# Options: true, false
+update.nudge: true
 ```
 
 ## Step 2: Present Current Configuration
@@ -147,6 +153,7 @@ Show the user the current state:
 | loop.persist_across_sessions | true  | Loop survives session boundaries; background completions resume it |
 | lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
 | lint.brownfield          | false     | Force the paths-exist lint check on (brownfield mode) |
+| update.nudge             | true      | Session-start nudge when pvg is behind the channel |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```
