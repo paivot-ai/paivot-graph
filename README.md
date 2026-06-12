@@ -161,16 +161,12 @@ Rate limits are per-model. Challengers and Retro run on Sonnet to preserve Opus 
 
 **Per-role model override.** The models above are defaults baked into each
 agent's `agents/*.md` frontmatter. You can override any role per project with
-`pvg settings model.<role>=<model>` -- without editing agent files and the
-override survives plugin updates. Roles are `developer`, `pm`, `sr_pm`,
-`anchor`, `retro`, `ba`, `designer`, `architect`, and the three `*_challenger`
-variants; values are `opus`, `sonnet`, `haiku`, `fable`, `inherit`, or a full
-`claude-*` id. An empty value clears the override (the agent's built-in default
-wins). The dispatcher surfaces the choice as a `model` field on each loop
-action and passes it at spawn time. Model choice affects only which model runs
-each agent -- it does not change the structural story/epic gates below. See
-[commands/vault-settings.md](commands/vault-settings.md) for the full key
-reference.
+`pvg settings model.<role>=<model>` -- no file edits, and the override survives
+plugin updates. The dispatcher reads the setting and passes the chosen model at
+spawn time; the choice affects only which model runs each agent, never the
+structural story/epic gates below. See
+[commands/vault-settings.md](commands/vault-settings.md) for the full list of
+roles and accepted values.
 
 ### Execution workflow
 
@@ -193,23 +189,17 @@ Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
 Beyond the structural story/epic gates, the PM-Acceptor runs `pvg gates` on the
 delivered diff in Tier 1 of its review -- a deterministic, metric-based gate on
 delivered code. It measures **copy-paste duplication**, **cyclomatic
-complexity**, and **file size (LOC)** against tunable `gates.*` thresholds, and
-emits `[BLOCK]`/`[WARN]`/`[SKIP]` lines with a PASS/FAIL summary:
-
-- `[BLOCK]` (any block-severity finding) => the PM-Acceptor rejects the story,
-  citing the metric/path/value.
-- `[WARN]` => noted in the review, not an auto-rejection.
-- `[SKIP]` => the analyzer tool was absent; the gate is skipped, never failed.
-
-Complexity and duplication shell out to external analyzers. Installing `lizard`
-(`pip install lizard`) and `jscpd` (`npm install -g jscpd`) lights up the full
-gate on virtually any stack -- **apt alone is not enough; only `radon` ships in
-the Ubuntu repos.** Defaults: `gates.duplication=block`, `gates.complexity=block`
-(BLOCK at CCN >= 30, WARN band 15-30), `gates.file_loc=warn`. Every threshold is
-tunable via `pvg settings gates.*`.
+complexity**, and **file size (LOC)** against tunable `gates.*` thresholds and
+emits `[BLOCK]`/`[WARN]`/`[SKIP]` lines with a PASS/FAIL summary: a `[BLOCK]`
+finding rejects the story, `[WARN]` is noted, and `[SKIP]` (analyzer absent) is
+never a failure. Complexity and duplication shell out to external analyzers, so
+installing `lizard` (`pip install lizard`) and `jscpd` (`npm install -g jscpd`)
+lights up the full gate on virtually any stack -- **apt alone is not enough;
+only `radon` ships in the Ubuntu repos.**
 
 See [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) for the analyzer matrix,
-install instructions, the full `gates.*` key reference, and example output.
+install instructions, default thresholds, the full `gates.*` key reference, and
+example output.
 
 ### Hard-TDD mode (optional)
 
@@ -400,6 +390,24 @@ Relevant vault notes:
 If you see `[VAULT] Vault directory not found` instead, check that your Obsidian vault exists and that `vlt vaults` lists it.
 
 If you see no vault output at all, check that the plugin installed correctly: `claude plugin list` should show `paivot-graph`.
+
+## Further reading
+
+The README is the hub; the detail docs under [`docs/`](docs/) carry the depth on
+a single topic each:
+
+| Doc | What it covers |
+|-----|----------------|
+| [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) | `pvg gates` in full -- the analyzer matrix, install instructions, the complete `gates.*` key reference, and example output (see [Quality gates](#quality-gates)) |
+| [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, snapshot-is-export, the dependency-edge lifecycle (`all_blocked_by`), and snapshot-drift (see [Knowledge governance](#knowledge-governance)) |
+| [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |
+| [docs/PARALLEL_DEV_WORKTREES.md](docs/PARALLEL_DEV_WORKTREES.md) | Why code-writing developers get dispatcher-managed worktrees, and the required developer flow |
+| [docs/SEEDING.md](docs/SEEDING.md) | What `pvg seed` deploys into the system vault and how it relates to self-contained agent prompts |
+| [docs/BUG_CREATION_EVOLUTION.md](docs/BUG_CREATION_EVOLUTION.md) | Background: the move from distributed bug creation to the centralized Sr PM model (and `bug_fast_track`) |
+| [docs/D_AND_F_GUARD_RAILS.md](docs/D_AND_F_GUARD_RAILS.md) | Background: the move from per-document challengers to the Anchor review model (and `dnf.specialist_review`) |
+
+Per-role agent model overrides and the full `gates.*` / `model.*` settings key
+list live in [commands/vault-settings.md](commands/vault-settings.md).
 
 ## License
 

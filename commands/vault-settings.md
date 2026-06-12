@@ -345,21 +345,13 @@ pvg settings proposal_expiry_days=14
 - Example: `pvg settings gates.duplication=warn`
 
 **Installing the analyzers (the complexity and duplication gates need them):**
-
-| Tool    | Purpose                          | Languages                              | Install                                                  | In Ubuntu apt? |
-|---------|----------------------------------|----------------------------------------|----------------------------------------------------------|----------------|
-| lizard  | cyclomatic complexity            | multi (C/C++, Java, JS/TS, Python, Go, Swift, ...) | `pip install lizard`                          | NO             |
-| jscpd   | duplication / copy-paste         | multi                                  | `npm install -g jscpd`                                   | NO             |
-| gocyclo | complexity (Go fallback)         | Go only                                | `go install github.com/fzipp/gocyclo/cmd/gocyclo@latest` | NO             |
-| radon   | complexity (Python fallback)     | Python only                            | `pip install radon`                                      | YES (`apt install python3-radon`) |
-
-apt alone is not enough: only `radon` ships in the Ubuntu repos. The two
-recommended, multi-language tools come from pip (`lizard`) and npm (`jscpd`),
-which are present on most dev machines. Installing just `lizard` + `jscpd`
-lights up the full gate on virtually any stack; gocyclo/radon are niche
-single-language fallbacks you only need if you skip lizard. Run `pvg doctor` to
-see which analyzers are present, and `pvg setup` nudges you to install missing
-ones.
+the complexity and duplication metrics shell out to external tools. Installing
+just `lizard` (`pip install lizard`) and `jscpd` (`npm install -g jscpd`) lights
+up the full gate on virtually any stack -- apt alone is not enough, only `radon`
+ships in the Ubuntu repos. Run `pvg doctor` to see which analyzers are present,
+and `pvg setup` nudges you to install missing ones. The full analyzer matrix
+(languages, single-language fallbacks, apt coverage) lives in
+[../docs/QUALITY_GATES.md](../docs/QUALITY_GATES.md).
 
 ## Step 5: Report
 
