@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "channel": "stable",
-  "updated": "2026-06-12",
+  "updated": "2026-06-14",
   "tools": {
     "pvg": {
       "repo": "paivot-ai/pvg",
-      "version": "v1.56.1"
+      "version": "v1.57.0"
     },
     "nd": {
       "repo": "paivot-ai/nd",
-      "version": "v0.10.20"
+      "version": "v0.10.21"
     },
     "vlt": {
       "repo": "paivot-ai/vlt",
@@ -19,11 +19,11 @@
   "plugins": {
     "paivot-graph": {
       "marketplace": "paivot-ai/paivot-graph",
-      "version": "1.56.1"
+      "version": "1.57.0"
     },
     "nd": {
       "marketplace": "paivot-ai/nd",
-      "version": "0.10.20"
+      "version": "0.10.21"
     }
   },
   "skills": {

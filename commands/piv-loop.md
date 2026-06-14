@@ -901,6 +901,14 @@ as `phase` ("red" or "green") -- trust the loop output, do not infer:
 A rejected story keeps its `red-approved` label, so rework actions carry the
 correct phase automatically.
 
+**CI structural lock (optional).** The label flow governs what each agent does
+per phase; to also prove from git history that GREEN commits never quietly
+weakened the RED tests, projects can add the canonical guard
+`pvg story verify-tdd` (CI wrapper `scripts/verify-hard-tdd.sh`). It fails when a
+non-RED, unauthorized commit edits a test file, and fails loudly when its range
+cannot be resolved rather than passing silently. See
+[docs/HARD_TDD_GUARD.md](../docs/HARD_TDD_GUARD.md).
+
 **Do NOT default to hard-TDD.** The user's general TDD preference (writing tests alongside
 code) is satisfied by normal mode. Hard-TDD is a stricter discipline where tests and
 implementation are written by separate agent invocations with structural locks. It requires

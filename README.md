@@ -411,6 +411,7 @@ a single topic each:
 | Doc | What it covers |
 |-----|----------------|
 | [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) | `pvg gates` in full -- the analyzer matrix, install instructions, the complete `gates.*` key reference, and example output (see [Quality gates](#quality-gates)) |
+| [docs/HARD_TDD_GUARD.md](docs/HARD_TDD_GUARD.md) | The CI structural lock for `hard-tdd` stories -- `pvg story verify-tdd` plus the `scripts/verify-hard-tdd.sh` wrapper, the RED/authorized marker rules, and robust range resolution |
 | [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, snapshot-is-export, the dependency-edge lifecycle (`all_blocked_by`), and snapshot-drift (see [Knowledge governance](#knowledge-governance)) |
 | [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |
 | [docs/PARALLEL_DEV_WORKTREES.md](docs/PARALLEL_DEV_WORKTREES.md) | Why code-writing developers get dispatcher-managed worktrees, and the required developer flow |
