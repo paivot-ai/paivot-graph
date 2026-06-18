@@ -1,0 +1,21 @@
+# Runs the parallel-developer worktree isolation smoke on every push/PR, guarding
+# the invariants in docs/PARALLEL_DEV_WORKTREES.md from silent regression. The
+# script is pure git (no pvg/nd/network), so this job needs only a checkout.
+name: worktree-smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Parallel-dev worktree isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run worktree smoke
+        run: bash scripts/smoke_parallel_dev_worktrees.sh

@@ -6,7 +6,7 @@ CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
 .PHONY: install update uninstall test check-deps check-pvg \
         fetch-tools fetch-vlt-skill update-vlt-skill help sync-cache bump \
-        channel-check
+        channel-check smoke-worktrees
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -178,15 +178,21 @@ update-vlt-skill: check-pvg ## Force-update the vlt skill from GitHub
 # Lint & test
 # ---------------------------------------------------------------------------
 
+smoke-worktrees: ## Run the parallel-dev worktree isolation regression smoke
+	@scripts/smoke_parallel_dev_worktrees.sh
+
 test: check-pvg ## Run all checks (functional)
 	@echo "--- Functional checks ---"
 	@echo "Checking pvg is on PATH..."
 	@command -v pvg >/dev/null 2>&1 || (echo "FAIL: pvg not found on PATH" && exit 1)
 	@echo "OK: pvg found at $$(command -v pvg)"
 	@echo ""
-	@echo "Checking no shell scripts remain..."
-	@test ! -d scripts || test -z "$$(ls scripts/ 2>/dev/null)" || (echo "FAIL: shell scripts still exist in scripts/" && exit 1)
-	@echo "OK: No shell scripts"
+	@echo "Linting shell scripts (scripts/*.sh)..."
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck scripts/*.sh && echo "OK: shellcheck clean"; \
+	else \
+		echo "SKIP: shellcheck not installed"; \
+	fi
 	@echo ""
 	@echo "Checking hooks.json is valid JSON..."
 	@python3 -c "import json; json.load(open('hooks/hooks.json'))" || (echo "FAIL: hooks.json is not valid JSON" && exit 1)

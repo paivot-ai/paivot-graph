@@ -1020,7 +1020,8 @@ Smoke check -- the invariants any parallel wave must satisfy: a three-developer
 wave with staged and committed files in separate story worktrees must show no
 sibling staged files, no `-v2`/`-v3` collision-recovery branch suffixes, and no
 developer `worktree-agent-*` branches, and every worktree must be removed at the
-end.
+end. These are asserted by `scripts/smoke_parallel_dev_worktrees.sh`
+(`make smoke-worktrees`).
 
 ### Full Flow
 

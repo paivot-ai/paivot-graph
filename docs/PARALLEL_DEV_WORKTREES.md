@@ -62,5 +62,6 @@ the epic branch, all of these hold:
 - no `-v2` or `-v3` collision-recovery branch exists
 - all worktrees are removed at the end
 
-These are the invariants to assert when verifying any change to parallel-worktree
-handling.
+These invariants are asserted automatically by
+`scripts/smoke_parallel_dev_worktrees.sh` (run `make smoke-worktrees`), which the
+`worktree-smoke` CI workflow runs on every push and pull request.
