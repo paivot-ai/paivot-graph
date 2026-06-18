@@ -1016,15 +1016,11 @@ absolute `Work in:` path. A post-fix wave must not create `-v2`/`-v3` collision
 recovery branches, must not leave developer commits on `worktree-agent-*`
 branches, and must not show staged files from a sibling story.
 
-Smoke test:
-
-```bash
-scripts/smoke_parallel_dev_worktrees.sh
-```
-
-This script simulates a three-developer wave with staged and committed files in
-separate story worktrees, then verifies there are no sibling staged files,
-collision-recovery branch suffixes, or developer `worktree-agent-*` branches.
+Smoke check -- the invariants any parallel wave must satisfy: a three-developer
+wave with staged and committed files in separate story worktrees must show no
+sibling staged files, no `-v2`/`-v3` collision-recovery branch suffixes, and no
+developer `worktree-agent-*` branches, and every worktree must be removed at the
+end.
 
 ### Full Flow
 

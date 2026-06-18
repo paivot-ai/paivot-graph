@@ -187,6 +187,14 @@ These are structural checks that catch the most common developer omissions:
   is NOT a rejection reason at story level (it's verified at epic level by the Anchor),
   but flag if the developer's proof claims the AC is satisfied by mocked tests alone
   without acknowledging the limitation.
+- **Documentation Freshness (DOCS_STALE):** For each file the story changed, check
+  whether any documentation references the changed behavior -- README, `docs/`,
+  command/flag help, public API references, or usage examples. If a doc describes
+  behavior the story altered (renamed/removed flag, changed default, new/removed
+  command, moved path, changed output) and the doc was NOT updated, and the story
+  did not explicitly scope docs out, REJECT with:
+  `DOCS_STALE: <doc> references <behavior> but was not updated`. A green test suite
+  does not make stale docs acceptable -- docs are part of the deliverable.
 
 **Tier 4: Human (only when agent genuinely cannot verify)**
 

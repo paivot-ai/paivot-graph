@@ -53,17 +53,14 @@ recovery branch to escape the collision.
 
 ## Regression Smoke
 
-Run:
-
-```bash
-scripts/smoke_parallel_dev_worktrees.sh
-```
-
-The smoke creates a temporary repo, prepares three story branches and three
-dispatcher-managed worktrees, stages and commits one unique file per worktree,
-merges the stories back to the epic branch, and verifies:
+A parallel-dev wave is correct only when, after three dispatcher-managed
+worktrees each stage and commit one unique file and the stories merge back to
+the epic branch, all of these hold:
 
 - each worktree sees only its own staged file before commit
 - no `worktree-agent-*` developer branch exists
 - no `-v2` or `-v3` collision-recovery branch exists
 - all worktrees are removed at the end
+
+These are the invariants to assert when verifying any change to parallel-worktree
+handling.
