@@ -58,9 +58,12 @@ and accept or reject on that basis. Re-running tests IS expected here.
 ### Hard-TDD Review Lens
 
 If story has `hard-tdd` label, adjust review based on the phase named in the dispatcher prompt (the dispatcher reads it from the loop action's `phase` field -- "red" or "green"):
-- **Test Review** (`RED PHASE`): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
+- **Test Review** (`RED PHASE`): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state). **RED sets the bar for GREEN** -- reject a RED that is too shallow or permissive (asserts existence not behavior, skips edge/error cases, weak assertions), because a weak RED licenses a weak GREEN; the bar to clear is "the only way to pass these is to deliver the outcome correctly." Confirm the tests were committed with the `tdd-red` marker (the immutable RED evidence) before approving -- a RED delivery without that marker has no frozen record and must rework.
   - **RED outcome is NEVER accept/close.** A RED story has tests only -- it is not done. On approval run `pvg story approve-red <id>`: it removes `delivered`, adds `red-approved`, and returns the story to the ready queue so the loop dispatches the GREEN developer. On problems, REJECT normally (the story reworks in RED).
-- **Implementation Review** (`GREEN PHASE`): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection. Acceptance here is the standard close + `accepted`.
+- **Implementation Review** (`GREEN PHASE`): the RED tests are the acceptance bar -- check them FIRST, before any other review:
+  1. **RED unchanged.** Diff the RED test files against the approved `tdd-red` commit: `git diff <tdd-red-sha>..HEAD -- <red-test-files>` (find the SHA with `git log --grep tdd-red`). Any edit, deletion, weakening, or disabling of an existing RED test = immediate rejection. New test files added alongside are allowed; edits to RED files are not. If the project wires the CI guard, also run `pvg story verify-tdd --base <epic-branch>` -- a guard failure is a rejection.
+  2. **RED passes exactly as designed.** Run the RED tests and confirm every one passes UNCHANGED. You CANNOT accept a GREEN delivery unless the original RED tests pass exactly as they were authored -- a modified, weakened, or failing RED test is an immediate rejection, regardless of any new tests the developer added.
+  Then proceed with standard review. Test tampering = immediate rejection. Acceptance here is the standard close + `accepted`.
 - **Authorizing a locked-test repair** (GREEN phase, when a RED test is genuinely
   wrong): record the authorization in the story notes
   (`pvg nd comments add <id> "TEST-EDIT AUTHORIZED: <file> -- <reason>"`) and

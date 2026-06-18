@@ -9,7 +9,8 @@ implementation pass.
 
 ## The rule it enforces
 
-Within a commit range, a test file may only be edited in:
+Within a commit range, an existing test file may only be **modified or deleted**
+in:
 
 - a **RED commit** -- its message contains the `tdd-red` marker (this is where
   failing tests are authored), or
@@ -17,9 +18,16 @@ Within a commit range, a test file may only be edited in:
   contains the `[test-edit-authorized]` marker (e.g. repairing a genuinely
   flaky test).
 
-Any other commit that edits a test file is a violation. Merge commits are
-skipped: a merge carries no per-commit marker of its own, and its non-merge
-constituents (which do) are checked directly.
+Any other commit that modifies or deletes a test file is a violation.
+
+**Adding a brand-new test file is always allowed**, in any commit, with no
+marker. A pure addition cannot weaken the frozen RED tests -- they still run and
+must pass -- so GREEN is free to add coverage or CI tests in new files. Only
+edits and deletions touch the RED set. Renames are detected via `--no-renames`,
+so a renamed RED test surfaces as a delete of its old path and is still caught.
+
+Merge commits are skipped: a merge carries no per-commit marker of its own, and
+its non-merge constituents (which do) are checked directly.
 
 ## Running it
 
