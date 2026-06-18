@@ -5,7 +5,7 @@
   "tools": {
     "pvg": {
       "repo": "paivot-ai/pvg",
-      "version": "v1.57.1"
+      "version": "v1.57.2"
     },
     "nd": {
       "repo": "paivot-ai/nd",
@@ -19,7 +19,7 @@
   "plugins": {
     "paivot-graph": {
       "marketplace": "paivot-ai/paivot-graph",
-      "version": "1.57.1"
+      "version": "1.57.2"
     },
     "nd": {
       "marketplace": "paivot-ai/nd",
