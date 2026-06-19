@@ -1,6 +1,6 @@
 # paivot-graph
 
-A [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) plugin that turns an Obsidian vault into a living runtime for AI agents. Agents read their instructions from the vault, capture knowledge as they work, and refine their own prompts based on experience. The vault evolves with every session.
+A [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) plugin implementing a multi-agent software-delivery methodology. Agents ship as self-contained static prompts; an Obsidian vault is the living knowledge layer -- agents read prior knowledge at session start, capture decisions, patterns, and debug insights as they work, and that knowledge compounds across every session.
 
 ## Installation
 
@@ -138,7 +138,7 @@ Additional hook handlers are also registered for dispatcher tracking, user-promp
 
 ### Agents
 
-Eleven specialized agents that read their full instructions from the vault at runtime:
+Eleven specialized agents, each a self-contained static prompt in the plugin (`agents/*.md`), loaded directly by Claude Code when the agent is spawned:
 
 | Agent | Role |
 |-------|------|
@@ -345,20 +345,23 @@ Without these flags, an agent would need N+1 calls: read the note, parse links, 
 
 All vault commands (`/vault-capture`, `/vault-evolve`, `/vault-triage`, `/vault-status`, `/vault-settings`) use vlt exclusively for reads and writes. Edit and Write tools are not in their allowed-tools lists.
 
-## How the vault-as-runtime works
+## How the knowledge vault works
 
-Traditional plugins ship static prompts. paivot-graph ships vault loaders -- thin stubs that point agents to vault notes for their instructions. This means:
+Agent prompts are **static**: each agent is a self-contained `agents/*.md` file, read
+directly by Claude Code when the agent is spawned (since v1.53.0 -- see
+[docs/SEEDING.md](docs/SEEDING.md)). What lives in the vault is **knowledge**, and that
+is what evolves:
 
-1. **Agent prompts live in the vault**, not in plugin files. Edit them with Obsidian or vlt, and the next session picks up changes automatically.
-2. **Knowledge compounds** across sessions. Every decision, pattern, and debug insight captured during work is available to future sessions.
-3. **The feedback loop closes**. `/vault-evolve` lets agents refine their own instructions based on what worked and what didn't.
+1. **Knowledge compounds** across sessions. Every decision, pattern, and debug insight captured during work is available to future sessions.
+2. **The feedback loop closes**. `/vault-evolve` proposes refinements to system knowledge (conventions, patterns, decisions) and `/vault-triage` reviews them. Agent behavior is versioned with the plugin, not edited live in the vault.
+3. **Behavioral conventions load at runtime**. The session hooks read `conventions/Session Operating Mode.md` and the capture checklists from the vault; `pvg seed` deploys them (see [docs/SEEDING.md](docs/SEEDING.md)).
 4. **Access is structurally enforced**. The scope guard blocks direct file writes; all vault operations go through vlt, which provides concurrent-access locking. This is mechanism, not policy -- subagents can't bypass it.
 
 The vault structure:
 
 ```
-methodology/  -- Agent prompts (atomic concepts from the Paivot methodology)
-conventions/  -- Working conventions (operating mode, checklists, skill content)
+methodology/  -- Methodology notes + reference copies of the static agent prompts (browsable; agents do NOT read these at runtime)
+conventions/  -- Working conventions (operating mode, checklists, skill content) -- hooks load these at runtime
 decisions/    -- Architectural and design decisions with rationale
 patterns/     -- Reusable solutions and idioms
 debug/        -- Problems and their resolutions
