@@ -1181,12 +1181,21 @@ pvg loop recover
 
 This command automatically:
 1. Reads the snapshot file (if one exists from a prior `pvg loop snapshot`)
-2. Removes all agent worktrees and their branches
+2. Removes ONLY Paivot-owned agent worktrees -- those under `.claude/worktrees/`
+   (the owned base; overridable via the `worktree.base` setting) -- and their
+   Paivot branches (`story/*`, `epic/*`, `worktree-agent-*`, `worktree-*`).
+   Worktrees created by other tools (for example `.codex-worktrees/` or
+   `.opencode-worktrees/`) or at external paths are FOREIGN: `pvg loop recover`
+   never removes them and never deletes their branches -- they are reported as
+   preserved (`foreign_worktrees_preserved`) and left exactly as they were.
 3. Deletes stale local branches (`epic/*`, `story/*`, `worktree-*`) that are fully merged into main
 4. Resets orphaned in-progress stories to `open` in nd (delivered stories are preserved)
 5. Outputs a recovery summary showing what's ready, delivered, and needs attention
 
-If no snapshot exists, it still cleans orphan worktrees from `git worktree list`.
+If no snapshot exists, it still cleans Paivot-owned orphan worktrees, but the
+ownership boundary above always holds: foreign worktrees are never touched. Do
+NOT enumerate `git worktree list` and delete entries yourself -- let
+`pvg loop recover` apply the ownership allowlist for you.
 
 **Before compaction (optional but recommended):** take a snapshot to preserve agent state:
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "paivot-graph",
-  "version": "1.57.2",
+  "version": "1.57.3",
   "description": "Multi-agent software-delivery methodology for Claude Code -- self-contained static agent prompts, a structural scope guard, and an Obsidian knowledge vault that compounds across sessions",
   "author": {
     "name": "Paivot"

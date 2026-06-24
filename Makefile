@@ -6,7 +6,7 @@ CACHE_DIR   := $(CACHE_BASE)/$(VERSION)
 
 .PHONY: install update uninstall test check-deps check-pvg \
         fetch-tools fetch-vlt-skill update-vlt-skill help sync-cache bump \
-        channel-check smoke-worktrees
+        channel-check smoke-worktrees smoke-recover
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -180,6 +180,9 @@ update-vlt-skill: check-pvg ## Force-update the vlt skill from GitHub
 
 smoke-worktrees: ## Run the parallel-dev worktree isolation regression smoke
 	@scripts/smoke_parallel_dev_worktrees.sh
+
+smoke-recover: check-pvg ## Assert `pvg loop recover` preserves foreign (non-Paivot) worktrees
+	@scripts/smoke_recover_preserves_foreign.sh
 
 test: check-pvg ## Run all checks (functional)
 	@echo "--- Functional checks ---"
