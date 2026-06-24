@@ -150,7 +150,7 @@ MANDATORY SKILLS TO REVIEW:
 When writing stories about parallel Developer or Conflict-fix execution, require
 dispatcher-managed story worktrees, not native agent worktree isolation.
 
-- Correct mechanism: `git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID`
+- Correct mechanism: `pvg worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID` (stamps the `paivot-owned` marker so recover only removes Paivot's own worktrees)
 - Developer prompt must include the absolute `Work in:` path.
 - Native `isolation: "worktree"` is for PM-Acceptor/read-only review only,
   because it creates `worktree-agent-*` branches that are not `story/STORY_ID`.

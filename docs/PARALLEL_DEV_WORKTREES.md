@@ -10,8 +10,14 @@ For each developer story:
 
 ```bash
 git branch story/STORY_ID origin/main
-git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
+pvg worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
+
+Create the worktree with `pvg worktree add`, never raw `git worktree add`. See
+[Marker = Ownership](#marker--ownership) below: `pvg worktree add` stamps the
+ownership marker that lets `pvg loop recover` clean the worktree up. A raw
+`git worktree add` leaves the worktree unmarked, and recover then treats it as
+foreign and refuses to remove it.
 
 The developer prompt must include:
 
@@ -33,7 +39,31 @@ code commits would land on an automatic branch instead of `story/STORY_ID`, and
 cleanup can remove the only easy reference to those commits.
 
 Use native `isolation: "worktree"` for PM-Acceptor only. Use dispatcher-managed
-`git worktree add` directories for code-writing agents.
+`pvg worktree add` directories for code-writing agents.
+
+## Marker = Ownership
+
+`pvg loop recover` cleans up Paivot's leftover worktrees after a context loss.
+It must never delete a worktree another tool -- or a concurrent NON-Paivot
+Claude Code session -- created. Ownership is therefore a **marker**, not a path:
+
+- `pvg worktree add <path> <branch>` creates the worktree via git, then writes a
+  `paivot-owned` marker file into the worktree's git admin dir
+  (`.git/worktrees/<name>/paivot-owned`). This is the ONLY way a Paivot worktree
+  gets marked.
+- `pvg loop recover` and `pvg worktree remove` remove a worktree, and delete its
+  branch, **only if it carries that marker**. A worktree with no marker is
+  treated as foreign and preserved untouched -- **regardless of its path**
+  (including one created under `.claude/worktrees/` by a non-Paivot session) and
+  regardless of its branch name.
+- The marker lives in the git admin dir so git owns its lifecycle:
+  `git worktree add` creates the admin dir; `git worktree remove`/`prune` deletes
+  it together with the marker. There is nothing extra to clean up.
+
+Consequence: ALWAYS create developer/Conflict-fix worktrees with
+`pvg worktree add`. A raw `git worktree add` produces an UNMARKED worktree that
+recover will refuse to clean up (it looks foreign), leaving stale worktrees and
+branches behind.
 
 ## Reproduction Recipe For The Old Bug
 

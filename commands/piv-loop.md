@@ -297,7 +297,7 @@ Before spawning a developer:
 
 Branch creation is NON-SWITCHING (`git branch`, never `git checkout -b`):
 the dispatcher's HEAD stays on main, and a checked-out story branch would
-also block the `git worktree add` that follows. The guard rejects story/*
+also block the `pvg worktree add` that follows. The guard rejects story/*
 checkouts at the project root structurally.
 
 **With remote:**
@@ -323,8 +323,18 @@ Then CLAIM the story and create a worktree for the developer on the story branch
 
 ```bash
 pvg story claim STORY_ID    # status -> in_progress; MANDATORY before spawning
-git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
+pvg worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
+
+**Always create developer/PM worktrees with `pvg worktree add`, never raw
+`git worktree add`.** `pvg worktree add` stamps an ownership marker
+(`paivot-owned`) into the worktree's git admin dir. `pvg loop recover` (and
+`pvg worktree remove`) remove a worktree, and delete its branch, ONLY when it
+carries that marker. So a concurrent NON-Paivot Claude Code session that creates
+its own worktree -- even under `.claude/worktrees/` -- is never removed by
+recover. A raw `git worktree add` here would leave the worktree UNMARKED, and
+recover would then treat your own developer worktree as foreign and refuse to
+clean it up.
 
 **Claiming at dispatch is not optional.** Until a story leaves the ready
 queue, `pvg loop next` will keep offering it -- in wave dispatch that means
@@ -1006,9 +1016,9 @@ Parallel fanout is allowed only when each developer has a dispatcher-managed
 story worktree:
 
 ```bash
-git worktree add .claude/worktrees/dev-STORY_A story/STORY_A
-git worktree add .claude/worktrees/dev-STORY_B story/STORY_B
-git worktree add .claude/worktrees/dev-STORY_C story/STORY_C
+pvg worktree add .claude/worktrees/dev-STORY_A story/STORY_A
+pvg worktree add .claude/worktrees/dev-STORY_B story/STORY_B
+pvg worktree add .claude/worktrees/dev-STORY_C story/STORY_C
 ```
 
 Then spawn one Developer per worktree. Every prompt must include the unique
@@ -1026,7 +1036,7 @@ end. These are asserted by `scripts/smoke_parallel_dev_worktrees.sh`
 ### Full Flow
 
 1. Dispatcher creates story branch from epic (see Story Branch Setup)
-2. Dispatcher creates dev worktree: `git worktree add .claude/worktrees/dev-<STORY_ID> story/<STORY_ID>`
+2. Dispatcher creates dev worktree: `pvg worktree add .claude/worktrees/dev-<STORY_ID> story/<STORY_ID>` (stamps the ownership marker)
 3. Developer works, commits, pushes on `story/<STORY_ID>`
 4. Developer marks delivered
 5. Dispatcher resets to project root, then removes dev worktree: `cd $PROJECT_ROOT && pwd` followed by `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
@@ -1246,16 +1256,17 @@ Three layers prevent this failure mode:
 
 ### Additional rules
 
-- **NEVER chain branch checkout + worktree add in one Bash call:**
+- **NEVER chain branch creation + worktree add in one Bash call:**
   ```bash
-  # WRONG -- if checkout changes main worktree, worktree add may fail and
+  # WRONG -- if branch creation touches the main worktree, the add may fail and
   # leave you on the wrong branch:
-  git checkout -b story/X epic/Y && git worktree add .claude/worktrees/dev-X story/X
+  git branch story/X epic/Y && pvg worktree add .claude/worktrees/dev-X story/X
 
-  # RIGHT -- two separate Bash calls:
-  git checkout -b story/X epic/Y
+  # RIGHT -- two separate Bash calls (use pvg worktree add so the worktree gets
+  # the paivot-owned marker; recover only removes marked worktrees):
+  git branch story/X epic/Y          # non-switching: dispatcher HEAD stays on main
   # (then in a SEPARATE Bash call:)
-  git worktree add .claude/worktrees/dev-X story/X
+  pvg worktree add .claude/worktrees/dev-X story/X
   ```
 
 - **After any developer or PM agent completes (foreground or background), the first Bash command must be a reset:**
