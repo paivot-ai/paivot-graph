@@ -92,6 +92,14 @@ dnf.specialist_review: false
 # Range: 1-5 (default: 3)
 dnf.max_iterations: 3
 
+# Domain model (entities, relationships, invariants) alongside ARCHITECTURE.md
+# When enabled, the Architect maintains a *.modelith.yaml domain model as the
+# machine-checkable twin of ARCHITECTURE.md; the Sr PM turns invariants into
+# acceptance criteria and the Anchor checks entity/invariant coverage.
+# Requires the modelith CLI (installed by pvg setup/update).
+# Options: true, false
+dnf.domain_model: false
+
 # C4 architecture model alongside ARCHITECTURE.md
 # When enabled, Architect maintains workspace.dsl and Architecture Contract
 # Options: true, false
@@ -187,6 +195,7 @@ Show the user the current state:
 | workflow.custom_statuses | ...       | Extra nd statuses, if your project explicitly uses them |
 | dnf.specialist_review    | false     | Adversarial challengers review each D&F document |
 | dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
+| dnf.domain_model         | false     | *.modelith.yaml domain model (entities/invariants) alongside ARCHITECTURE.md |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
 | loop.persist_across_sessions | true  | Loop survives session boundaries; background completions resume it |
 | lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
@@ -282,6 +291,15 @@ pvg settings proposal_expiry_days=14
   3. The `c4` skill will be discovered by agents via normal skill discovery.
 - `false` (disable):
   1. Report: "C4 architecture model disabled. Existing workspace.dsl is preserved but not maintained."
+  2. No files are deleted.
+
+**If `dnf.domain_model` was changed:**
+- `true` (enable):
+  1. Report: "Domain model enabled. The Architect will maintain a *.modelith.yaml domain model as the machine-checkable twin of ARCHITECTURE.md."
+  2. Requires the `modelith` CLI. Run `pvg doctor` to confirm it is installed (`pvg update` installs it).
+  3. The `domain-model` skill will be discovered by agents via normal skill discovery. It carries the per-agent duties: the Architect owns the model, the Sr PM turns invariants into acceptance criteria, and the Anchor checks entity/invariant coverage.
+- `false` (disable):
+  1. Report: "Domain model disabled. Existing *.modelith.yaml is preserved but not maintained."
   2. No files are deleted.
 
 **If `loop.persist_across_sessions` was changed:**

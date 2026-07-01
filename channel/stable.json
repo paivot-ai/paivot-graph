@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "stable",
-  "updated": "2026-06-23",
+  "updated": "2026-07-01",
   "tools": {
     "pvg": {
       "repo": "paivot-ai/pvg",
-      "version": "v1.57.4"
+      "version": "v1.57.6"
     },
     "nd": {
       "repo": "paivot-ai/nd",
@@ -14,12 +14,16 @@
     "vlt": {
       "repo": "paivot-ai/vlt",
       "version": "v0.11.0"
+    },
+    "modelith": {
+      "repo": "stacklok/modelith",
+      "version": "v0.4.0"
     }
   },
   "plugins": {
     "paivot-graph": {
       "marketplace": "paivot-ai/paivot-graph",
-      "version": "1.57.4"
+      "version": "1.57.6"
     },
     "nd": {
       "marketplace": "paivot-ai/nd",
