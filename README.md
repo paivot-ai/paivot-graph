@@ -418,6 +418,7 @@ a single topic each:
 | [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, snapshot-is-export, the dependency-edge lifecycle (`all_blocked_by`), and snapshot-drift (see [Knowledge governance](#knowledge-governance)) |
 | [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |
 | [docs/PARALLEL_DEV_WORKTREES.md](docs/PARALLEL_DEV_WORKTREES.md) | Why code-writing developers get dispatcher-managed worktrees, and the required developer flow |
+| [docs/ENV_ISOLATION.md](docs/ENV_ISOLATION.md) | Opt-in per-story environment isolation for parallel developers on shared-infra monorepos -- the project-provided `.paivot/envr up`/`down` contract (token = story id, `KEY=VALUE` stdout), bracketed around the worktree lifecycle, with k8s and docker-compose engines |
 | [docs/CONTAINER_TOOLCHAIN.md](docs/CONTAINER_TOOLCHAIN.md) | Running Paivot when the build/lint/test toolchain lives in a container -- installing `pvg`/`nd` in the image vs. bind-mounting, the arch caveat, and in-container vault resolution (see [Toolchain containers](#4-toolchain-containers-if-your-build-runs-in-a-container)) |
 | [docs/SEEDING.md](docs/SEEDING.md) | What `pvg seed` deploys into the system vault and how it relates to self-contained agent prompts |
 | [docs/BUG_CREATION_EVOLUTION.md](docs/BUG_CREATION_EVOLUTION.md) | Background: the move from distributed bug creation to the centralized Sr PM model (and `bug_fast_track`) |

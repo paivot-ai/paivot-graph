@@ -342,6 +342,14 @@ duplicate developers on the same story. The claim closes that window the
 moment you decide to spawn, instead of whenever the developer first mutates
 nd. This applies to EVERY developer spawn, including each entry of a wave.
 
+**Provision the isolated environment (if `.paivot/envr` is present).** Right
+after `pvg worktree add` for the story, if `.paivot/envr` is executable, run
+`.paivot/envr up STORY_ID`, capture its `KEY=VALUE` stdout, and inject it into
+this developer's prompt as ISOLATED INFRASTRUCTURE -- replacing the shared
+connection string for that developer. Tear it back down with
+`.paivot/envr down STORY_ID` whenever you remove the story's worktree. The token
+is the story id; idempotent. See Per-Story Environment Isolation below.
+
 **Never re-spawn a developer into a worktree whose previous occupant may
 still be alive.** A killed or "completed" background developer can leave a
 long-running build or test process (e.g. an in-container `mix test`) holding
@@ -355,9 +363,10 @@ reset an agent's Bash CWD to the project root between tool calls, silently
 defeating worktree isolation -- an "isolated" agent then runs git/make/test
 against the dispatcher's checkout. Every PM/developer prompt MUST instruct:
 prefix EVERY shell command with `cd <worktree-absolute-path> &&`; never rely
-on a previous cd. For docker-compose projects, also pin
-`COMPOSE_PROJECT_NAME=<story-id>` in those commands so concurrent agents
-never join each other's compose project.
+on a previous cd. For docker-compose projects WITHOUT `.paivot/envr`, also pin
+`COMPOSE_PROJECT_NAME=<story-id>` in those commands so concurrent agents never
+join each other's compose project. When `.paivot/envr` is present, the project's
+engine already isolates per token, so this manual pin is unnecessary.
 
 The developer prompt MUST include the worktree path so they know where to
 work, and MUST state: run everything synchronously with explicit timeouts
@@ -743,7 +752,7 @@ You are a dispatcher. You coordinate agents and manage git integration. You NEVE
 
 If a developer agent fails, returns partial output, or times out:
 1. Check story status via `pvg issues show <STORY_ID> --json` (NOT by inspecting the worktree)
-2. If NOT delivered: run `cd $PROJECT_ROOT && pwd`, then `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, then re-spawn a fresh developer with corrective guidance
+2. If NOT delivered: run `cd $PROJECT_ROOT && pwd`, then `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, then re-spawn a fresh developer with corrective guidance. If you re-provisioned the env per story (`.paivot/envr`), the existing env is reused on re-spawn (`up` is idempotent); only tear it down once you abandon the story (`[ -x .paivot/envr ] && .paivot/envr down <STORY_ID>`).
 3. If delivered: run `cd $PROJECT_ROOT && pwd`, then `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, then proceed with PM review
 4. NEVER cd into the worktree to check what happened, run git log, or try to continue the agent
 
@@ -752,23 +761,97 @@ Clean up and start fresh -- re-doing work is cheaper than debugging partial stat
 
 ## Infrastructure Context (MANDATORY before first developer spawn)
 
-Before spawning the first developer agent in a session, discover what infrastructure
-is available locally and include connection details in ALL developer agent prompts.
+Before spawning a developer, give it the infrastructure its integration tests
+need. There are two modes; pick by whether the project ships an `.paivot/envr`
+script (see Per-Story Environment Isolation below).
 
-**Discovery protocol:**
+**Mode A -- per-story isolated environments (`.paivot/envr` is executable).**
+This SUPERSEDES the single shared connection string. Each story gets its OWN
+environment, provisioned at worktree-add time via `.paivot/envr up <story-id>`,
+and its `KEY=VALUE` stdout is injected into THAT developer's prompt as
+ISOLATED INFRASTRUCTURE. Do not run shared `docker ps` discovery and do not
+inject one global connection string in this mode. The full lifecycle (provision
+on prepare, tear down on close) is in Per-Story Environment Isolation below.
+
+**Mode B -- shared-infra discovery (no `.paivot/envr`).** Behaves exactly as
+before: discover what is available locally once, and include those connection
+details in ALL developer prompts.
+
+**Discovery protocol (Mode B only):**
 1. `docker ps --format '{{.Names}} {{.Ports}}'` -- running containers
 2. Check for docker-compose files, .env files with connection strings
 3. Check project README/docs for infrastructure requirements
 
 **Include in developer prompts:**
-- List of running services with host:port
-- Database connection details
-- Required env vars with values (or instructions to obtain them)
-- Explicit instruction: "Infrastructure is running. Do NOT gate tests behind env
-  vars. Run integration tests directly against these services."
+- The connection details the story's tests need -- ISOLATED INFRASTRUCTURE from
+  `.paivot/envr up <story-id>` in Mode A, or the shared services discovered in
+  Mode B (list of running services with host:port, database connection details,
+  required env vars with values or instructions to obtain them)
+- Explicit instruction: "Infrastructure is provided above. Do NOT gate tests
+  behind env vars. Run integration tests directly against it."
 
 Without this context, developers will reasonably gate tests behind env vars --
 creating dormant tests that satisfy no testing gate.
+
+## Per-Story Environment Isolation (when `.paivot/envr` is present)
+
+When developers run in parallel on a monorepo whose integration tests need
+shared infrastructure (databases, brokers, clusters), one global environment
+serializes the wave: stories contend on the same resource. A project can opt out
+of that contention by shipping an executable `.paivot/envr` script (sibling of
+`.paivot/config.yaml`). Paivot owns the contract; the project owns the engine --
+the methodology never names Docker, k8s, or ports. See
+[docs/ENV_ISOLATION.md](../docs/ENV_ISOLATION.md) for the full contract and
+copy-pasteable engines.
+
+**The contract** (a project-provided executable, token = story id):
+- `.paivot/envr up <token>` -- provisions an isolated environment keyed by
+  `<token>`; prints connection details to stdout as `KEY=VALUE` lines (one per
+  line; `#`-prefixed comment lines allowed); idempotent (safe to re-run for the
+  same token); exits 0 on success.
+- `.paivot/envr down <token>` -- tears the environment down; idempotent (safe if
+  already gone); exits 0.
+
+**Graceful degradation.** If `.paivot/envr` does not exist or is not executable,
+do nothing here -- fall back to Mode B shared-infra discovery above. Fully opt-in
+and backward-compatible.
+
+**Lifecycle -- bracket `envr` around the SAME per-story worktree lifecycle.** The
+token is the story id, which is already unique per concurrent worktree, so two
+stories never share a token.
+
+- **On prepare** (immediately after `pvg worktree add` for the story -- see Story
+  Branch Setup): if `.paivot/envr` is executable, run `.paivot/envr up <story-id>`,
+  capture its stdout, and inject it into that developer's prompt verbatim as the
+  story's ISOLATED INFRASTRUCTURE (your environment). This REPLACES the shared
+  single connection string for that developer:
+
+  ```bash
+  if [ -x .paivot/envr ]; then
+    .paivot/envr up STORY_ID    # capture stdout -> developer prompt
+  fi
+  ```
+
+  ```
+  ## ISOLATED INFRASTRUCTURE (your environment)
+  # Provisioned for this story by .paivot/envr up STORY_ID.
+  # Use ONLY this; do not reach for shared/global infrastructure.
+  <KEY=VALUE lines from .paivot/envr up STORY_ID>
+  ```
+
+- **On close** (story accepted, abandoned, or otherwise cleaned up -- wherever you
+  run `pvg worktree remove` for the story): tear the environment down alongside
+  worktree removal. Idempotent, so it is safe even if the env was never up:
+
+  ```bash
+  if [ -x .paivot/envr ]; then
+    .paivot/envr down STORY_ID
+  fi
+  ```
+
+In this mode you do NOT inject one shared connection string into all developers,
+and the per-developer `COMPOSE_PROJECT_NAME` shell-pin is unnecessary -- the
+project's engine already isolates per token.
 
 ## Context Injection Protocol (MANDATORY before developer spawn)
 
@@ -1039,7 +1122,7 @@ end. These are asserted by `scripts/smoke_parallel_dev_worktrees.sh`
 2. Dispatcher creates dev worktree: `pvg worktree add .claude/worktrees/dev-<STORY_ID> story/<STORY_ID>` (stamps the ownership marker)
 3. Developer works, commits, pushes on `story/<STORY_ID>`
 4. Developer marks delivered
-5. Dispatcher resets to project root, then removes dev worktree: `cd $PROJECT_ROOT && pwd` followed by `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
+5. Dispatcher resets to project root, then removes dev worktree: `cd $PROJECT_ROOT && pwd` followed by `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`. If `.paivot/envr` is executable, also tear down the story's environment: `[ -x .paivot/envr ] && .paivot/envr down <STORY_ID>` (idempotent). See Per-Story Environment Isolation.
 6. Dispatcher spawns PM with `isolation: "worktree"` (see PM Isolation below)
 7. PM checks out `story/<STORY_ID>`, reviews, accepts or rejects
 8. Claude Code auto-cleans the PM worktree **directory** (PM makes no tracked file

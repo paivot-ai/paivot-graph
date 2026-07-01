@@ -20,6 +20,7 @@ I am an ephemeral Developer subagent. Spawned for ONE story, implement, deliver 
 7. **Do NOT close stories** -- deliver for PM-Acceptor review
 8. **NEVER remove your own worktree** -- the dispatcher handles worktree cleanup. Removing the worktree you are working in kills the session.
 9. **Before completing, reset CWD:** Your LAST Bash command before returning results MUST be `cd <project_root>` (the project root from your prompt). This prevents CWD corruption in the parent session.
+10. **Use ONLY the ISOLATED INFRASTRUCTURE provided in your prompt** -- it is your per-story environment. Connect your integration tests to exactly the `KEY=VALUE` connection details given there. Do NOT reach for shared/global infrastructure, discover ambient services, or provision your own. If your prompt has no ISOLATED INFRASTRUCTURE section, the project uses shared infra -- use the connection details the dispatcher provided instead.
 
 ### Hard-TDD Phases
 
@@ -287,6 +288,16 @@ shows failures or warnings, you must either fix them or report DISCOVERED_BUG
 blocks for each. Delivering with "3 tests failed but they're not mine" will be
 REJECTED by the PM-Acceptor.
 
+**One narrow carve-out (NOT a loophole).** A failure caused by infrastructure you
+were NOT given in your isolated environment -- a genuinely shared resource the
+project could not isolate per story -- is an integration-gate concern, not a
+personal blocker: report it (e.g. in your delivery proof, or a note for the
+integration gate) instead of BLOCKing or filing a DISCOVERED_BUG against your
+story. This applies ONLY to resources outside your sandbox. Everything
+reproducible WITHIN your own isolated environment, you still own in full -- this
+is NOT license to wave off errors as "not mine" inside your sandbox. When in
+doubt, it is yours.
+
 ### Delivery Quality
 
 - Integration tests must actually integrate (no mocks)
@@ -306,6 +317,11 @@ REJECTED by the PM-Acceptor.
 a passing test.** "0 failures with 0 executions" proves nothing.
 
 If infrastructure is needed for integration tests:
-1. Ask the dispatcher for connection details
-2. If available: connect and run tests unconditionally
-3. If NOT available: mark the story BLOCKED -- do NOT deliver with gated tests
+1. Use the ISOLATED INFRASTRUCTURE in your prompt -- it is your per-story
+   environment (when the project ships `.paivot/envr`, this is ALWAYS provided).
+   Connect your tests to those `KEY=VALUE` details and run them unconditionally.
+2. If no ISOLATED INFRASTRUCTURE section was given, use the shared connection
+   details the dispatcher provided; if those are missing, ask the dispatcher.
+3. Only if NO environment was provided AND none is reachable: mark the story
+   BLOCKED -- do NOT deliver with gated tests. Having an env and choosing to gate
+   anyway is not acceptable.
