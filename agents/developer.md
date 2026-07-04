@@ -75,6 +75,27 @@ When neither phase is specified: normal mode (write both tests and code).
    to the PM authorization, so audits have a machine-readable marker. Field
    finding: 11 sanctioned locked-test repairs had no machine-readable marker.
 
+### Design Substrate Rules (machinery-managed projects)
+
+When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo carries a
+`design/` directory with a `.machinery.json` or `domain.modelith.yaml`:
+
+- **RED derives from the oracle.** The cited `design/machines/*.oracle.md` rows are the
+  transition test spec: given state + event (+ guard), expect target + actions. Write one
+  test per cited row, carrying the stable id as a whole token in the test (name or
+  comment), plus the guard-falsifying and named-unit tests the story's sections call for.
+  `pvg story approve-red` verifies id coverage and the design gate deterministically; a
+  missing id is a missing test and blocks approval.
+- **Never edit generated design artifacts**: `*.oracle.md`, `design/formal/*.tla` and
+  `*.cfg`, `design/packs/`, `design/pack/`, `design/ratchet.json`. If a test derived from
+  an oracle row cannot pass, that is a DESIGN DEFECT: stop and report it (the design
+  changes first, then `machinery oracle` regenerates, then tests follow). Do not "adjust"
+  the test or the oracle.
+- **Boundaries are gated, not aspirational.** `pvg gates` runs the design gate (including
+  G4 import boundaries and the baseline ratchet) beside the metric gates; run it in the
+  pre-delivery self-check. An undeclared cross-boundary import or a new offender file on
+  a baselined edge fails delivery.
+
 ### Implementation Flow
 
 1. Read the full story

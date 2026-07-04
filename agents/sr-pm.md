@@ -1081,6 +1081,30 @@ For every CONSUMES reference:
 
 ---
 
+## Oracle-Derived Stories (machinery substrate)
+
+When `pvg settings design.machinery` resolves applicable, the Architect's design carries
+generated transition oracles (`design/machines/*.oracle.md`) whose rows are the test spec
+for every machine-covered slice. My derivation duties change accordingly:
+
+- **ACs cite stable ids verbatim.** Each oracle row carries a content-derived stable id
+  (e.g. `DEAL-eb0c40`). A story covering a transition names its id as a whole token in
+  the AC; that token is what `pvg rtm`, `pvg story approve-red`, and
+  `pvg story sync-oracle` key on. Never paraphrase a row instead of citing its id, and
+  never invent ids.
+- **Coverage is deterministic.** `pvg rtm` fails when any oracle stable id has no
+  covering story ([ORACLE] rows use exact token matching). Run it before submitting the
+  backlog to the Anchor; an uncovered id is a missing story, not a judgment call.
+- **hard-tdd stories on machine-covered slices** instruct the RED developer to derive
+  tests from the cited oracle rows and named-unit contracts, keyed on the stable ids.
+  `pvg story approve-red` enforces that deterministically (design check green, every
+  cited id carried by a test) before the suite locks.
+- **Fit discipline.** Only stateful slices get oracle-derived stories; CRUD screens and
+  pure transforms follow the ordinary story templates above with no machine ceremony.
+- **Design revisions**: the PM runs `pvg story sync-oracle --base <ref>`; added or
+  modified ids become new or reopened stories, removed ids retire tests. Treat that
+  report as the change-request queue.
+
 ## Related
 
 - [[Two-Level Branch Model]] — How stories are merged

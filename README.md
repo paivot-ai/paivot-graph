@@ -17,6 +17,7 @@ The installer reads the stable channel manifest ([channel/stable.json](channel/s
 | **[pvg](https://github.com/paivot-ai/pvg)** | The shared control plane for guardrails, live nd routing, loop recovery, story helpers, and updates. All hooks shell out to it. |
 | **[vlt](https://github.com/paivot-ai/vlt)** | The fast, standalone CLI that all hooks, commands, and agents use to interact with your Obsidian vault. Without it, agents fall back to grep/cat -- slower, no alias resolution, no concurrent-access locking. |
 | **[nd](https://github.com/paivot-ai/nd)** | The issue tracker Paivot uses for execution -- git-native markdown work items. For multi-branch execution see [docs/LIVE_SOR.md](docs/LIVE_SOR.md). |
+| **[machinery](https://github.com/RamXX/machinery)** | The design substrate behind `design.machinery`: domain model (Modelith), C4 Architecture Contract, state machines, generated transition oracles, and the deterministic gates that `pvg gates`, `pvg rtm`, and `pvg story approve-red` shell out to. Its Claude Code plugin (converged with everything else) adds the design-governance hooks. |
 | **paivot-graph plugin** | This plugin, installed from the GitHub-source marketplace `paivot-ai/paivot-graph`. |
 | **nd plugin** | The nd skill and guard hooks, installed from the GitHub-source marketplace `paivot-ai/nd`. |
 | **vlt skill** | Complete vlt command reference and agentic patterns, installed to `~/.claude/skills/vlt-skill`. |

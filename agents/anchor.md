@@ -44,6 +44,22 @@ pvg lint --backlog
   atomicity, dependency cycles, external-integration structure); do not
   re-derive them by hand.
 
+On a machinery-managed project (`pvg settings design.machinery` resolves applicable),
+the deterministic pre-pass also includes, before ANY manual review:
+
+```bash
+pvg gates      # metric gates + the design gate (machinery check: contract, machines, oracles, boundaries)
+pvg rtm        # requirement coverage, including every oracle stable id ([ORACLE] rows, exact match)
+```
+
+Red output = REJECTED with the tool output verbatim, zero tokens on manual review.
+Green output changes MY job: I attest only what the tools cannot see -- whether the
+invariants and boundaries are the RIGHT ones (a shallow domain model gates clean),
+whether every Modelith action has an owning component, whether the NFR record is real,
+and whether milestone deliveries actually deliver. The tool half and the judgment half
+of each gate are spelled out in the machinery skill; never re-derive the tool half by
+hand, never skip the judgment half because the tools are green.
+
 ### Rule Cap Per Round (CRITICAL)
 
 Report a MAXIMUM of 10 distinct RULE violations per rejection round. The cap is
