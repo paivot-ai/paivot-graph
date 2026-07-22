@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "channel": "stable",
-  "updated": "2026-07-04",
+  "updated": "2026-07-22",
   "tools": {
     "pvg": {
       "repo": "paivot-ai/pvg",
-      "version": "v1.58.1"
+      "version": "v1.59.0"
     },
     "nd": {
       "repo": "paivot-ai/nd",
-      "version": "v0.10.21"
+      "version": "v0.11.0"
     },
     "vlt": {
       "repo": "paivot-ai/vlt",
@@ -21,21 +21,21 @@
     },
     "machinery": {
       "repo": "RamXX/machinery",
-      "version": "v0.1.7"
+      "version": "v0.3.4"
     }
   },
   "plugins": {
     "paivot-graph": {
       "marketplace": "paivot-ai/paivot-graph",
-      "version": "1.58.1"
+      "version": "1.59.0"
     },
     "nd": {
       "marketplace": "paivot-ai/nd",
-      "version": "0.10.21"
+      "version": "0.11.0"
     },
     "machinery": {
       "marketplace": "RamXX/machinery",
-      "version": "0.1.7"
+      "version": "0.3.4"
     }
   },
   "skills": {

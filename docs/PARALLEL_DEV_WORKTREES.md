@@ -9,9 +9,14 @@ passes the absolute worktree path in the developer prompt.
 For each developer story:
 
 ```bash
+pvg story claim STORY_ID    # atomic; failure means another agent holds it -- skip
 git branch story/STORY_ID origin/main
 pvg worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
 ```
+
+`pvg story claim` is atomic (it delegates to `nd claim`): if the claim fails,
+another agent already holds the story -- skip it, never force it.
+`pvg story release STORY_ID` returns a claimed story to open.
 
 Create the worktree with `pvg worktree add`, never raw `git worktree add`. See
 [Marker = Ownership](#marker--ownership) below: `pvg worktree add` stamps the
@@ -59,6 +64,10 @@ Claude Code session -- created. Ownership is therefore a **marker**, not a path:
 - The marker lives in the git admin dir so git owns its lifecycle:
   `git worktree add` creates the admin dir; `git worktree remove`/`prune` deletes
   it together with the marker. There is nothing extra to clean up.
+- Even for owned worktrees, `pvg loop recover` preserves unmerged story
+  branches -- only branches fully merged are deleted, so committed but
+  unmerged work survives recovery. Recovered stories are released (claim
+  cleared, back to open).
 
 Consequence: ALWAYS create developer/Conflict-fix worktrees with
 `pvg worktree add`. A raw `git worktree add` produces an UNMARKED worktree that

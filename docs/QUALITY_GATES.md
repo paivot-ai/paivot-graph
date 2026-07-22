@@ -107,6 +107,18 @@ pvg settings gates.complexity.block_cc=25
 pvg settings gates.file_loc.max=500
 ```
 
+## Machinery-managed repos: two additional BLOCK sources
+
+On machinery-managed repos (where `design.machinery` applies), two more
+deterministic checks can BLOCK beyond the metric gates above:
+
+- **The machinery design gate runs inside `pvg gates`.** A design-gate finding
+  fails the command (exit 1) just like a metric `[BLOCK]`, independent of the
+  `gates.*` thresholds.
+- **`pvg lint --backlog` includes `hard-tdd-oracle`.** The backlog lint gains
+  this deterministic check: ERROR when a story cites oracle stable ids without
+  the `hard-tdd` label.
+
 ## How the PM-Acceptor uses it (Tier 1)
 
 In Tier 1 of story review (deterministic, before any LLM review), the

@@ -79,6 +79,11 @@ Because the token is the story id, the dispatcher never runs two concurrent
 stories on the same token -- that uniqueness is already guaranteed by one story
 id per worktree.
 
+**Crash backstop.** `pvg loop recover` best-effort runs
+`.paivot/envr down <story-id>` before removing each owned worktree, closing the
+crash-leak gap where a session dies between `up` and `down`. The dispatcher
+bracket above remains the happy path; recovery is the backstop.
+
 ## Harness-agnostic
 
 The `.paivot/envr` contract is identical across all Paivot variants (graph,

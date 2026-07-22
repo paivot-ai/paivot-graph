@@ -1,17 +1,20 @@
 ---
 name: c4
-description: Architecture-as-code on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, boundary baselining, or import drift. Maps the Paivot roles onto machinery Phase 2: who authors the model, which gate holds it, and how boundary debt is baselined and burned down.
-version: 2.0.0
+description: Architecture-as-code on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2: who authors the model, which gates hold it (G2, G4, G5 and the ratchet), and how boundary debt is baselined and burned down.
+version: 2.1.0
 ---
 
 # Architecture with machinery (C4 + contract)
 
 The canonical architecture is machinery Phase 2: `design/workspace.dsl` (the C4 model in
-Structurizr DSL) plus the machine-checkable Architecture Contract inside
-`design/ARCHITECTURE.md`. The narrative explains why; the DSL and contract define what,
-and `machinery check` holds the line deterministically. This skill is the ROLE ADAPTER:
-it says who does what in Paivot. The format itself is documented once, in the machinery
-skill's `references/c4-standalone.md`; never restate it here or in stories.
+Structurizr DSL), the machine-checkable Architecture Contract inside
+`design/ARCHITECTURE.md`, and, for multi-component designs, the event-contract table
+(producer, consumer, payload by Modelith attribute reference, delivery guarantee). The
+narrative explains why; the DSL, contract, and table define what, and `machinery check`
+holds the line deterministically. This skill is the ROLE ADAPTER: it says who does what
+in Paivot. The formats are documented once, in the machinery skill's
+`references/c4-standalone.md` (Architecture Contract v2, event-contract table, adoption
+closure, NFR record); never restate them here or in stories.
 
 ## When this applies
 
@@ -34,21 +37,29 @@ The `machinery` binary converges from the channel (`pvg update`); `pvg doctor` r
 
 | Role | Responsibility |
 |---|---|
-| Architect | Authors Phase 2: `design/workspace.dsl`, `design/ARCHITECTURE.md` with the Architecture Contract (boundaries with `code:` globs, `exposes`, externals, `ignore`, `dependency_rules`), the per-dependency failure postures, and the NFR record. Exit gate: `machinery check design --gate g2` green BEFORE handing to the Sr PM. |
+| Architect | Authors Phase 2: `design/workspace.dsl`, `design/ARCHITECTURE.md` with the Architecture Contract (boundaries with `code:` globs, `exposes`, externals, `ignore`, `dependency_rules`), the per-dependency failure postures, the NFR record, and, on multi-component designs, the event-contract table with named enumeration sources (machine-checkable format when the design decomposes: pack generation and G5 resolve cells by exact component name and fail loudly on any they cannot). Every technology choice gets its adoption closure enumerated, with closure members carried into the mitigation table. Exit gate: `machinery check design --gate g2` green BEFORE handing to the Sr PM. |
 | Architect (brownfield) | Runs `machinery baseline design --impl .`, reviews the proposed `baseline:` rules with the user (a baseline edge is tolerated debt, structurally distinct from an intended `allow:`; add a `deny:` for edges that should die), pastes the survivors, commits `design/ratchet.json`. The ratchet makes any NEW offender file on an amnestied edge a blocking finding. |
-| Sr PM | References contract boundaries in stories by id; never restates the contract. Story ACs include "boundaries respected" only as a pointer to the gate, not as prose to re-check. |
-| Developer | Runs `pvg gates` before delivery: the design gate (machinery check, including G4 import boundaries and the ratchet) runs beside the metric gates and blocks on failure. Never edits generated artifacts (`*.oracle.md`, `formal/*.tla|*.cfg`, `packs/`, `pack/`, `ratchet.json`); edit sources and regenerate. |
-| Anchor | Deterministic pre-pass first (`pvg gates`, `pvg rtm`); attests only what the tools cannot: whether the boundaries are the RIGHT ones, whether every Modelith action has an owning component, whether the NFR record is real. |
+| Architect (rebuild/hybrid) | Adds the `Transition architecture` section to ARCHITECTURE.md: temporary exporter, replication or dual-write, routing, observability, failure posture. Temporary migration dependencies get the full treatment: detection, mitigation, residual, owner. Gm-transition reports narrative-bridge findings until ARCHITECTURE.md and BUILD.md exist; that is expected, not a defect. The migration contract and surface ledger themselves are in the domain-model skill's role map. |
+| Sr PM | References contract boundaries and event-contract rows in stories by id; never restates the contract or a payload. Story ACs include "boundaries respected" only as a pointer to the gate, not as prose to re-check. |
+| Developer | Runs `pvg gates` before delivery: the design gate (machinery check, including G4 import boundaries and the ratchet) runs beside the metric gates and blocks on failure. Never edits generated artifacts (`*.oracle.md`, `formal/*.tla|*.cfg|*.als`, `formal/*.oracle.md`, `packs/`, `pack/`, `ratchet.json`); edit sources and regenerate. |
+| Anchor | Deterministic pre-pass first (`pvg gates`, `pvg rtm`); attests only what the tools cannot: whether the boundaries are the RIGHT ones, whether every Modelith action has an owning component, whether the event-contract table's enumeration sources are real (a table with no named source is a claim with no evidence), whether the dependency declaration itself is complete, and whether the NFR record is real. |
 
 ## The deterministic split
 
-`machinery check --gate g2` verifies: the contract parses, binds to `workspace.dsl`,
-no duplicate ids, no edge both allowed and denied (or allowed and baselined), every
-dependency has a mitigation row. G4 (via `pvg gates` on projects with `impl` configured
-in `.machinery.json`) verifies the code's import graph against the contract and holds
-baselined edges to the ratchet snapshot. Everything else about the architecture is
-attested by a named reviewer; the gate split in machinery's SKILL.md says exactly which
-half is whose.
+The full v0.3.4 suite is `machinery check <design> [--impl <dir>]
+[--gate gm,gs,gp,gi,gn,g2,g3,gx,gb,g4,gt,g5]`; gates activate on the artifacts that
+exist, fail on absence rather than silently passing, and print `checked:` counts. The
+Phase 2 slice: `--gate g2` (G2-c4) verifies the contract parses, binds to
+`workspace.dsl`, no duplicate ids, no edge both allowed and denied (or allowed and
+baselined), mitigation coverage for every declared external and every
+Database/Queue/External-tagged element, and event-contract presence by the header rule.
+G4-import (via `pvg gates` on projects with `impl` configured in `.machinery.json`)
+verifies the code's import graph against the contract and holds baselined edges to the
+ratchet snapshot. G5-pack (automatic on decomposed designs) regenerates packs in memory,
+so a lossy event-contract table fails the gate itself, and prints per-pack
+boundary-event counts so an unexpected zero is visible. Everything else about the
+architecture is attested by a named reviewer; the gate split in machinery's SKILL.md
+says exactly which half is whose.
 
 ## Boundary debt ceremony (brownfield)
 
@@ -57,6 +68,14 @@ half is whose.
 - `ratchet.json` diffs are reviewed in PRs like contract changes; unexplained regrowth is
   the tell.
 - `ignore:` globs stay unratcheted amnesty; shrinking them is part of the same cadence.
+
+## Machinery implies hard-TDD
+
+Once `impl` is configured, Gt-tests holds the suite to every committed oracle stable id;
+the design ships its own test spec. The Paivot rule follows: any story citing oracle
+stable ids must carry the `hard-tdd` label (`pvg lint --backlog` enforces this
+deterministically as the `hard-tdd-oracle` check), and hard-tdd is the Sr PM default for
+machine-covered slices. Label-less stories are for the parts the machines do not cover.
 
 ## Diagrams
 

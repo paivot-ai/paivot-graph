@@ -78,7 +78,7 @@ The dispatcher routes this to Sr PM for triage:
 # Sr PM creates fully structured bug
 nd create "OAuth library fails silently on redirect_uri trailing slash" \
   --type=bug \
-  --priority=0 \                      # Priority: P0 (critical)
+  --priority=P0 \                     # Priority: P0 (critical) -- nd accepts P0-P4 natively
   --parent=<epic-id> \
   -d "## Context
 ...fully detailed context...
@@ -254,6 +254,6 @@ for the setting documentation.
 
 ## Related
 
-- [[Session Operating Mode]] — Dispatcher operating mode and bug routing
-- [[Sr PM Agent]] — Bug triage mode section (default path)
-- [[PM Acceptor Agent]] — Reporting Discovered Bugs section (conditional: centralized vs fast-track)
+- [[Session Operating Mode]] -- Dispatcher operating mode and bug routing
+- [[Sr PM Agent]] -- Bug triage mode section (default path)
+- [[PM Acceptor Agent]] -- Reporting Discovered Bugs section (conditional: centralized vs fast-track)

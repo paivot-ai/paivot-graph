@@ -81,11 +81,12 @@ workflow.exit_rules: blocked:open,in_progress;deferred:open,in_progress
 workflow.custom_statuses:
 
 # D&F specialist review: adversarial challengers review each BLT document
-# When false (default), only Anchor reviews the final backlog (cost-optimized)
-# When true, specialist challengers review BUSINESS.md, DESIGN.md, ARCHITECTURE.md
-# individually before proceeding to the next BLT step (up to 3 iterations each)
+# When true (default), specialist challengers review BUSINESS.md, DESIGN.md,
+# ARCHITECTURE.md individually before proceeding to the next BLT step (up to
+# 3 iterations each)
+# When false, only Anchor reviews the final backlog (cost-optimized)
 # Options: true, false
-dnf.specialist_review: false
+dnf.specialist_review: true
 
 # Maximum iterations for each specialist challenger review loop
 # If a challenger rejects after this many iterations, escalate to user
@@ -134,6 +135,8 @@ update.nudge: true
 # Per-role model overrides for Paivot agents. Each agent's model is set in its
 # agents/*.md frontmatter by default; these settings override it at spawn time
 # WITHOUT editing any agent file (the override survives plugin updates).
+# Frontmatter defaults: fable for ba, designer, architect, the three
+# challengers, sr_pm, and anchor; opus for developer; sonnet for pm and retro.
 # Empty (default) = no override, the agent's built-in model wins.
 # Allowed values: opus, sonnet, haiku, fable, inherit, or a full claude-* model id.
 model.developer:
@@ -193,7 +196,7 @@ Show the user the current state:
 | workflow.sequence        | open,...  | Ordered nd status pipeline (forward=+1, backward=any) |
 | workflow.exit_rules      | ...       | Escape rules for blocked/deferred statuses        |
 | workflow.custom_statuses | ...       | Extra nd statuses, if your project explicitly uses them |
-| dnf.specialist_review    | false     | Adversarial challengers review each D&F document |
+| dnf.specialist_review    | true      | Adversarial challengers review each D&F document |
 | dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
 | dnf.domain_model         | false     | *.modelith.yaml domain model (entities/invariants) alongside ARCHITECTURE.md |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
@@ -254,7 +257,7 @@ pvg settings proposal_expiry_days=14
   2. No side effects -- PM-Acceptor reverts to DISCOVERED_BUG blocks.
 
 **If `dnf.specialist_review` was changed:**
-- `true` (enable):
+- `true` (enable -- default):
   1. Report: "D&F specialist review enabled. Each BLT document will be adversarially reviewed before proceeding."
   2. Report: "Challengers: BA Challenger (BUSINESS.md), Designer Challenger (DESIGN.md), Architect Challenger (ARCHITECTURE.md)."
   3. Report: "Max iterations per document: <dnf.max_iterations> (default 3). After exhaustion, escalates to user."
@@ -317,6 +320,11 @@ pvg settings proposal_expiry_days=14
 - `true`: Report: "Brownfield mode forced on. The paths-exist lint check will run regardless of commit count."
 - `false`: Report: "Brownfield mode not forced. The paths-exist lint check falls back to the >50-commits heuristic."
 
+**Note on machinery-managed repos (`design.machinery` applies):**
+`pvg lint --backlog` also runs the deterministic `hard-tdd-oracle` check --
+ERROR when a story cites oracle stable ids without the `hard-tdd` label. This
+check is automatic on machinery-managed repos, not a setting.
+
 **If a `model.<role>` key was changed:**
 - Sets the model used when that role's agent is spawned, overriding the agent's
   `agents/*.md` frontmatter without editing any file (the override survives
@@ -326,10 +334,16 @@ pvg settings proposal_expiry_days=14
   wins). Invalid values (e.g. a typo like `sonet`) are rejected by `pvg settings`.
 - Roles: `developer`, `pm`, `sr_pm`, `anchor`, `retro`, `ba`, `designer`,
   `architect`, `ba_challenger`, `designer_challenger`, `architect_challenger`.
+- Frontmatter defaults these settings override: fable for `ba`, `designer`,
+  `architect`, the three challengers, `sr_pm`, and `anchor`; opus for
+  `developer`; sonnet for `pm` and `retro`.
 - For Developer and PM-Acceptor, the loop surfaces the override on each
   `pvg loop next` action as a `model` field; the dispatcher passes it as the
-  Agent tool `model` parameter. For agents spawned outside the loop, the
-  dispatcher reads `pvg settings model.<role>` and passes it at spawn time.
+  Agent tool `model` parameter and never reads the settings itself for these
+  loop-surfaced roles. For EVERY other spawn (BA, Designer, Architect, the
+  three challengers, Sr-PM, Anchor, Retro), the dispatcher runs
+  `pvg settings model.<role>` before spawning and passes a non-empty value as
+  the Agent tool `model` parameter.
 - Example: `pvg settings model.developer=sonnet`
 
 **If a `gates.*` key was changed:**

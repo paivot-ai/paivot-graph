@@ -1,11 +1,14 @@
 # Hard-TDD Guard
 
-Hard-TDD is opt-in per story via the `hard-tdd` label. The runtime flow (RED
-tests authored first, PM approves with `pvg story approve-red`, then GREEN
-implementation) is enforced by the loop and the PM/Anchor agents. This guard is
-the **CI-time structural lock** that complements it: it proves, from git
-history, that test files were not quietly edited to make a failing
-implementation pass.
+Hard-TDD is label-driven per story via the `hard-tdd` label. On
+machinery-managed repos it is the DEFAULT: the Sr PM applies the label to
+stories touching machine-owned components, and the `hard-tdd-oracle` check in
+`pvg lint --backlog` errors when a story cites oracle stable ids without the
+label. The runtime flow (RED tests authored first, PM approves with
+`pvg story approve-red`, then GREEN implementation) is enforced by the loop
+and the PM/Anchor agents. This guard is the **CI-time structural lock** that
+complements it: it proves, from git history, that test files were not quietly
+edited to make a failing implementation pass.
 
 ## The rule it enforces
 

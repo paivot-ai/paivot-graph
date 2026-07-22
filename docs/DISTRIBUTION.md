@@ -25,6 +25,9 @@ what an installation should look like. Both the bootstrap installer and
 combination. The schema and the verification rules are documented in
 [channel/README.md](../channel/README.md).
 
+The manifest pins the full toolchain as one combination: pvg, nd, vlt,
+modelith, and machinery are all version-pinned together.
+
 Key properties:
 
 - **One tested combo.** Every change to `channel/**` runs the
@@ -49,6 +52,10 @@ use `pvg update --pin <git-ref>`.
 
 This is deliberate: agents run unattended for hours, and a mid-session binary
 swap is exactly the kind of surprise the methodology exists to prevent.
+
+For the same reason, `pvg update` is the ONLY toolchain convergence path:
+`nd upgrade` is guard-blocked inside Paivot repos, because a lone nd
+self-upgrade would skew nd against the pinned combo.
 
 ## GitHub-source marketplaces
 

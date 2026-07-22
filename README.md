@@ -96,7 +96,7 @@ If a session gets into a bad state, use the smallest escape hatch that solves th
 
 | Situation | What to run | What it does |
 |-----------|-------------|--------------|
-| You want Claude to stop acting as coordinator-only | `pvg dispatcher off` | Disables dispatcher mode for the current repo |
+| You want Claude to stop acting as coordinator-only | `pvg dispatcher off` | Disables dispatcher mode for the current repo. The coordination guards stay active while a loop is active -- also run `pvg loop cancel` to release them fully |
 | An execution loop should stop immediately | `pvg loop cancel` | Cancels the active loop without touching your backlog or vault |
 | Claude lost context or a session was interrupted mid-loop | `pvg loop recover` | Rebuilds loop state from git and nd instead of guessing |
 | You want the plugin completely out of the way | `make uninstall` | Removes the Claude Code plugin from this checkout |
@@ -146,9 +146,9 @@ Eleven specialized agents, each a self-contained static prompt in the plugin (`a
 | **business-analyst** | Discovery & framing -- asks clarifying questions until requirements are solid |
 | **architect** | System architecture, technical feasibility, ARCHITECTURE.md |
 | **designer** | UX/API/CLI design for any product type, DESIGN.md |
-| **ba-challenger** | Adversarial review of BUSINESS.md (opt-in via `dnf.specialist_review`) |
-| **designer-challenger** | Adversarial review of DESIGN.md (opt-in via `dnf.specialist_review`) |
-| **architect-challenger** | Adversarial review of ARCHITECTURE.md (opt-in via `dnf.specialist_review`) |
+| **ba-challenger** | Adversarial review of BUSINESS.md (default-on; disable via `dnf.specialist_review=false`) |
+| **designer-challenger** | Adversarial review of DESIGN.md (default-on; disable via `dnf.specialist_review=false`) |
+| **architect-challenger** | Adversarial review of ARCHITECTURE.md (default-on; disable via `dnf.specialist_review=false`) |
 | **sr-pm** | Creates comprehensive backlogs from D&F documents |
 | **anchor** | Adversarial review of backlogs and milestones |
 | **developer** | Ephemeral -- implements one story with proof of passing tests |
@@ -163,14 +163,14 @@ The plugin assigns models to balance cost and capability:
 |-------|-------|-----------|
 | Dispatcher (`/piv-loop`) | Opus | Worktree lifecycle, CWD safety, and context injection require strong reasoning. Sonnet-class models drift on multi-step git orchestration. |
 | Developer | Opus | Code generation requires maximum reasoning. |
-| PM-Acceptor | Opus | Quality gate -- false acceptance is the most expensive failure mode. |
-| Sr PM | Opus | Story creation needs domain reasoning and precise terminology. |
-| Anchor | Opus | Adversarial review needs strongest reasoning to find gaps. |
-| BA / Designer / Architect | Opus | D&F requires deep domain reasoning. |
-| Challengers (BA/Designer/Architect) | Sonnet | Scoped adversarial critique against a single document. |
+| PM-Acceptor | Sonnet | Evidence-based review against deterministic Tier 1 gates -- the structural gates carry the quality burden. |
+| Sr PM | Fable | Story creation needs domain reasoning and precise terminology. |
+| Anchor | Fable | Adversarial review needs strongest reasoning to find gaps. |
+| BA / Designer / Architect | Fable | D&F requires deep domain reasoning. |
+| Challengers (BA/Designer/Architect) | Fable | Scoped adversarial critique against a single document. |
 | Retro | Sonnet | Pattern extraction from completed work. |
 
-Rate limits are per-model. Challengers and Retro run on Sonnet to preserve Opus headroom for the judgment-heavy agents.
+Rate limits are per-model. PM-Acceptor and Retro run on Sonnet; the design and review roles run on Fable; code generation stays on Opus.
 
 **Per-role model override.** The models above are defaults baked into each
 agent's `agents/*.md` frontmatter. You can override any role per project with
@@ -183,7 +183,7 @@ roles and accepted values.
 
 ### Execution workflow
 
-The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Two structural gates enforce quality:
+The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Stories are claimed atomically at dispatch: `pvg story claim` delegates to `nd claim`, so a claim failure means another agent already holds the story (it is skipped, never raced), and `pvg story release` returns a claimed story to open. After 3 PM rejections of the same story the loop escalates to the user instead of dispatching more rework -- the dispatcher never overrides the PM. Two structural gates enforce quality:
 
 **Story gate:** Every story must have passing integration tests with no mocks before the PM-Acceptor will accept it. Tests gated behind env vars or skipped tests are rejected on sight.
 
@@ -270,7 +270,11 @@ Knowledge lives in three tiers with different governance rules:
 
 The nd live backlog is a separate execution concern from `.vault/knowledge/`.
 For concurrent multi-branch work, keep the mutable nd vault outside branch
-checkouts and share it across worktrees. See [docs/LIVE_SOR.md](docs/LIVE_SOR.md).
+checkouts and share it across worktrees. Backlog durability is nd-native:
+every nd mutation auto-snapshots to the `nd/backlog` git branch;
+`pvg nd sync` (delegating to `nd sync`) fetches, merges, and pushes that
+branch, and `pvg nd restore` (delegating to `nd sync --restore`) rebuilds a
+wiped vault from it. See [docs/LIVE_SOR.md](docs/LIVE_SOR.md).
 
 ### Convention: Paivot projects do not use a project-level `CLAUDE.md`
 
@@ -416,7 +420,7 @@ a single topic each:
 |-----|----------------|
 | [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) | `pvg gates` in full -- the analyzer matrix, install instructions, the complete `gates.*` key reference, and example output (see [Quality gates](#quality-gates)) |
 | [docs/HARD_TDD_GUARD.md](docs/HARD_TDD_GUARD.md) | The CI structural lock for `hard-tdd` stories -- `pvg story verify-tdd` plus the `scripts/verify-hard-tdd.sh` wrapper, the RED/authorized marker rules, and robust range resolution |
-| [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, snapshot-is-export, the dependency-edge lifecycle (`all_blocked_by`), and snapshot-drift (see [Knowledge governance](#knowledge-governance)) |
+| [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, nd-native durability via the `nd/backlog` branch (`pvg nd sync` / `pvg nd restore`, `nd sync --status`), and the dependency-edge lifecycle (`all_blocked_by`) (see [Knowledge governance](#knowledge-governance)) |
 | [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |
 | [docs/PARALLEL_DEV_WORKTREES.md](docs/PARALLEL_DEV_WORKTREES.md) | Why code-writing developers get dispatcher-managed worktrees, and the required developer flow |
 | [docs/ENV_ISOLATION.md](docs/ENV_ISOLATION.md) | Opt-in per-story environment isolation for parallel developers on shared-infra monorepos -- the project-provided `.paivot/envr up`/`down` contract (token = story id, `KEY=VALUE` stdout), bracketed around the worktree lifecycle, with k8s and docker-compose engines |

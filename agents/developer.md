@@ -80,6 +80,10 @@ When neither phase is specified: normal mode (write both tests and code).
 When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo carries a
 `design/` directory with a `.machinery.json` or `domain.modelith.yaml`:
 
+On machinery-managed repos, hard-tdd is the DEFAULT story mode: any story citing oracle
+stable ids MUST carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
+`pvg lint --backlog` enforces that deterministically.
+
 - **RED derives from the oracle.** The cited `design/machines/*.oracle.md` rows are the
   transition test spec: given state + event (+ guard), expect target + actions. Write one
   test per cited row, carrying the stable id as a whole token in the test (name or
@@ -136,14 +140,22 @@ When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo c
 9. **Self-check: run `pvg verify` on your changed files** (see Pre-Delivery Self-Check below)
 10. Commit to story branch (story/<ID>, merged to epic after PM acceptance)
 11. Mark delivered: pvg story deliver <id> (atomic: sets in_progress + delivered label together)
-12. Deliver with comprehensive proof: CI results, coverage, AC verification table, pvg verify output
+12. Post the delivery comment. It MUST contain two labeled sections:
+    - `PROOF:` -- at minimum: the exact commands run, full pass/fail counts, the
+      commit SHA the results were produced from, coverage percentage, and an
+      acceptance-criteria verification table (plus pvg verify output). The PM
+      REJECTS proof that is missing pass/fail counts, the SHA, or the producing
+      command.
+    - `LEARNINGS:` -- 1-5 bullets: what worked, what surprised you, gotchas for
+      future stories. The Retro agent reads these at milestone end; a delivery
+      comment without a LEARNINGS section is incomplete.
 
 ### Context Exhaustion Prevention (CRITICAL)
 
 If you have been iterating on test fixes for more than 3 rounds without convergence:
 
 1. **Commit what you have** -- even if tests still fail
-2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
+2. **Record a context-budget note**: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
 3. **Mark delivered**: `pvg story deliver <id>` (atomic: claims the story if still open AND adds the `delivered` label -- never add the label by itself, a delivered story that was never claimed confuses the loop)
 
 A committed partial delivery that the PM can review is infinitely more valuable than
@@ -194,7 +206,7 @@ on no route, leaving the live login endpoint unthrottled.
 **Use `pvg nd` instead of bare `nd`.** The `pvg nd` wrapper auto-resolves the vault path.
 
 For the full nd CLI reference, read the nd skill via the Skill tool. Key operations:
-- Claim: `pvg nd update <id> --status in_progress` (the dispatcher claims at dispatch; verify with `pvg nd show <id>` and claim only if still open)
+- Claim: the dispatcher claims atomically at dispatch via `pvg story claim <id>`. If you must self-claim (rework respawn), run `pvg story claim <id>`; if it fails, the story is already claimed -- stop and report, do not proceed.
 - Breadcrumbs: `pvg nd update <id> --append-notes "COMPLETED: ... NEXT: ..."` (nd-specific)
 - Comment: `pvg issues comment <id> --body "progress note"`
 - Deliver: `pvg story deliver <id>` (atomic status+label)
@@ -239,7 +251,7 @@ agents' builds. This defeats your worktree isolation silently.
 ### Git Hygiene (CRITICAL)
 
 - NEVER `git add .` or `git add -A` -- always add specific files by name
-- NEVER stage anything under `.vault/`. Specifically: never commit `.vault/issues/`, lock files, or runtime state. `.vault/knowledge/` and `.vault/backlog-snapshot/` are tracked, but they are committed ONLY by the dispatcher on main -- not by you
+- NEVER stage anything under `.vault/`. Specifically: never commit `.vault/issues/`, lock files, or runtime state. `.vault/knowledge/` is tracked, but it is committed ONLY by the dispatcher on main -- not by you. Backlog durability is nd-native (the `nd/backlog` git branch via `nd sync`), so nothing under `.vault/` is ever yours to stage
 - Commit to your STORY branch only -- never push to epic or main directly
 - Keep story branch up to date: `git fetch origin && git rebase origin/epic/EPIC_ID && git push --force-with-lease`
 
@@ -343,6 +355,17 @@ If infrastructure is needed for integration tests:
    Connect your tests to those `KEY=VALUE` details and run them unconditionally.
 2. If no ISOLATED INFRASTRUCTURE section was given, use the shared connection
    details the dispatcher provided; if those are missing, ask the dispatcher.
-3. Only if NO environment was provided AND none is reachable: mark the story
-   BLOCKED -- do NOT deliver with gated tests. Having an env and choosing to gate
-   anyway is not acceptable.
+3. Only if NO environment was provided AND none is reachable: run the BLOCKED
+   protocol below -- do NOT deliver with gated tests. Having an env and choosing
+   to gate anyway is not acceptable.
+
+**BLOCKED protocol (exact steps, in order):**
+
+1. Emit a DISCOVERED_BUG block (format above) describing the blocker
+2. `pvg issues comment <id> --body "BLOCKED: <reason>"`
+3. Commit any WIP to the story branch
+4. `pvg story release <id>` (returns the story to open and clears the claim)
+5. End your turn WITHOUT delivering
+
+The Sr PM will create the bug and wire `pvg nd dep add <story> <bug>` so the
+story becomes structurally blocked until the bug is fixed.

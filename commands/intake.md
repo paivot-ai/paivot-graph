@@ -67,7 +67,10 @@ Based on the detected stack, determine which skills apply:
 
 ## Phase 3: Delegate to Sr. PM Agent
 
-Use the Task tool to spawn the `sr-pm` agent. The prompt MUST include:
+Use the Task tool to spawn the `sr-pm` agent. Before spawning, read the
+per-role model override with `pvg settings model.sr_pm` and pass a non-empty
+value as the Agent tool `model` parameter (empty = the agent's frontmatter
+default applies). The prompt MUST include:
 
 1. **The complete list of raw feedback items** (with any screenshots or context the user provided)
 2. **The project name and working directory**
@@ -100,35 +103,22 @@ After the Sr. PM agent returns, present the backlog to the user:
 
 ## Phase 5: Execute
 
-### Concurrency Limits (HARD RULE)
+Execution belongs to `/piv-loop`, not to intake. Intake's scope ends at
+feedback capture + Sr PM backlog creation + user triage.
 
-Limits are stack-dependent -- see the Concurrency Limits table in `/piv-loop`, which is authoritative.
-Summary: heavy stacks (Rust, iOS/Swift, C#, CloudFlare Workers) allow 2 developers / 1 PM-Acceptor / 3 total;
-light stacks (Python, non-CF TypeScript/JavaScript) allow 4 developers / 2 PM-Acceptors / 6 total. Mixed stacks use the most restrictive limit.
+Once the user approves the backlog:
 
-### Execution Loop
+1. Report that the backlog is ready and that `/piv-loop` executes it: stories
+   run on story branches in dispatcher-managed worktrees, contained within
+   their epic, through the loop's story helpers (`pvg story claim` ->
+   developer -> `pvg story deliver` -> PM-Acceptor review -> `pvg story
+   accept`), with the epic completion gate at the end.
+2. If the user wants execution to start now, invoke `/piv-loop`.
 
-Work through the approved backlog top-to-bottom. For each story:
-
-1. **Spawn a developer agent** to implement the story. The developer will:
-   - Read the full story (`pvg nd show <id>`) and claim it (`pvg nd update <id> --status in_progress`)
-   - Load mandatory skills from the story's MANDATORY SKILLS TO REVIEW section
-   - Implement the change, write tests, run CI locally
-   - Leave breadcrumb notes: `pvg nd update <id> --append-notes "COMPLETED: ... IN PROGRESS: ... NEXT: ..."` (nd-specific)
-   - Mark as delivered with proof (`pvg nd update <id> --add-label delivered`)
-   - The developer does NOT close stories
-
-2. **Spawn a PM-Acceptor agent** to review the delivered story. The PM-Acceptor will:
-   - Review evidence (CI results, coverage, test output)
-   - Verify outcomes match acceptance criteria
-   - Accept: `pvg nd close <id> --reason="Accepted: <summary>" --start=<next-id>` (--start is nd-specific)
-   - Or reject: return the story to `open`, remove `delivered`, add `rejected`, and leave detailed notes via `pvg issues comment`
-
-3. **Capture learnings** to the vault via `pvg notes create "_inbox/<Title>.md" --title "<Title>" --body "..."` (decisions, patterns, debug insights)
-
-4. If a discovered issue arises during implementation, route it through the documented bug flow: Developer/PM-Acceptor emits `DISCOVERED_BUG`, then Sr PM triages it (or PM fast-track if enabled). Do NOT quick-capture ad-hoc bugs with `nd q`.
-
-5. Move to the next story.
+Do NOT run a pre-loop story cycle from intake: do not spawn developers or
+PM-Acceptors here, and do not mutate story status by hand
+(`pvg nd update --status ...`) -- claiming, delivery, and acceptance go
+through the loop's story helpers.
 
 ## Constraints
 

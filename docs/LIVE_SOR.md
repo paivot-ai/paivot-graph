@@ -51,38 +51,40 @@ But those snapshots are exports of the live queue, not the live queue itself.
 ## Durability
 
 The live vault lives under git-common-dir and is not part of git history -- a
-fresh clone does not contain it. Durability comes from snapshots:
+fresh clone does not contain it. Durability is nd-native:
 
-- `pvg nd sync` exports the live vault into a tracked snapshot at
-  `.vault/backlog-snapshot/`. `pvg loop next` also auto-exports (export only,
-  never commit) whenever it returns `epic_complete`, so the snapshot is already
-  fresh when the dispatcher runs the completion gate and commits it on main.
-- `pvg nd restore` re-imports the snapshot into an empty live vault after a
-  fresh clone.
+- Every nd mutation auto-snapshots the vault locally to the `nd/backlog` git
+  branch -- an auto-snapshot journal. At most the single most recent command
+  can be lost.
+- `pvg nd sync` delegates to `nd sync`: snapshot + fetch + field-aware merge +
+  push of the `nd/backlog` branch. `--status` shows the local branch's
+  position relative to the remote; `--no-push` skips the push.
+- `pvg nd restore` delegates to `nd sync --restore`: it rebuilds a wiped live
+  vault from the `nd/backlog` branch, falling back to a legacy
+  `.vault/backlog-snapshot/` export if the branch is absent.
 
-The snapshot is an export, never the live queue. Agents keep reading and
-writing through `pvg nd` against the shared live vault; the snapshot exists
-only so the backlog survives clone boundaries and machine loss.
+The branch is a snapshot journal, never the live queue. Agents keep reading
+and writing through `pvg nd` against the shared live vault; the branch exists
+so the backlog survives clone boundaries and machine loss.
 
-### The snapshot is an export, not the source of truth
+### The branch is a snapshot, not the source of truth
 
 Reconcile "files vs backlog" lints against the LIVE vault via
-`pvg issues list --json` (or `pvg nd` directly), NEVER against
-`.vault/backlog-snapshot/`. The snapshot is a point-in-time export refreshed
-only by `pvg nd sync --commit` on main; mid-epic story and bug creations
-therefore lag it until the next export. A lint that reconciles against the
-snapshot will report phantom drift for work that legitimately exists in the
-live vault.
+`pvg issues list --json` (or `pvg nd` directly), NEVER against the
+`nd/backlog` branch contents. A lint that reconciles against the branch will
+report phantom drift for anything newer than the last snapshot.
 
-The owned sync point is `pvg nd sync --commit` on main: the dispatcher runs it
-at epic close, after retro, and after the Sr PM creates stories or bugs
-mid-epic. `pvg doctor`'s `snapshot-drift` check surfaces a lagging snapshot --
-it warns (never fails) when the live vault holds issues absent from
-`.vault/backlog-snapshot/`, with remedy `pvg nd sync --commit`.
+The dispatcher's owned sync points are `pvg loop setup` (pulls remote backlog
+state), after each accepted story merge, and at loop end. `pvg doctor` runs an
+nd-sync-status check -- it warns when the local `nd/backlog` branch is behind
+or unpushed, with remedy `pvg nd sync`. (This replaces the old
+`snapshot-drift` check; the export-to-`.vault/backlog-snapshot/` model is
+retired, and `pvg nd sync --commit` remains only as a deprecated alias for a
+plain sync.)
 
 Manually copying files out of the live vault (under `git-common-dir/...`) into
-`.vault/` is NOT a supported mechanism -- the export is structured, and a hand
-copy will diverge from what `pvg nd restore` expects. Always use `pvg nd sync`.
+`.vault/` is NOT a supported mechanism -- a hand copy will diverge from what
+`pvg nd restore` expects. Always use `pvg nd sync`.
 
 ## Dependency Link Lifecycle
 

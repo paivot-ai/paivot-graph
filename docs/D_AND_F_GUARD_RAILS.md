@@ -171,11 +171,12 @@ This could break down if:
 2. Sr PM doesn't embed architecture/design details (developers read external files)
 3. Anchor focuses on style rather than substance (stories don't match requirements)
 
-## Implemented: Optional Specialist Review Mode
+## Implemented: Specialist Review Mode (default on)
 
-Specialist challengers are now available as an opt-in setting:
+Specialist challengers now run by default:
 
-**Activation:** `pvg settings dnf.specialist_review=true`
+**Setting:** `dnf.specialist_review` (default `true`; disable with
+`pvg settings dnf.specialist_review=false`)
 
 **Pipeline with specialist review enabled:**
 
@@ -184,19 +185,29 @@ BA -> BA Challenger -> Designer -> Designer Challenger -> Architect -> Architect
 ```
 
 **Key design decisions:**
-- Challengers use Sonnet (cheap, focused review -- not heavy creative work)
-- Each challenger loops up to `dnf.max_iterations` times (default 3)
+- Challengers default to fable in their frontmatter (override per role via
+  `pvg settings model.<role>`)
+- Each challenger loops up to `dnf.max_iterations` times (default 3); on the
+  terminal round, remaining findings split into BLOCKING (escalated) and
+  ADVISORY (recorded, not blocking)
 - Challengers never talk to user -- feedback routes to creator via dispatcher
-- After max iterations exhausted, dispatcher escalates to user with remaining issues
-- Default is still cost-optimized (challengers disabled) -- same as before
+- After max iterations exhausted, dispatcher escalates the BLOCKING findings to the user
+- The Sr-PM/Anchor backlog review loop caps at 3 rounds as well; after that
+  the dispatcher escalates the remaining findings to the user. The Anchor
+  caps findings at 10 per round
+- Opt out per project with `pvg settings dnf.specialist_review=false`
+  (cost-optimized: Anchor-only review)
 - Anchor stays regardless (backlog-level review complements document-level review)
 
 **Differences from old ns-paivot challengers:**
 - No Backlog Challenger (Anchor handles this)
 - Creator feedback loop instead of user clarification rounds (less user fatigue)
-- Opt-in per project, not mandatory
+- Default on, but a per-project setting -- not hardwired
 - Max iteration cap prevents infinite loops
-- Structured output format (REVIEW_RESULT: APPROVED/REJECTED) for reliable parsing
+- Structured output format for reliable parsing -- and it now covers the
+  Anchor too: challengers and the Anchor's backlog review emit
+  `REVIEW_RESULT: APPROVED` / `REVIEW_RESULT: REJECTED`; the Anchor's
+  milestone review emits `REVIEW_RESULT: VALIDATED` / `REVIEW_RESULT: GAPS_FOUND`
 
 **Agent definitions:** `agents/ba-challenger.md`, `agents/designer-challenger.md`, `agents/architect-challenger.md`
 **Setting docs:** `commands/vault-settings.md` (dnf.specialist_review, dnf.max_iterations)
@@ -204,9 +215,9 @@ BA -> BA Challenger -> Designer -> Designer Challenger -> Architect -> Architect
 
 ## Related
 
-- [[Session Operating Mode]] — D&F orchestration with specialist review loop
-- [[Anchor Agent]] — Backlog-level adversarial review (complements document-level challengers)
-- [[BA Challenger Agent]] — Reviews BUSINESS.md
-- [[Designer Challenger Agent]] — Reviews DESIGN.md
-- [[Architect Challenger Agent]] — Reviews ARCHITECTURE.md
-- [[Testing Philosophy]] — Integration test mandate (replaces some Architect Challenger checks)
+- [[Session Operating Mode]] -- D&F orchestration with specialist review loop
+- [[Anchor Agent]] -- Backlog-level adversarial review (complements document-level challengers)
+- [[BA Challenger Agent]] -- Reviews BUSINESS.md
+- [[Designer Challenger Agent]] -- Reviews DESIGN.md
+- [[Architect Challenger Agent]] -- Reviews ARCHITECTURE.md
+- [[Testing Philosophy]] -- Integration test mandate (replaces some Architect Challenger checks)

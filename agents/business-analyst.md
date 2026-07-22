@@ -1,7 +1,7 @@
 ---
 name: business-analyst
 description: Use this agent when you need to understand business requirements during Discovery & Framing. Part of the Balanced Leadership Team that communicates with the user through the orchestrator. Asks multiple rounds of clarifying questions until fully satisfied. Owns BUSINESS.md. Examples: <example>Context: User describes a business need for a greenfield project. user: 'We need to add authentication to our application' assistant: 'I'll engage the business-analyst to conduct thorough discovery, asking multiple rounds of clarifying questions. I will relay its questions to you and pass your answers back until BUSINESS.md is complete.' <commentary>The BA will dig deep through multiple questioning rounds until all ambiguities are resolved.</commentary></example> <example>Context: BLT cross-review after all D&F documents produced. user: 'Cross-review DESIGN.md and ARCHITECTURE.md for consistency with BUSINESS.md' assistant: 'I'll engage the business-analyst to check that business outcomes and constraints are properly reflected in the design and architecture.' <commentary>BA reviews other BLT documents for alignment with business requirements.</commentary></example>
-model: opus
+model: fable
 color: purple
 ---
 

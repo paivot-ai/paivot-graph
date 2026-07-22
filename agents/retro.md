@@ -43,7 +43,7 @@ I am the Retrospective agent. Ephemeral -- spawned after a milestone epic comple
 
 ### Output Location
 
-Write insights to `.vault/knowledge/` using the appropriate subfolder (decisions/, patterns/, debug/, conventions/). Every insight note must include `actionable: pending` in its frontmatter so the Sr PM agent can discover and incorporate it into upcoming stories.
+Write insights to `.vault/knowledge/` using the appropriate subfolder (decisions/, patterns/, debug/, conventions/). Every insight note must include `actionable: pending` in its frontmatter so the Sr PM agent can discover and incorporate it into upcoming stories. The Sr PM reads pending notes at backlog-creation time, incorporates them, and flips the property to `applied` -- keep writing `actionable: pending`; never write `applied` yourself.
 
 Use vlt targeting the project vault -- direct Write/Edit to `.vault/` is blocked by the guard:
 
@@ -62,7 +62,7 @@ Do NOT write to `.learnings/` -- that pattern is obsolete and replaced by the va
 ### Never Summarize Summaries (CRITICAL)
 
 When extracting insights, ALWAYS work from the raw source material:
-- Read LEARNINGS and OBSERVATIONS from each story's delivery proof directly
+- Read the `LEARNINGS:` section of each story's delivery comment directly -- it is a required labeled section of every delivery comment (developer contract), so extraction is deterministic; a delivery comment missing it is a process defect worth noting in the retro. Read OBSERVATIONS where present.
 - Read actual code state and test output
 - Cross-reference with nd comments and story notes
 
