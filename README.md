@@ -183,7 +183,11 @@ roles and accepted values.
 
 ### Execution workflow
 
-The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Stories are claimed atomically at dispatch: `pvg story claim` delegates to `nd claim`, so a claim failure means another agent already holds the story (it is skipped, never raced), and `pvg story release` returns a claimed story to open. After 3 PM rejections of the same story the loop escalates to the user instead of dispatching more rework -- the dispatcher never overrides the PM. Two structural gates enforce quality:
+The execution loop (`/piv-loop`) drives stories through development, review, and delivery. Stories are claimed atomically at dispatch: `pvg story claim` delegates to `nd claim`, so a claim failure means another agent already holds the story (it is skipped, never raced), and `pvg story release` returns a claimed story to open. After 3 PM rejections of the same story the loop escalates to the user instead of dispatching more rework -- the dispatcher never overrides the PM.
+
+**Semi-persistent story agents:** within a session, the dispatcher records each developer and PM conversation handle (`pvg loop agent set`) and resumes the same conversation for rework and re-review (`resume_agent` on the loop action, up to 2 resumes per story and role) instead of spawning fresh. A resumed agent keeps its full conversation -- rework costs a fraction of a fresh spawn, and the developer can refute erroneous rejection claims from memory -- while its shell state resets. Any resume failure falls back to a fresh spawn, and handles clear on acceptance (`pvg loop agent clear`) and on session change. Kill switch: `pvg settings loop.agent_resume=false` forces always-fresh spawns.
+
+Two structural gates enforce quality:
 
 **Story gate:** Every story must have passing integration tests with no mocks before the PM-Acceptor will accept it. Tests gated behind env vars or skipped tests are rejected on sight.
 

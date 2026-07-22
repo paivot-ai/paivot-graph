@@ -74,6 +74,20 @@ Consequence: ALWAYS create developer/Conflict-fix worktrees with
 recover will refuse to clean up (it looks foreign), leaving stale worktrees and
 branches behind.
 
+## Worktree Lifetime vs Agent-Conversation Lifetime
+
+With semi-persistent story agents (`loop.agent_resume`, default true), a
+story's worktree and its developer conversation have different lifetimes. The
+worktree persists across rejection rounds -- it is the resume anchor: a
+resumed developer cds back into it and finds `story/STORY_ID` still checked
+out. The conversation handle, recorded via `pvg loop agent set`, is
+session-scoped and capped at 2 resumes per story+role.
+
+If `pvg loop recover` removed the worktree, the handle is cleared
+(`pvg loop agent clear`) and rework falls back to a fresh spawn into a
+re-created worktree. Fresh spawn is always the safe fallback; the persistent
+worktree makes resume possible, never required.
+
 ## Reproduction Recipe For The Old Bug
 
 This reproduces the shared-worktree failure that HXT-jabf records:

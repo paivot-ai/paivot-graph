@@ -170,6 +170,29 @@ re-spawn a fresh developer with your commit as a starting point.
 When in doubt, commit early and deliver with notes. The PM will either accept or
 reject with specific guidance -- both outcomes preserve the work.
 
+### Rework via Resume
+
+You may be RESUMED with a PM rejection instead of being re-spawned. Your
+conversation memory is intact -- the story, your derivations, your previous
+delivery -- but your SHELL IS FRESH: cwd and env vars are reset.
+
+- **First action:** cd back into your story worktree, re-source `.paivot/envr`
+  if present, and verify `story/<STORY_ID>` is still checked out there.
+- Do NOT re-read unchanged files you already know. DO re-verify anything a
+  merge could have changed since your last delivery.
+- If you are a GREEN-phase developer you were deliberately spawned fresh,
+  without the RED author's conversation: derive everything from the committed
+  RED tests and the story.
+- If the rejection contains a claim your own derivation contradicts, verify
+  carefully and report the discrepancy with evidence rather than blindly
+  implementing the change. The RED-DISPUTE and BLOCKED protocols still apply.
+- Your LEARNINGS section at final delivery must cover the FULL history across
+  rejection rounds, including what the original approach missed.
+- If you previously delivered with a CONTEXT_BUDGET note, you will not be
+  resumed. If you are running low on context during rework, say so in the
+  delivery note (CONTEXT_BUDGET) so the dispatcher retires this conversation
+  instead of resuming it again.
+
 ### Pre-Delivery Self-Check (MANDATORY)
 
 Before marking a story as delivered, run:

@@ -113,6 +113,15 @@ architecture.c4: false
 # Options: true, false
 loop.persist_across_sessions: true
 
+# Per-story agent resume for rework and re-review
+# When true (default), pvg loop next surfaces the recorded agent handle as
+# resume_agent on developer-rework and pm-review actions (max 2 resumes per
+# story+role), and the dispatcher resumes that conversation instead of
+# spawning a fresh agent. Fresh spawn remains the fallback on any failure.
+# When false, every rework and re-review spawns a fresh agent.
+# Options: true, false
+loop.agent_resume: true
+
 # Extra quality-gate patterns (pipe-separated) that the walking-skeleton check
 # of `pvg lint --backlog` requires in every skeleton's AC, on top of its
 # generic defaults. Populate from the project hard rules extracted in the
@@ -201,6 +210,7 @@ Show the user the current state:
 | dnf.domain_model         | false     | *.modelith.yaml domain model (entities/invariants) alongside ARCHITECTURE.md |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
 | loop.persist_across_sessions | true  | Loop survives session boundaries; background completions resume it |
+| loop.agent_resume        | true      | Per-story agent resume for rework/re-review; false = always-fresh spawns |
 | lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
 | lint.brownfield          | false     | Force the paths-exist lint check on (brownfield mode) |
 | update.nudge             | true      | Session-start nudge when pvg is behind the channel |
@@ -311,6 +321,13 @@ pvg settings proposal_expiry_days=14
 - `false` (disable):
   1. Report: "Loop state persistence disabled. The execution loop will clear its state on session exit, even if work remains."
   2. No side effects -- takes effect on next loop stop.
+
+**If `loop.agent_resume` was changed:**
+- `true` (enable -- default):
+  1. Report: "Agent resume enabled. Rework and re-review actions carry the recorded agent handle (`resume_agent`, max 2 resumes per story+role); the dispatcher resumes the same conversation and falls back to a fresh spawn on any failure."
+- `false` (disable):
+  1. Report: "Agent resume disabled. Every rework and re-review spawns a fresh agent."
+  2. No side effects -- `pvg loop next` stops emitting `resume_agent`; recorded handles are simply ignored.
 
 **If `lint.quality_gates` was changed:**
 - Report: "Walking-skeleton lint check will additionally require these patterns in every skeleton's AC: <patterns>."

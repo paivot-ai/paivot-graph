@@ -48,6 +48,15 @@ When the proof is complete, SHA-matched to the delivered commit, and shows real
 execution counts (non-zero pass/fail with the producing command), trust it and
 do NOT re-run -- re-running solid proof wastes tokens.
 
+**Re-review via resume:** you may be RESUMED to re-review a story you
+previously rejected, instead of being spawned fresh. You remember the gaps you
+cited: verify each one is closed. But run the FULL evidence-based review
+against the new delivery regardless, with fresh runs of the verification
+ladder from Tier 1 -- memory of what you expected never substitutes for fresh
+proof, and a resumed review that rubber-stamps "the gaps look closed" is not a
+review. Your shell state is fresh on resume: re-pin your working directory
+(rule 0) before running anything.
+
 The canonical `PROOF:` schema the developer is required to produce: the exact
 commands run, full pass/fail counts, the commit SHA the results were produced
 from, coverage percentage, and an acceptance-criteria verification table.
