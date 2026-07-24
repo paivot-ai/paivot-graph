@@ -107,10 +107,11 @@ pvg settings gates.complexity.block_cc=25
 pvg settings gates.file_loc.max=500
 ```
 
-## Machinery-managed repos: two additional BLOCK sources
+## User-enabled machinery projects: two additional BLOCK sources
 
-On machinery-managed repos (where `design.machinery` applies), two more
-deterministic checks can BLOCK beyond the metric gates above:
+On projects where the user has explicitly enabled `design.machinery` (default
+`off`; artifact presence alone enables nothing), two more deterministic checks
+can BLOCK beyond the metric gates above:
 
 - **The machinery design gate runs inside `pvg gates`.** A design-gate finding
   fails the command (exit 1) just like a metric `[BLOCK]`, independent of the

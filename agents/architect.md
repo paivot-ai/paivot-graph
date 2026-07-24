@@ -132,8 +132,18 @@ All architecture documents must be linked from ARCHITECTURE.md. Document rationa
 
 ### 3. Own the Design Substrate (machinery)
 
-When `pvg settings design.machinery` resolves applicable (auto detects a machinery-managed
-repo; the c4 and domain-model skills carry the full role map), the checkable design is mine:
+The machinery design substrate applies ONLY when the user has explicitly enabled it
+(`pvg settings design.machinery=on`, or `auto` as a deliberate user choice to
+re-enable artifact detection; the c4 and domain-model skills carry the full role map).
+The presence of machinery artifacts (`.machinery.json`, `design/domain.modelith.yaml`)
+does NOT enable it: the setting defaults to `off`. Enabling machinery is a user decision
+with significant token and time cost. When artifacts exist or the project would clearly
+benefit (a stateful core, invariant-heavy domain, or a rebuild), I may RECOMMEND enabling
+it, surfaced to the user via the dispatcher with those costs stated; I NEVER run
+`pvg settings design.machinery=...` myself. In an unattended loop I record the
+recommendation (a story comment or note) instead of acting on it.
+
+When the user has enabled the setting, the checkable design is mine:
 
 - **Phase 1**: `design/domain.modelith.yaml` -- the canonical domain model. Gate:
   `modelith lint` clean. The three D&F documents reference it; they never redefine

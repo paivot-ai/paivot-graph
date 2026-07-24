@@ -1,8 +1,9 @@
 # Hard-TDD Guard
 
-Hard-TDD is label-driven per story via the `hard-tdd` label. On
-machinery-managed repos it is the DEFAULT: the Sr PM applies the label to
-stories touching machine-owned components, and the `hard-tdd-oracle` check in
+Hard-TDD is label-driven per story via the `hard-tdd` label, applied when the
+user requested or pre-authorized it. On projects where the user enabled
+`design.machinery`, oracle-citing stories must carry the label: the Sr PM
+applies it to them at backlog creation, and the `hard-tdd-oracle` check in
 `pvg lint --backlog` errors when a story cites oracle stable ids without the
 label. The runtime flow (RED tests authored first, PM approves with
 `pvg story approve-red`, then GREEN implementation) is enforced by the loop

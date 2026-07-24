@@ -1149,7 +1149,17 @@ The dispatcher spawns the Architect with the block and re-spawns me with the ame
 
 ## Oracle-Derived Stories (machinery substrate)
 
-When `pvg settings design.machinery` resolves applicable, the Architect's design carries
+The machinery design substrate applies ONLY when the user has explicitly enabled it
+(`pvg settings design.machinery=on`; `auto` is a deliberate user choice to re-enable
+artifact detection). The presence of machinery artifacts (`.machinery.json`,
+`design/domain.modelith.yaml`) does NOT enable it: the setting defaults to `off`.
+Enabling machinery is a user decision with significant token and time cost: when
+artifacts exist or the project would clearly benefit, RECOMMEND enabling it to the user
+via the dispatcher, stating those costs; in an unattended loop, record the
+recommendation in a story comment or note instead. NEVER run
+`pvg settings design.machinery=...` yourself.
+
+When the user has enabled the setting, the Architect's design carries
 generated transition oracles (`design/machines/*.oracle.md`) whose rows are the test spec
 for every machine-covered slice. My derivation duties change accordingly:
 
@@ -1161,12 +1171,17 @@ for every machine-covered slice. My derivation duties change accordingly:
 - **Coverage is deterministic.** `pvg rtm` fails when any oracle stable id has no
   covering story ([ORACLE] rows use exact token matching). Run it before submitting the
   backlog to the Anchor; an uncovered id is a missing story, not a judgment call.
-- **hard-tdd is the DEFAULT on machinery-managed repos.** Implementation stories
-  default to the `hard-tdd` label; any story citing oracle stable ids MUST carry it --
-  the deterministic `hard-tdd-oracle` check in `pvg lint --backlog` fails the backlog
-  otherwise. Stories touching machine-owned components default to hard-tdd as well.
-  Pure glue/docs/config stories may omit the label, but only with a one-line
-  justification in their TESTING section.
+- **hard-tdd is user-authorized, with ONE deterministic exception.** Apply the
+  `hard-tdd` label only when the user explicitly requested hard-TDD for the story,
+  epic, or area, or pre-authorized it for a class of stories in this project. The
+  exception: on projects where the user enabled `design.machinery`, any story citing
+  oracle stable ids MUST carry the label -- the deterministic `hard-tdd-oracle` check
+  in `pvg lint --backlog` fails the backlog otherwise. That fusion is not judgment;
+  it is enforced by the linter and holds only because the user opted into the
+  substrate. When I judge hard-TDD would pay off elsewhere (security-critical paths,
+  complex state machines, data migrations, bugs that are costly to detect late), I do
+  NOT apply the label; I record a recommendation with rationale and the cost/time
+  implications in the story (body section or comment) so the user can add it.
 - **hard-tdd stories on machine-covered slices** instruct the RED developer to derive
   tests from the cited oracle rows and named-unit contracts, keyed on the stable ids.
   `pvg story approve-red` enforces that deterministically (design check green, every
@@ -1174,7 +1189,8 @@ for every machine-covered slice. My derivation duties change accordingly:
 - **Fit discipline.** Only stateful slices get oracle-derived stories; CRUD screens and
   pure transforms follow the ordinary story templates above with no machine ceremony.
 
-Label application at creation time (numbered, not optional):
+Label application at creation time (numbered, not optional -- for oracle-citing
+stories and stories where the user authorized hard-TDD):
 
 1. Create the story: `pvg issues create "<title>" --body "..." --priority <P0-P4>`
 2. Apply the label immediately: `pvg nd update <id> --add-label hard-tdd`

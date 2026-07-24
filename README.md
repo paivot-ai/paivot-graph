@@ -17,7 +17,7 @@ The installer reads the stable channel manifest ([channel/stable.json](channel/s
 | **[pvg](https://github.com/paivot-ai/pvg)** | The shared control plane for guardrails, live nd routing, loop recovery, story helpers, and updates. All hooks shell out to it. |
 | **[vlt](https://github.com/paivot-ai/vlt)** | The fast, standalone CLI that all hooks, commands, and agents use to interact with your Obsidian vault. Without it, agents fall back to grep/cat -- slower, no alias resolution, no concurrent-access locking. |
 | **[nd](https://github.com/paivot-ai/nd)** | The issue tracker Paivot uses for execution -- git-native markdown work items. For multi-branch execution see [docs/LIVE_SOR.md](docs/LIVE_SOR.md). |
-| **[machinery](https://github.com/RamXX/machinery)** | The design substrate behind `design.machinery`: domain model (Modelith), C4 Architecture Contract, state machines, generated transition oracles, and the deterministic gates that `pvg gates`, `pvg rtm`, and `pvg story approve-red` shell out to. Its Claude Code plugin (converged with everything else) adds the design-governance hooks. |
+| **[machinery](https://github.com/RamXX/machinery)** | The design substrate behind `design.machinery` (default `off`; strictly user-opt-in -- artifacts on disk enable nothing, and agents may recommend enabling it but never set it): domain model (Modelith), C4 Architecture Contract, state machines, generated transition oracles, and the deterministic gates that `pvg gates`, `pvg rtm`, and `pvg story approve-red` shell out to. Its Claude Code plugin (converged with everything else) adds the design-governance hooks. |
 | **paivot-graph plugin** | This plugin, installed from the GitHub-source marketplace `paivot-ai/paivot-graph`. |
 | **nd plugin** | The nd skill and guard hooks, installed from the GitHub-source marketplace `paivot-ai/nd`. |
 | **vlt skill** | Complete vlt command reference and agentic patterns, installed to `~/.claude/skills/vlt-skill`. |
@@ -227,11 +227,11 @@ For stories where correctness is critical, add the `hard-tdd` label. This activa
 
 The active phase is conveyed by the dispatcher prompt (`RED PHASE` / `GREEN PHASE`). No extra nd labels are required beyond `hard-tdd`.
 
-The Sr PM applies the label during backlog creation (user can steer: "hard-tdd on all payment stories"). The label persists on the story as a permanent record, read by every agent:
+The Sr PM applies the label during backlog creation only when the user requested or pre-authorized it ("hard-tdd on all payment stories"), plus one deterministic exception: on projects where the user enabled `design.machinery`, oracle-citing stories must carry the label (`pvg lint --backlog` enforces this). Where the Sr PM judges hard-TDD would pay off elsewhere, it records a recommendation with rationale and cost in the story instead of applying the label. The label persists on the story as a permanent record, read by every agent:
 
 | Agent | How it uses `hard-tdd` |
 |-------|----------------------|
-| **sr-pm** | Applies the label (user-directed or by judgment for high-risk stories) |
+| **sr-pm** | Applies the label when user-directed or lint-required (oracle-citing stories under user-enabled `design.machinery`); otherwise records a recommendation for the user |
 | **developer** | Reads RED/GREEN phase from prompt, adjusts behavior |
 | **pm** | Adjusts review lens per phase (test quality vs implementation correctness) |
 | **anchor** | Validates two-commit pattern (test commit before implementation commit) |

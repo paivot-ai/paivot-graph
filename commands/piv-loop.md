@@ -1111,12 +1111,18 @@ Hard-TDD is **opt-in per story**. Before spawning a developer, check for the `ha
 pvg issues show <id> --json | grep -q '"hard-tdd"'
 ```
 
-On machinery-managed repos (`design.machinery` applies), hard-TDD is the
-DEFAULT for stories touching machine-owned components: the Sr PM applies the
-`hard-tdd` label to them at backlog creation, and `pvg lint --backlog` gains
-the deterministic `hard-tdd-oracle` check -- ERROR when a story cites oracle
-stable ids without the `hard-tdd` label. The label remains the switch; only
-who applies it changes.
+On projects where the user has explicitly enabled `design.machinery`
+(`pvg settings design.machinery=on`, or `auto` as a deliberate user
+choice to re-enable artifact detection; the default is `off`, and machinery
+artifacts on disk enable nothing by themselves), the Sr PM applies the
+`hard-tdd` label to oracle-citing stories at backlog creation, and
+`pvg lint --backlog` gains the deterministic `hard-tdd-oracle` check --
+ERROR when a story cites oracle stable ids without the `hard-tdd` label.
+The label remains the switch; only who applies it changes. Enabling
+machinery is a user decision with significant token and time cost: an agent
+that believes the project would benefit surfaces a recommendation with those
+costs (in an unattended loop, recorded as a story comment or note), and
+NEVER runs `pvg settings design.machinery=...` itself.
 
 **If `hard-tdd` label is ABSENT** (the default): spawn ONE developer agent in normal mode.
 The developer writes both implementation and tests in a single pass. This is the standard flow.
@@ -1164,9 +1170,11 @@ rather than passing silently. See
 **Do NOT default to hard-TDD.** The user's general TDD preference (writing tests alongside
 code) is satisfied by normal mode. Hard-TDD is a stricter discipline where tests and
 implementation are written by separate agent invocations with structural locks. It requires
-explicit opt-in via the label. (On machinery-managed repos the Sr PM applies the label by
-default for machine-owned stories -- the switch is still the label, never dispatcher
-judgment.)
+explicit opt-in via the label, applied because the user requested or pre-authorized it.
+(On projects where the user enabled `design.machinery`, the Sr PM applies the label to
+oracle-citing stories -- the switch is still the label, never dispatcher judgment. For
+everything else the Sr PM records a recommendation instead of applying the label on its
+own.)
 
 ## Termination
 

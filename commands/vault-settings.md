@@ -106,6 +106,19 @@ dnf.domain_model: false
 # Options: true, false
 architecture.c4: false
 
+# Machinery design substrate (domain model, Architecture Contract, state
+# machines, transition oracles, deterministic design gates).
+# off (default): disabled -- machinery artifacts on disk (.machinery.json,
+#   design/domain.modelith.yaml) enable NOTHING by themselves.
+# on: promised -- a missing design fails loudly.
+# auto: a deliberate user choice to re-enable artifact detection -- applies
+#   exactly when the repo carries .machinery.json or design/domain.modelith.yaml.
+# Changing this is a USER-ONLY decision: it carries significant token and time
+# cost, and agents must never set it themselves (they may recommend it,
+# stating those costs).
+# Options: off, on, auto
+design.machinery: off
+
 # Whether to persist execution loop state across sessions
 # When true (default), the loop survives session boundaries -- background agent
 # completions resume it where it left off
@@ -209,6 +222,7 @@ Show the user the current state:
 | dnf.max_iterations       | 3         | Max challenger review loops before user escalation |
 | dnf.domain_model         | false     | *.modelith.yaml domain model (entities/invariants) alongside ARCHITECTURE.md |
 | architecture.c4          | false     | C4 model + Architecture Contract alongside ARCHITECTURE.md |
+| design.machinery         | off       | Machinery design substrate (off/on/auto); user-only decision, agents never set it |
 | loop.persist_across_sessions | true  | Loop survives session boundaries; background completions resume it |
 | loop.agent_resume        | true      | Per-story agent resume for rework/re-review; false = always-fresh spawns |
 | lint.quality_gates       | (empty)   | Pipe-separated extra patterns the walking-skeleton lint check requires |
@@ -306,6 +320,21 @@ pvg settings proposal_expiry_days=14
   1. Report: "C4 architecture model disabled. Existing workspace.dsl is preserved but not maintained."
   2. No files are deleted.
 
+**If `design.machinery` was changed:**
+- Changing this setting is a USER-ONLY decision. Only apply a change the user
+  explicitly asked for; never change it on an agent's initiative or
+  recommendation. Enabling machinery carries significant token and time cost
+  (design gates, oracle derivation, hard-TDD on oracle-citing stories); state
+  that when the user enables it.
+- `on` (enable):
+  1. Report: "Machinery design substrate enabled (promised). A missing design fails loudly. Oracle-citing stories must carry the hard-tdd label (enforced by pvg lint --backlog)."
+  2. Requires the `machinery` CLI. Run `pvg doctor` to confirm (`pvg update` installs it; reported as `machinery-reachable`).
+- `auto` (enable via artifact detection):
+  1. Report: "Machinery design substrate set to auto: applies exactly when the repo carries .machinery.json or design/domain.modelith.yaml. This is a deliberate re-enable of artifact detection."
+- `off` (disable -- default):
+  1. Report: "Machinery design substrate disabled. Machinery artifacts on disk are preserved but enable nothing."
+  2. No files are deleted.
+
 **If `dnf.domain_model` was changed:**
 - `true` (enable):
   1. Report: "Domain model enabled. The Architect will maintain a *.modelith.yaml domain model as the machine-checkable twin of ARCHITECTURE.md."
@@ -337,10 +366,12 @@ pvg settings proposal_expiry_days=14
 - `true`: Report: "Brownfield mode forced on. The paths-exist lint check will run regardless of commit count."
 - `false`: Report: "Brownfield mode not forced. The paths-exist lint check falls back to the >50-commits heuristic."
 
-**Note on machinery-managed repos (`design.machinery` applies):**
+**Note on user-enabled machinery projects (`design.machinery` set to `on`, or
+`auto` with machinery artifacts present):**
 `pvg lint --backlog` also runs the deterministic `hard-tdd-oracle` check --
-ERROR when a story cites oracle stable ids without the `hard-tdd` label. This
-check is automatic on machinery-managed repos, not a setting.
+ERROR when a story cites oracle stable ids without the `hard-tdd` label. The
+check follows the user's `design.machinery` setting; it never activates from
+artifact presence alone.
 
 **If a `model.<role>` key was changed:**
 - Sets the model used when that role's agent is spawned, overriding the agent's

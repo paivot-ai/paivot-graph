@@ -1,6 +1,6 @@
 ---
 name: domain-model
-description: Canonical domain model and its derivation chain on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy dnf.domain_model setting is enabled, or when the user asks about the domain model, entities, invariants, ubiquitous language, state machines, oracles, stable ids, the relational layers (policy, integrity, isolation), rebuild or hybrid migration, the surface ledger, or how stories derive from the design. Maps the Paivot roles onto machinery Phases 1, 1.5, and 3 plus the Phase 4 backlog handoff: the Architect owns the model, the annotations, and the machines; the Sr PM dereferences oracle rows and the build plan into stories; pvg rtm checks coverage deterministically.
+description: Canonical domain model and its derivation chain on the machinery design substrate. Use when the user has explicitly enabled the design.machinery setting (default off; artifact presence alone enables nothing), when the legacy dnf.domain_model setting is enabled, or when the user asks about the domain model, entities, invariants, ubiquitous language, state machines, oracles, stable ids, the relational layers (policy, integrity, isolation), rebuild or hybrid migration, the surface ledger, or how stories derive from the design. Maps the Paivot roles onto machinery Phases 1, 1.5, and 3 plus the Phase 4 backlog handoff: the Architect owns the model, the annotations, and the machines; the Sr PM dereferences oracle rows and the build plan into stories; pvg rtm checks coverage deterministically.
 version: 2.1.0
 ---
 
@@ -20,13 +20,17 @@ model, which is why it must lint clean before anything downstream exists.
 ## When this applies
 
 ```bash
-pvg settings design.machinery    # auto (default) | on | off
+pvg settings design.machinery    # off (default) | on | auto
 ```
 
-Same resolution as the c4 skill: auto detects a machinery-managed repo. Legacy
-`dnf.domain_model=true` projects keep the v1 narrative-twin flow until the model moves
-under `design/`. The `modelith` and `machinery` binaries both converge from the channel
-(`pvg update`).
+Same resolution as the c4 skill: the substrate applies ONLY when the user has
+explicitly enabled it (`on`, or `auto` as a deliberate user choice to re-enable
+artifact detection). The presence of machinery artifacts (`.machinery.json`,
+`design/domain.modelith.yaml`) does NOT enable it. Enabling machinery is a user
+decision with significant token and time cost: agents may RECOMMEND it, stating those
+costs, but must NEVER set it themselves. Legacy `dnf.domain_model=true` projects keep
+the v1 narrative-twin flow until the model moves under `design/`. The `modelith` and
+`machinery` binaries both converge from the channel (`pvg update`).
 
 ## Role map
 
@@ -40,14 +44,15 @@ under `design/`. The `modelith` and `machinery` binaries both converge from the 
 | Developer | Derives hard-TDD RED tests from the oracle rows the story cites, keyed on stable ids. Gt-tests is the RED-exit check made deterministic: with `impl` configured, every committed oracle stable id (machine, policy, isolation) must appear whole-token in the suite, or a test file must earn the strict conformance-parse citation. `pvg story approve-red` verifies this before the suite locks. |
 | PM | On design revisions, `pvg story sync-oracle --base <ref>` maps the stable-id diff onto affected stories: added or modified ids need tests re-derived, removed ids mark tests to retire. |
 
-## Machinery implies hard-TDD
+## User-enabled machinery implies hard-TDD
 
-On a machinery-managed repo, hard-tdd stops being an opt-in nicety: the design ships a
-test oracle and Gt-tests holds the implementation to it. The Paivot rule: any story
-whose ACs cite oracle stable ids MUST carry the `hard-tdd` label; `pvg lint --backlog`
-enforces this deterministically as the `hard-tdd-oracle` check. Hard-tdd is the Sr PM
-DEFAULT for machine-covered slices; the label is omitted only for stories that touch no
-oracle (CRUD screens, pure transforms).
+On a project where the user enabled `design.machinery`, the design ships a test oracle
+and Gt-tests holds the implementation to it. The Paivot rule: any story whose ACs cite
+oracle stable ids MUST carry the `hard-tdd` label; `pvg lint --backlog` enforces this
+deterministically as the `hard-tdd-oracle` check. This fusion holds only because the
+user opted into the substrate. Stories that touch no oracle (CRUD screens, pure
+transforms) get the label only when the user requested or pre-authorized hard-TDD; the
+Sr PM recommends it where it would pay off instead of applying it by judgment.
 
 ## Codebase archaeology (brownfield)
 

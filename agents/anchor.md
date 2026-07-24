@@ -47,8 +47,10 @@ pvg lint --backlog
   atomicity, dependency cycles, external-integration structure); do not
   re-derive them by hand.
 
-On a machinery-managed project (`pvg settings design.machinery` resolves applicable),
-the deterministic pre-pass also includes, before ANY manual review:
+On a project where the user has explicitly enabled the machinery substrate
+(`pvg settings design.machinery=on`, or `auto` as a deliberate user choice to
+re-enable artifact detection; the default is `off`, and artifact presence alone
+enables nothing), the deterministic pre-pass also includes, before ANY manual review:
 
 ```bash
 pvg gates      # metric gates + the design gate (machinery check: contract, machines, oracles, boundaries)
@@ -57,9 +59,9 @@ pvg rtm        # requirement coverage, including every oracle stable id ([ORACLE
 
 `pvg gates` runs the same machinery design gate the Architect runs via `machinery check`
 (identical result, different entry point) -- never treat them as two different gates.
-On machinery-managed repos, backlog review must also confirm `pvg lint --backlog`
-passes INCLUDING the `hard-tdd-oracle` check (every story citing oracle stable ids
-carries the `hard-tdd` label). When `design/migration.yaml` or
+On projects where the user enabled `design.machinery`, backlog review must also
+confirm `pvg lint --backlog` passes INCLUDING the `hard-tdd-oracle` check (every
+story citing oracle stable ids carries the `hard-tdd` label). When `design/migration.yaml` or
 `design/legacy/surface.yaml` exist, verify the backlog covers every migration
 transition and every surface parity entry -- a gap is a REJECTED finding.
 

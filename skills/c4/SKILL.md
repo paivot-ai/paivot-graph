@@ -1,6 +1,6 @@
 ---
 name: c4
-description: Architecture-as-code on the machinery design substrate. Use when the project's design.machinery setting applies (auto detects a machinery-managed repo), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2: who authors the model, which gates hold it (G2, G4, G5 and the ratchet), and how boundary debt is baselined and burned down.
+description: Architecture-as-code on the machinery design substrate. Use when the user has explicitly enabled the design.machinery setting (default off; artifact presence alone enables nothing), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2: who authors the model, which gates hold it (G2, G4, G5 and the ratchet), and how boundary debt is baselined and burned down.
 version: 2.1.0
 ---
 
@@ -19,16 +19,22 @@ closure, NFR record); never restate them here or in stories.
 ## When this applies
 
 ```bash
-pvg settings design.machinery    # auto (default) | on | off
+pvg settings design.machinery    # off (default) | on | auto
 ```
 
-- `auto`: applies exactly when the repo is machinery-managed (a `.machinery.json` at the
-  root, or `design/domain.modelith.yaml`). `pvg gates`, `pvg rtm`, and
-  `pvg story approve-red` resolve this themselves; agents do not need to re-derive it.
-- `on`: promised; a missing design fails loudly. `off`: disabled.
+- `off` (default): disabled. The presence of machinery artifacts (`.machinery.json`,
+  `design/domain.modelith.yaml`) does NOT enable anything; only the user setting does.
+- `on`: promised; a missing design fails loudly.
+- `auto`: a deliberate user choice to re-enable artifact detection -- applies exactly
+  when the repo carries a `.machinery.json` at the root or
+  `design/domain.modelith.yaml`. `pvg gates`, `pvg rtm`, and `pvg story approve-red`
+  resolve this themselves; agents do not need to re-derive it.
+- Enabling machinery is a user decision with significant token and time cost: agents
+  may RECOMMEND enabling it, stating those costs, but must NEVER run
+  `pvg settings design.machinery=...` themselves.
 - Legacy `architecture.c4=true` projects follow the narrative-twin flow this skill's v1
-  described; migrate them by moving `workspace.dsl` and the contract under `design/` and
-  letting `auto` detection take over.
+  described; migrate them by moving `workspace.dsl` and the contract under `design/`,
+  then the user chooses whether to set `auto` or `on`.
 
 The `machinery` binary converges from the channel (`pvg update`); `pvg doctor` reports
 `machinery-reachable`.
@@ -69,13 +75,16 @@ says exactly which half is whose.
   the tell.
 - `ignore:` globs stay unratcheted amnesty; shrinking them is part of the same cadence.
 
-## Machinery implies hard-TDD
+## User-enabled machinery implies hard-TDD
 
-Once `impl` is configured, Gt-tests holds the suite to every committed oracle stable id;
-the design ships its own test spec. The Paivot rule follows: any story citing oracle
-stable ids must carry the `hard-tdd` label (`pvg lint --backlog` enforces this
-deterministically as the `hard-tdd-oracle` check), and hard-tdd is the Sr PM default for
-machine-covered slices. Label-less stories are for the parts the machines do not cover.
+Once the user has enabled `design.machinery` and `impl` is configured, Gt-tests holds
+the suite to every committed oracle stable id; the design ships its own test spec. The
+Paivot rule follows: any story citing oracle stable ids must carry the `hard-tdd` label
+(`pvg lint --backlog` enforces this deterministically as the `hard-tdd-oracle` check).
+This fusion holds only because the user opted into the substrate. For the parts the
+machines do not cover, the label appears only when the user requested or pre-authorized
+hard-TDD; the Sr PM recommends it where it would pay off instead of applying it by
+judgment.
 
 ## Diagrams
 

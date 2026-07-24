@@ -75,13 +75,17 @@ When neither phase is specified: normal mode (write both tests and code).
    to the PM authorization, so audits have a machine-readable marker. Field
    finding: 11 sanctioned locked-test repairs had no machine-readable marker.
 
-### Design Substrate Rules (machinery-managed projects)
+### Design Substrate Rules (user-enabled machinery projects)
 
-When the story cites oracle stable ids (tokens like `DEAL-eb0c40`) or the repo carries a
-`design/` directory with a `.machinery.json` or `domain.modelith.yaml`:
+These rules apply ONLY when the user has explicitly enabled the machinery substrate
+(`pvg settings design.machinery=on`, or `auto` as a deliberate user choice to
+re-enable artifact detection; the default is `off`). The mere presence of machinery
+artifacts (`.machinery.json`, `design/domain.modelith.yaml`) does NOT enable it, and
+you never change the setting yourself. When the setting is enabled and the story cites
+oracle stable ids (tokens like `DEAL-eb0c40`):
 
-On machinery-managed repos, hard-tdd is the DEFAULT story mode: any story citing oracle
-stable ids MUST carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
+On projects where the user enabled `design.machinery`, any story citing oracle stable
+ids MUST carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
 `pvg lint --backlog` enforces that deterministically.
 
 - **RED derives from the oracle.** The cited `design/machines/*.oracle.md` rows are the
