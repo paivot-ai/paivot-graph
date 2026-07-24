@@ -103,7 +103,7 @@ jobs:
             esac
 
             branch=$(gh api "repos/$marketplace" --jq .default_branch)
-            actual=$(curl -fsSL "https://raw.githubusercontent.com/$marketplace/$branch/$path" | jq -r .version) \
+            actual=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$marketplace/contents/$path?ref=$branch" | jq -r .version) \
               || { echo "FAIL: could not fetch $path from $marketplace@$branch"; exit 1; }
 
             test "$actual" = "$pinned" \
@@ -115,6 +115,8 @@ jobs:
     name: Verify skill versions
     runs-on: ubuntu-latest
     needs: validate-manifest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
@@ -131,9 +133,10 @@ jobs:
               *) echo "FAIL: no known SKILL.md path for skill '$skill'"; exit 1 ;;
             esac
 
-            actual=$(curl -fsSL "https://raw.githubusercontent.com/$repo/$tag/$path" \
-              | awk 'NR > 1 && /^---$/ { exit } /^version:/ { print $2 }') \
+            tmp=$(mktemp)
+            gh api -H "Accept: application/vnd.github.raw+json" "repos/$repo/contents/$path?ref=$tag" > "$tmp" \
               || { echo "FAIL: could not fetch $path from $repo at $tag"; exit 1; }
+            actual=$(awk 'NR > 1 && /^---$/ { exit } /^version:/ { print $2 }' "$tmp")
 
             test "$actual" = "$ver" \
               || { echo "FAIL: $skill SKILL.md frontmatter is '$actual', pinned $ver"; exit 1; }
