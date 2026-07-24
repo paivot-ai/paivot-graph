@@ -262,6 +262,10 @@ notes:
 
 Reads always go to the primary adapter. Writes go to the primary first and then fan out best-effort to optional mirrors (useful for shadowing into Linear for visibility while keeping nd as the source of truth). Backend-specific operations that have no clean cross-backend abstraction -- nd dependency cycles, `vlt read --follow` graph traversal, heading-anchored `vlt patch` -- remain available via `pvg nd ...` and direct `vlt ...` calls. See [pvg's README](https://github.com/paivot-ai/pvg#provider-configuration) for the full schema.
 
+## Evals (experimental)
+
+`evals/` holds a scenario-based regression harness for the agent prompts: each scenario pairs fixture inputs and a task prompt with a weighted checklist rubric, and an LLM judge grades the agent's headless run against it. Run all scenarios with `make evals`, or one with `make evals SCENARIO=sr-pm-backlog`. Results land in `evals/.results/` (gitignored). Every run consumes real Claude tokens, so treat it as an on-demand tool. Experimental: not wired into CI, and no release gate depends on it. Format and details in `evals/README.md`.
+
 ## Knowledge governance
 
 Knowledge lives in three tiers with different governance rules:

@@ -1,0 +1,61 @@
+{
+  "context": "The Sr PM agent was given three final D&F documents for CurbSide, a small parking-reservations web app, and asked to author the initial backlog as markdown epic and story files under stories/ (nd, pvg, and vlt unavailable in the sandbox). The user did NOT authorize hard-TDD anywhere. Grade the produced stories/ directory against the Sr PM playbook rules in agents/sr-pm.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "walking-skeleton-first",
+      "description": "Per the walking-skeleton rule, each milestone epic's first story is a walking skeleton: the thinnest end-to-end slice crossing ALL layers (API to service to PostgreSQL to response), with real working behavior in its ACs, not stubs like 'endpoint registered' or 'service responds 200'. Other stories in the epic depend on it.",
+      "max_score": 10
+    },
+    {
+      "name": "self-contained-stories",
+      "description": "Per the self-contained-stories principle (NON-NEGOTIABLE), every story embeds all needed business, design, and architecture context in its own body. Zero references of the form 'see BUSINESS.md', 'per DESIGN.md section X', or any pointer requiring the developer to open an external file. Named citations used purely as provenance are acceptable only when the substance is embedded alongside them.",
+      "max_score": 10
+    },
+    {
+      "name": "no-structural-heading-collisions",
+      "description": "Per the heading collision prohibition (HARD RULE), no epic or story body contains markdown headings named Description, Acceptance Criteria, Design, Notes, History, Links, or Comments at ANY heading level. Bodies use the plain-label form (Description:, Acceptance Criteria:) exactly as the templates define.",
+      "max_score": 8
+    },
+    {
+      "name": "testable-integration-backed-acs",
+      "description": "ACs are specific and testable: no vacuous criteria such as 'tests pass' or 'user can register'. Negative and edge paths are enumerated (validation failures, 403/409 paths, the no-double-booking invariant), and stories require integration tests against real PostgreSQL with no mocks, per the TESTING template section and the coverage-enumeration self-review rule.",
+      "max_score": 8
+    },
+    {
+      "name": "no-unauthorized-hard-tdd",
+      "description": "Per the 'hard-tdd is user-authorized' rule, the hard-tdd label is applied nowhere (the user did not request it and design.machinery is not enabled). If the agent judged hard-TDD worthwhile for some story, it recorded at most a recommendation with rationale and cost implications, never the label itself.",
+      "max_score": 8
+    },
+    {
+      "name": "vertical-slices",
+      "description": "Per the vertical-slices pattern, every story delivers a user-observable outcome cutting through all layers. No horizontal-layer stories such as 'Build the API layer', 'Build the React frontend', or 'Build the reservation service' in isolation.",
+      "max_score": 8
+    },
+    {
+      "name": "epic-priorities",
+      "description": "Per Phase 6, every epic and story carries a priority set at creation (P0 infrastructure, P1 MVP critical path, P2 value-add, P3 polish), and the assignments are sensible for CurbSide's MVP scope.",
+      "max_score": 5
+    },
+    {
+      "name": "no-dependency-cycles",
+      "description": "Per the dep-cycles rule, the Blocked by references across all story files form a directed acyclic graph: no story is reachable from itself by following dependencies, and every referenced file exists (no stale or placeholder references).",
+      "max_score": 5
+    },
+    {
+      "name": "terminology-fidelity",
+      "description": "Per the Terminology Audit rule, identifiers in story bodies match ARCHITECTURE.md verbatim: table and column names (reservations.status, hourly_rate_cents), endpoints (POST /api/reservations, DELETE /api/reservations/:id), env vars (DATABASE_URL, JWT_SECRET, PORT), status codes (201, 204, 403, 409), and auth details (bcrypt cost 12, 30-minute JWT expiry).",
+      "max_score": 5
+    },
+    {
+      "name": "capstone-per-epic",
+      "description": "Per the capstone rule, each epic has exactly one end-to-end capstone story that is blocked by every other story in that epic.",
+      "max_score": 5
+    },
+    {
+      "name": "mandatory-skills-section",
+      "description": "Per the mandatory-skills rule, every story body ends with a MANDATORY SKILLS TO REVIEW section, naming a skill or stating 'None identified'.",
+      "max_score": 3
+    }
+  ]
+}

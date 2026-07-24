@@ -24,3 +24,4 @@ Thumbs.db
 .vault/.piv-loop-state.json
 .vault/.piv-loop-snapshot.json
 .vault/.dispatcher-state.json
+evals/.results/

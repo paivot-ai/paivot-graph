@@ -1,0 +1,5 @@
+{
+  "agent": "sr-pm.md",
+  "description": "Sr PM authors the initial backlog from three D&F documents for a small parking-reservations web app. Tests backlog authoring rules: walking skeleton first, self-contained stories, no structural heading collisions, testable integration-backed ACs, no unauthorized hard-tdd label, vertical slices, priorities, and acyclic dependencies.",
+  "include": ["./inputs"]
+}

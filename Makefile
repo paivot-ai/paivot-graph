@@ -184,6 +184,14 @@ smoke-worktrees: ## Run the parallel-dev worktree isolation regression smoke
 smoke-recover: check-pvg ## Assert `pvg loop recover` preserves foreign (non-Paivot) worktrees
 	@scripts/smoke_recover_preserves_foreign.sh
 
+# ---------------------------------------------------------------------------
+# Evals (experimental): agent-prompt regression harness. Not a release gate.
+# ---------------------------------------------------------------------------
+
+.PHONY: evals
+evals: ## Run the experimental agent-prompt evals (SCENARIO=<name> for one; consumes real tokens)
+	@scripts/run-evals.sh $(SCENARIO)
+
 test: check-pvg ## Run all checks (functional)
 	@echo "--- Functional checks ---"
 	@echo "Checking pvg is on PATH..."
