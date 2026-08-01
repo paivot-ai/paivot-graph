@@ -193,6 +193,14 @@ gates.file_loc: warn
 gates.file_loc.max: 400
 # Comma-separated globs/path-substrings dropped before any metric runs.
 gates.exclude: vendor/,node_modules/,*.generated.*,*.pb.go,migrations/,*.lock,*.min.*,dist/,build/
+
+# Calibration stamp: written AUTOMATICALLY by `pvg settings` whenever any
+# gates.* or model.* key changes; not meant to be set by hand. `pvg doctor`
+# reports (advisory, never blocking) when overrides are unstamped or when the
+# running pvg version no longer matches the stamp, as the nudge to re-review
+# tuned thresholds after a toolchain change.
+calibration.stamped:
+calibration.pvg:
 ```
 
 ## Step 2: Present Current Configuration
@@ -238,6 +246,8 @@ Show the user the current state:
 | gates.file_loc           | warn      | File-size gate mode (off/warn/block)              |
 | gates.file_loc.max       | 400       | Non-blank lines per file at/above which a finding fires |
 | gates.exclude            | vendor/,...| Comma-separated globs/path-substrings dropped before metrics run |
+| calibration.stamped      | (empty)   | Date gates.*/model.* were last tuned; auto-written by pvg settings |
+| calibration.pvg          | (empty)   | pvg version at last tuning; doctor nudges re-review on mismatch |
 
 Settings file: .vault/knowledge/.settings.yaml
 ```

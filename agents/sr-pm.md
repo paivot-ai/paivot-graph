@@ -116,6 +116,19 @@ IMPLEMENTATION:
 KEY FILES:
 [Files to create/modify - helps scope management]
 
+OUT OF SCOPE:
+[Explicit exclusions a reasonable developer might otherwise pull in, each with a
+one-line reason and where it lands instead (later story TIX-id, epic gate, or
+never). The scope-honesty bar still applies: a one-liner in the same module and
+theme belongs IN scope, not here. Omit the section only when nothing adjacent
+could plausibly be mistaken for in-scope work.]
+
+DIFF BUDGET:
+[Expected change size: rough file count and changed-LOC ceiling, e.g. "~4 files,
+under 300 changed LOC". A delivery grossly over budget signals scope creep or
+misread intent; the PM-Acceptor treats overrun as a mandatory investigation
+trigger, not an automatic rejection.]
+
 CONSUMES:
 [One entry per upstream artifact this story depends on: real TIX id, path ->
 artifact, a signature line (spec:/fields:/endpoint:/event:/schema:), and a
@@ -812,7 +825,7 @@ For every story, answer the following in writing in your run summary (not in the
 
 2. **Skeleton depth.** Re-read the walking skeleton. Does it actually exercise every layer end-to-end with non-trivial behavior, or is the AC a list of stubs? The Anchor asks: "Would a developer copying this pattern produce production-ready code, or shovelware?" If the skeleton's AC are "service responds 200", "endpoint registered", "config loaded" -- that is shovelware. Push for real behavior: "user submits X, receives Y validated against Z, stored in W, emits event V".
 
-3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include.
+3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include. The same test runs in reverse against the story's OUT OF SCOPE section: each entry must be a genuine exclusion (different module, different theme, or deliberately deferred with a stated landing place), never artificial decomposition. An OUT OF SCOPE entry that fails the reasonable-developer test is a defect: fix it before submitting.
 
 4. **Coverage enumeration.** Do the ACs enumerate every test scenario the developer must implement (happy path, validation failures, error paths, edge cases, security boundaries), or do they list only the happy path? Anchor will flag "tests pass" or "integration test passes" as vacuous. List the negative paths explicitly.
 

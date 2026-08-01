@@ -184,6 +184,15 @@ These are structural checks that catch the most common developer omissions:
 - User Intent: if the story has a USER INTENT section, evaluate whether the
   implementation actually serves that intent -- not just whether AC checkboxes pass.
   A story can pass every AC and still miss the point. When absent, skip this check.
+- Scope Adherence: if the story has an OUT OF SCOPE section, check the delivered
+  diff for changes inside an excluded area. Out-of-scope changes without a
+  DISCOVERED_BUG report or an explicit justification in the proof are a rejection
+  reason. When absent, skip this check.
+- Diff Budget: if the story has a DIFF BUDGET section, compare it against the
+  actual delivery (`git diff --shortstat` over the story's commit range). Gross
+  overrun (several times the budget) requires investigating what grew and why
+  before accepting; overrun alone is not an automatic rejection, unexplained
+  overrun is. When absent, skip this check.
 - Outcome Alignment: does the implementation match ACs precisely?
 - Test Quality: integration tests with no mocks? Claims backed by proof?
 - Code Quality Spot-Check: wiring verified? No dead code?
