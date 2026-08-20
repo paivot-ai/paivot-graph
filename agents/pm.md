@@ -320,7 +320,11 @@ PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
 # If story has a parent, check if all children are closed
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
-  if [ "$OPEN" -eq 0 ]; then
+  # A MILESTONE (container) epic -- one holding child EPICS -- never closes here.
+  # It seals at the milestone gate (whole-design check, Anchor seal review), which
+  # only the dispatcher runs. Auto-closing it would skip that gate silently.
+  SUBEPICS=$(pvg nd children $PARENT --json | jq '[.[] | select(.type == "epic")] | length')
+  if [ "$OPEN" -eq 0 ] && [ "$SUBEPICS" -eq 0 ]; then
     # Canonical two-step: the label contract requires closed BEFORE accepted
     pvg nd close $PARENT --reason="All stories accepted"
     pvg nd update $PARENT --add-label accepted
@@ -328,7 +332,9 @@ if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
 fi
 ```
 
-This is not optional. An epic with all children accepted must be closed immediately.
+This is not optional. A leaf epic with all children accepted must be closed immediately.
+A milestone epic over slice epics is left open for its seal gate; `pvg loop next` then
+returns `milestone_seal` and the dispatcher runs it.
 
 ### Decisions
 

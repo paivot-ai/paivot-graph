@@ -95,11 +95,17 @@ ids MUST carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
   comment), plus the guard-falsifying and named-unit tests the story's sections call for.
   `pvg story approve-red` verifies id coverage and the design gate deterministically; a
   missing id is a missing test and blocks approval.
-- **Never edit generated design artifacts**: `*.oracle.md`, `design/formal/*.tla` and
-  `*.cfg`, `design/packs/`, `design/pack/`, `design/ratchet.json`. If a test derived from
-  an oracle row cannot pass, that is a DESIGN DEFECT: stop and report it (the design
-  changes first, then `machinery oracle` regenerates, then tests follow). Do not "adjust"
-  the test or the oracle.
+- **The whole design tree is read-only, not just the generated half.** Never edit
+  generated artifacts (`*.oracle.md`, `design/formal/*.tla` and `*.cfg`,
+  `design/packs/`, `design/pack/`, `design/ratchet.json`) AND never edit the sources
+  either (`design/BUILD.md` and its shards, `design/ARCHITECTURE.md`,
+  `design/*.modelith.yaml`, `design/machines/*.machine.json`, `design/workspace.dsl`).
+  Editing a source is worse than editing a generated file, because the generated file
+  at least shows up as DRIFT at the next gate while a source edit silently changes what
+  every later gate checks against. The guard blocks both while the substrate applies.
+  If a test derived from an oracle row cannot pass, that is a DESIGN DEFECT: stop and
+  report it (the design changes first, then `machinery oracle` regenerates, then tests
+  follow). Do not "adjust" the test, the oracle, or the design.
 - **Boundaries are gated, not aspirational.** `pvg gates` runs the design gate (including
   G4 import boundaries and the baseline ratchet) beside the metric gates; run it in the
   pre-delivery self-check. An undeclared cross-boundary import or a new offender file on
@@ -213,6 +219,23 @@ or documented in the delivery proof explaining why they remain.
 
 The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
 that fails this check wastes everyone's tokens.
+
+**Then run the project's own verification workflow, if it declares one:**
+```bash
+pvg settings verify.command      # empty = the project declares none; skip this step
+```
+
+When it is set, run that command INLINE and paste its result into the delivery proof.
+This is how a stack-specific toolchain (for example an Elixir project mandating
+`/phx:verify`, which compiles, formats, and runs the suite in one loop) becomes part of
+delivery instead of a line of prose nobody executes. Two rules:
+
+- Run it yourself, synchronously. You cannot spawn subagents, so a workflow that fans
+  out to specialist agents can never run here. That is why the review workflow lives in
+  a separate setting (`review.command`) and runs from the dispatcher at the epic gate,
+  not from you.
+- A red result is not a delivery. Fix and re-run, or report the blocker; never deliver
+  with the project's own verification failing and a note promising to look at it.
 
 ### Wiring Evidence (MANDATORY)
 

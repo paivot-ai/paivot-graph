@@ -79,7 +79,8 @@ rejected > ready). Follow it:
 | Decision | Action |
 |----------|--------|
 | `act` | Spawn the agent specified in `next` (developer or pm_acceptor). If the action carries `resume_agent`, resumption REPLACES the fresh Agent spawn -- deliver the payload to the recorded agent per Semi-Persistent Story Agents below. If the action carries a non-empty `model` field, pass it as the Agent tool `model` parameter for that spawn; if `model` is absent/empty, spawn normally (the agent's frontmatter default applies) |
-| `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue |
+| `epic_complete` | Run the epic completion gate (e2e + Anchor + merge to main), then call `pvg loop rotate <next_epic>` and continue. If the payload carries `seal_epic`, the completing epic was the LAST open slice of that milestone: run the Milestone Seal Gate for it after the completion gate and before rotating |
+| `milestone_seal` | Every slice epic of the milestone named in `seal_epic` is closed but the milestone itself is open: its seal gate has not run. Run the Milestone Seal Gate below. The loop may not rotate or exit past a pending seal |
 | `epic_blocked` | All remaining work in the current epic is blocked. Escalate to user via AskUserQuestion |
 | `wait` | Agents are working in the current epic. Do nothing. Wait for completions |
 | `complete` | All epics drained. Allow exit |
@@ -664,6 +665,23 @@ to execute the deferred verification, or escalate to the user via
 AskUserQuestion. Field finding: an epic closed with named deferrals that
 never fired.
 
+**Step 1c: Project Review Workflow (STRUCTURAL when the project declares one)**
+
+```bash
+pvg settings review.command      # empty = the project declares none; skip this step
+```
+
+When it is set, YOU run that command here, on the epic branch, before the Anchor. The
+dispatcher is the only role that can: review workflows fan out to specialist subagents,
+and the developer and PM-Acceptor are ephemeral and cannot spawn. This is where a
+stack's mandated review (for example an Elixir project's `/phx:review`, followed by
+`/phx:triage` on its findings) actually executes instead of remaining a line of prose in
+a story.
+
+Feed the triaged findings back as developer fixes on the epic branch, then re-run. A
+review workflow left unrun, or run with findings unaddressed and unrecorded, is a gate
+FAILURE exactly like a failing test.
+
 **Step 2: Anchor Milestone Review**
 
 Spawn `paivot-graph:anchor` in milestone review mode:
@@ -839,15 +857,61 @@ git commit -m "chore(paivot): retro knowledge for EPIC_ID"
 git push origin main   # skip if local-only
 ```
 
-**After retro**: if `epic_complete` included a `next_epic`, run
-`pvg loop rotate <next_epic>` to transition the loop state, then resume
+**After retro**: if the decision carried a `seal_epic`, run the Milestone Seal Gate
+below BEFORE rotating. Then, if `epic_complete` included a `next_epic`, run
+`pvg loop rotate <next_epic>` to transition the loop state and resume
 with `pvg loop next --json`. If no `next_epic` was provided (last epic),
-the completion gate is still MANDATORY -- run all four steps (e2e, Anchor,
-merge to main, retro) before allowing exit. The stop hook enforces this
+the completion gate is still MANDATORY -- run all five steps (e2e, project review,
+Anchor, merge to main, retro) before allowing exit. The stop hook enforces this
 structurally: it blocks exit while the epic branch exists unmerged. While an
 epic-mode loop is active, the stop hook's counts are epic-scoped: the
 completion gate fires when the TARGET epic drains, regardless of other
 epics' state.
+
+### Milestone Seal Gate (nested epic model)
+
+A layered plan nests epics: a MILESTONE epic per layer holding SLICE epics as its
+children. The loop drains slices one at a time, each through the full completion gate
+above. The milestone itself is never a dispatch target and never closes by story
+acceptance; it seals once, after its last slice closes. `pvg loop next --json` names the
+milestone in `seal_epic` and returns `milestone_seal` when only the seal remains. The
+stop hook blocks exit while a seal is pending, exactly as it does for an unmerged epic
+branch.
+
+Run these four steps on `main`, after the last slice has merged:
+
+1. **Whole-design gate.** This is the one place the design's whole-suite test gate runs:
+   ```bash
+   pvg gates --seal
+   ```
+   It forces machinery's Gt-tests (every committed oracle stable id, machine transitions
+   AND formal decision rows, carried by the suite) and G4-import in over the configured
+   impl dir. Story-level RED approval deliberately omits Gt, because at story
+   granularity it would block the first story until the last one exists; the seal is
+   where that debt comes due, and it is never waived. A red result is a FAILED seal:
+   spawn developers for the uncovered ids, or escalate via AskUserQuestion. Never
+   `--skip-design` past it.
+
+2. **Milestone DoD.** Read the milestone epic's body: it carries the layer DoD verbatim
+   from the build plan. Every line must be demonstrably satisfied, with evidence.
+
+3. **Anchor seal review.** Spawn `paivot-graph:anchor` in milestone review mode against
+   the MILESTONE epic, naming its DoD lines and its slice epics. Its deterministic
+   pre-pass (`pvg gates`, scoped `pvg rtm`, `pvg verify --check-e2e`,
+   `pvg verify --check-mocks`) runs over the whole layer, not one slice.
+   `REVIEW_RESULT: VALIDATED` is required; `GAPS_FOUND` re-enters delivery.
+
+4. **Close the milestone.** Only after 1 to 3 are green, and in this order (the label
+   contract requires closed before accepted):
+   ```bash
+   pvg nd close <milestone-epic> --reason="Layer sealed: DoD green, whole-design gate green, Anchor VALIDATED"
+   pvg nd update <milestone-epic> --add-label accepted
+   ```
+   Tag the seal commit so later design revisions can diff against it
+   (`pvg story sync-oracle --base <seal-tag>`).
+
+From the seal onward the layer's tests are locked at layer granularity: a change inside
+a sealed layer starts with a design revision, not with an edit to a locked test.
 
 ## Dispatcher Rules
 
@@ -1123,6 +1187,14 @@ machinery is a user decision with significant token and time cost: an agent
 that believes the project would benefit surfaces a recommendation with those
 costs (in an unattended loop, recorded as a story comment or note), and
 NEVER runs `pvg settings design.machinery=...` itself.
+
+A build protocol can put the whole build under hard-TDD, in which case the
+user sets `hard_tdd.preauthorized=true` and `pvg lint --backlog` requires the
+label on EVERY non-closed story (or `hard-tdd-exempt` plus a recorded
+`HARD-TDD EXEMPT:` reason). That closes the gap where a visual-regression,
+metamorphic, or fuzz suite cites no oracle id: it still runs two-phase.
+Nothing changes here, the label is still the switch, but expect nearly every
+story on such a project to carry it.
 
 **If `hard-tdd` label is ABSENT** (the default): spawn ONE developer agent in normal mode.
 The developer writes both implementation and tests in a single pass. This is the standard flow.
