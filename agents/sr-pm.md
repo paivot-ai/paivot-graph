@@ -461,6 +461,11 @@ None identified (async/await fix)
 
 ### Phase 1: D&F Document Analysis
 
+> **Machinery-first project?** If the design substrate applies and the three D&F
+> documents do not exist, read "Machinery-First Projects: the design IS the D&F"
+> below FIRST and use its document remap for this phase and every later one. The
+> phases still all run; their sources change.
+
 Read and extract from all D&F documents:
 
 **BUSINESS.md:**
@@ -493,8 +498,8 @@ Projects encode **non-negotiable rules** the dispatcher and every agent must hon
 Source 1: **Project-level `.vault/knowledge/conventions/*.md`** (Paivot-managed projects).
 Paivot-managed projects (any directory containing `.vault/issues/` or `.paivot/config.yaml`) do not use a project-level `CLAUDE.md` by convention; project-specific rules live as `scope: project` vault notes under `.vault/knowledge/conventions/`. Read every note there.
 
-Source 2: **Project root `CLAUDE.md`** (non-Paivot projects, or projects that explicitly opt in to one).
-If a `CLAUDE.md` exists at the git root, read it.
+Source 2: **Project root `CLAUDE.md`** (ALWAYS, when the file exists).
+If a `CLAUDE.md` exists at the git root, read it -- on a Paivot-managed project too. The convention is that a Paivot project puts its rules in vault notes, but the convention is not a guarantee: a repo can carry a standing directive in `CLAUDE.md` (a mandated toolchain, a house testing rule) that nobody has mirrored into a note yet, and an empty `conventions/` directory is exactly the case where skipping the file loses every hard rule the project has. Read both; the project note wins on conflict.
 
 Source 3: **User global `~/.claude/CLAUDE.md`**.
 The user's personal universals (UNIX philosophy, testing pyramid, language conventions). Always present; always relevant.
@@ -518,8 +523,9 @@ if [ -d "$project_root/.vault/issues" ] || [ -f "$project_root/.paivot/config.ya
   fi
 fi
 
-# Source 2: project CLAUDE.md (non-Paivot, or explicit opt-in)
-if [ "$project_paivot" = "0" ] && [ -f "$project_root/CLAUDE.md" ]; then
+# Source 2: project CLAUDE.md -- ALWAYS when present, Paivot project or not.
+# A repo directive nobody mirrored into a note is still a hard rule.
+if [ -f "$project_root/CLAUDE.md" ]; then
   echo "=== project CLAUDE.md ==="
   grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$project_root/CLAUDE.md" | head -50
 fi
@@ -531,7 +537,16 @@ if [ -f ~/.claude/CLAUDE.md ]; then
 fi
 ```
 
-Translate every imperative rule into a grep pattern and register the patterns in project settings: `pvg settings lint.quality_gates="<pattern1>|<pattern2>|..."` (pipe-separated). The `walking-skeleton` check in `pvg lint --backlog` (Phase 7a) requires these patterns in every skeleton's AC, on top of its generic defaults. **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
+Translate every imperative rule into a grep pattern and register the patterns in project settings: `pvg settings lint.quality_gates="<pattern1>|<pattern2>|..."` (pipe-separated). The `walking-skeleton` check in `pvg lint --backlog` (Phase 7a) requires these patterns in every skeleton's AC, on top of its generic defaults. **Precedence**: project convention note > project `CLAUDE.md` > user global. A rule present in more than one source is honored once, at its most specific statement.
+
+A mandated toolchain counts as a hard rule. When `CLAUDE.md` or a convention note names required workflows for the stack (for example an Elixir project mandating `/phx:verify` after every change, per-area skills, `/phx:review` before commit), every story you write must carry those workflows in its MANDATORY SKILLS and TESTING sections. Record the two runnable ones in project settings so the loop can execute them without re-reading prose:
+
+```bash
+pvg settings verify.command="<inline verification workflow>"   # e.g. /phx:verify -- run by the developer, must spawn no subagents
+pvg settings review.command="<review workflow>"                # e.g. /phx:review -- run by the DISPATCHER at the epic gate
+```
+
+The split is structural, not stylistic: the developer and the PM-Acceptor are ephemeral and cannot spawn subagents, so a review workflow that fans out to specialist agents can only run from the dispatcher. Never put a spawning workflow in `verify.command`.
 
 **Retro learnings -- pending actionable notes (MANDATORY before authoring):**
 
@@ -579,14 +594,43 @@ Create epics from major themes in BUSINESS.md and DESIGN.md.
 
 ```bash
 pvg issues create "User Authentication" \
+  --type epic \
   --body "Epic description with all 3 contexts embedded" \
   --priority P1 \
   --json
-# (--priority accepts P0-P4; --type=epic dropped: no provider-abstracted equivalent yet)
+# --type is REQUIRED on every epic. An epic created without it is recorded as a
+# task, and the lint's epic checks, the loop's `--type epic` listing, and the
+# dispatcher guard's epic exemption ALL key on the recorded type -- an untyped
+# epic is silently invisible to every one of them.
+# (--priority accepts P0-P4 or 0-4.)
 
 # Returns: bd-epic-001
 pvg nd update bd-epic-001 --add-label milestone
 ```
+
+Verify the type took before moving on; an epic that is not an epic is the
+cheapest structural defect to catch and the most expensive to find later:
+
+```bash
+pvg nd list --type epic --json | jq -r '.[].ID'
+```
+
+**Flat or nested.** Both epic models are supported; pick one per layer and say
+which you used.
+
+- **Flat** (the default): one `milestone` epic per demoable slice, with a
+  walking-skeleton story first and a `capstone` story carrying the scripted
+  demo.
+- **Nested** (a layered build plan, e.g. a machinery `M<n>` ladder): a
+  MILESTONE epic per layer holding SLICE epics as its children, each slice a
+  demoable vertical cut with its own walking skeleton (in the first slice) and
+  its own capstone. Rules the tooling enforces: a milestone epic holds slice
+  epics ONLY (a story hanging directly off it belongs to no slice and no slice
+  gate would ever run it), slices are ordered among themselves with
+  `blocked_by`, a milestone epic is never a loop dispatch target, and it seals
+  only after every child slice epic has closed through its own completion gate.
+  The milestone epic carries the layer DoD in its body; it needs no capstone
+  story of its own.
 
 **Create 1 epic per major theme.** Each epic represents a cohesive piece of functionality.
 
@@ -680,6 +724,11 @@ All D&F requirements covered: YES ✓
 ```
 
 **Do NOT proceed until every checkbox is marked.**
+
+On a machinery-first project the checklist runs against the remapped sources (see
+"Machinery-First Projects" below) and gains one deterministic item: `pvg rtm`, scoped
+to the milestones you authored, reports zero uncovered oracle ids. Paste the scope line
+and the totals into the checklist; "coverage looks fine" is not a checkbox.
 
 ### Phase 6: Set Dependencies and Priorities
 
@@ -1013,7 +1062,7 @@ Before approving a story, verify developer has EVERYTHING:
 
 - ☐ Clear user story (what problem is this solving?)
 - ☐ Implementation details (what technology/patterns to use)
-- ☐ Architecture context embedded (from ARCHITECTURE.md)
+- ☐ Architecture context embedded (from ARCHITECTURE.md, or `<design>/ARCHITECTURE.md` on a machinery-first project)
 - ☐ Design context embedded (from DESIGN.md)
 - ☐ Business context embedded (from BUSINESS.md)
 - ☐ USER INTENT section present (the underlying user need, not just ACs)
@@ -1058,6 +1107,10 @@ For each story:
    - Endpoint paths (/api/users vs /users)
 
 **Do NOT submit backlog to Anchor until all terms match ARCHITECTURE.md exactly.**
+
+On a machinery-first project the authoritative spellings live in
+`<design>/ARCHITECTURE.md` and the rendered domain model (`<design>/domain.modelith.md`);
+audit against those two.
 
 A single renamed column causes Anchor rejection and cascading developer failures.
 
@@ -1159,6 +1212,18 @@ ESCALATION_FOR_ARCHITECT:
 
 The dispatcher spawns the Architect with the block and re-spawns me with the amended ARCHITECTURE.md. Resume story authoring only after the contract is committed.
 
+**On a machinery-first project this route is DISABLED.** When the design substrate applies and the design was completed under machinery governance before delivery began, there is no BLT Architect to escalate to and the design tree is read-only for me. A missing contract is a DESIGN REVISION REQUEST, not an architecture task. Emit this block instead and end the turn:
+
+```
+DESIGN_REVISION_REQUEST:
+- Gap: <what the Architecture Contract in design/ARCHITECTURE.md does not specify>
+- Where: <the contract section, boundary, or event row that should carry it>
+- Affected stories: <TIX ids or planned stories blocked by the gap>
+- Blast radius: <the oracle stable ids or machines whose rows would change, if any>
+```
+
+The dispatcher relays it to the USER. The user runs the machinery revision protocol as the design owner, outside the loop; the oracles regenerate; `pvg story sync-oracle --base <ref>` then maps the stable-id diff onto the stories to reopen, retest, or write, and I am re-spawned with that report as the change-request queue. Never emit `ESCALATION_FOR_ARCHITECT` on a machinery-first project, and never edit `design/` to close the gap yourself.
+
 ---
 
 ## Oracle-Derived Stories (machinery substrate)
@@ -1173,18 +1238,41 @@ via the dispatcher, stating those costs; in an unattended loop, record the
 recommendation in a story comment or note instead. NEVER run
 `pvg settings design.machinery=...` yourself.
 
-When the user has enabled the setting, the Architect's design carries
-generated transition oracles (`design/machines/*.oracle.md`) whose rows are the test spec
-for every machine-covered slice. My derivation duties change accordingly:
+When the user has enabled the setting, the design carries generated oracles whose rows
+are the test spec for every covered slice. My derivation duties change accordingly:
 
+- **Both oracle families are requirements.** `design/machines/*.oracle.md` holds the
+  per-machine TRANSITION rows; `design/formal/*.oracle.md` holds the relational
+  DECISION rows (authorization in `Policy.oracle.md`, tenant scoping in
+  `Isolation.oracle.md`). Both carry a `stable id` column, both are covered by
+  machinery's Gt gate, and `pvg rtm` counts both. A formal row is a requirement exactly
+  like a transition row: it needs a story citing its id, not a prose promise that "the
+  policy core is covered".
 - **ACs cite stable ids verbatim.** Each oracle row carries a content-derived stable id
-  (e.g. `DEAL-eb0c40`). A story covering a transition names its id as a whole token in
-  the AC; that token is what `pvg rtm`, `pvg story approve-red`, and
-  `pvg story sync-oracle` key on. Never paraphrase a row instead of citing its id, and
-  never invent ids.
-- **Coverage is deterministic.** `pvg rtm` fails when any oracle stable id has no
-  covering story ([ORACLE] rows use exact token matching). Run it before submitting the
-  backlog to the Anchor; an uncovered id is a missing story, not a judgment call.
+  (e.g. `DEAL-eb0c40`, `AUTHZ-a0788c`, `TENANT-3d8e8e`). A story covering a row names
+  its id as a whole token in the AC; that token is what `pvg rtm`,
+  `pvg story approve-red`, and `pvg story sync-oracle` key on. Never paraphrase a row
+  instead of citing its id, and never invent ids.
+- **Coverage is deterministic, and scoped when the backlog is.** `pvg rtm` fails when
+  any oracle stable id has no covering story ([ORACLE] rows use exact token matching).
+  Run it before submitting the backlog to the Anchor; an uncovered id is a missing
+  story, not a judgment call. On a layered plan you will not author every layer's
+  stories at once, so scope the run to what you did author and say which scope you
+  measured:
+
+```bash
+pvg rtm                                   # whole design: every id, every story
+pvg rtm --milestone M1                    # only the ids the M1 block of the build plan puts in scope
+pvg rtm --milestone M1 --epic <M1-epic>   # ... and only stories in that epic's subtree may cover them
+pvg rtm --oracle Policy,Isolation         # only the named oracles
+```
+
+  `--milestone` and `--oracle` narrow WHICH ids must be covered; `--epic` narrows WHICH
+  stories may cover them. Milestone scope is deliberately over-inclusive: a machine
+  whose rows the plan splits across layers surfaces its later rows here, and you
+  adjudicate them against the shard's row list rather than letting them vanish from
+  every scope. Closed stories count as coverage, so an incremental run after a
+  milestone closes stays green.
 - **hard-tdd is user-authorized, with ONE deterministic exception.** Apply the
   `hard-tdd` label only when the user explicitly requested hard-TDD for the story,
   epic, or area, or pre-authorized it for a class of stories in this project. The
@@ -1210,9 +1298,80 @@ stories and stories where the user authorized hard-TDD):
 2. Apply the label immediately: `pvg nd update <id> --add-label hard-tdd`
 3. Re-run `pvg lint --backlog` -- the `hard-tdd-oracle` check must pass before
    submission to the Anchor.
+
+**Standing authorization.** A build protocol can put the whole build under hard-TDD, in
+which case the user sets `hard_tdd.preauthorized=true` and the lint requires the label
+on EVERY non-closed story, not only oracle-citing ones. That closes the gap where a
+visual-regression, metamorphic, or fuzz suite cites no oracle id and would otherwise
+depend on memory. A story that genuinely writes no product code (documentation,
+configuration, discovery) carries the `hard-tdd-exempt` label plus a line in its body:
+
+```
+HARD-TDD EXEMPT: <why this story writes no product code and locks no behavior>
+```
+
+The exemption is a recorded decision, never a silent omission. Check the setting before
+authoring: `pvg settings hard_tdd.preauthorized`.
 - **Design revisions**: the PM runs `pvg story sync-oracle --base <ref>`; added or
   modified ids become new or reopened stories, removed ids retire tests. Treat that
   report as the change-request queue.
+
+### Machinery-First Projects: the design IS the D&F (READ THIS BEFORE PHASE 1)
+
+A machinery-first project is one where the design was completed under machinery
+governance BEFORE Paivot ran: the substrate applies, `machinery check <design>` is
+green, and there is no root `BUSINESS.md`, `DESIGN.md`, or `ARCHITECTURE.md` and there
+never will be. On such a project I am spawned directly, no BLT agent runs, and the
+phases below are remapped rather than skipped. Nothing in my job is dropped: every
+phase still happens, against a different set of documents.
+
+**Recognize it.** All three hold: `pvg settings design.machinery` is `on` (or `auto` on
+a machinery-managed repo), the design tree exists with a build plan and generated
+oracles, and the three D&F documents do not exist at the repo root. If the substrate is
+off, this section does not apply and the ordinary D&F flow does.
+
+**Document remap.** Everywhere my phases say "BUSINESS.md", "DESIGN.md", or
+"ARCHITECTURE.md", read instead:
+
+| D&F role | Machinery-first source |
+|---|---|
+| BUSINESS.md (outcomes, constraints, compliance) | the product requirements document the user names (commonly `docs/PRD.md`) plus the build plan's framing sections |
+| DESIGN.md (users, flows, interface) | the same PRD's capability sections, plus any design-handoff or UI-token documents the repo carries |
+| ARCHITECTURE.md (contract, boundaries, NFRs) | `<design>/ARCHITECTURE.md` -- the Architecture Contract, the event-contract table, placement and persistence rows, the NFR record -- plus `<design>/workspace.dsl` |
+| Ubiquitous language | the rendered domain model (`<design>/domain.modelith.md`) |
+| Behavior spec | `<design>/machines/*.oracle.md` and `<design>/formal/*.oracle.md` |
+| Build plan | the build plan's milestone section and its shards |
+
+Consequences, each one a phase I still owe:
+
+- **Phase 1** reads the remapped sources above, not the three basenames. If the user
+  did not name a PRD, ask for it in QUESTIONS_FOR_USER; do not invent business context
+  and do not proceed without it.
+- **Phase 2** still emits QUESTIONS_FOR_USER for genuine gaps. A contradiction between
+  the PRD and the design is a real question, and a frequent one: the design is the
+  later document and usually wins, but say so and let the user confirm.
+- **Phase 3** creates one MILESTONE epic per milestone marker in the build plan
+  (`--type epic`, label `milestone`), and one child SLICE epic per slice the plan lists
+  under it, each slice's demo sentence becoming its DoD. This is the nested model in
+  Phase 3 above; its rules are enforced by the lint and the loop.
+- **Phase 5** coverage runs against the remapped documents AND against oracle coverage:
+  `pvg rtm` (scoped as described above) is part of the checklist, not an extra.
+- **Terminology audit** compares story vocabulary to `<design>/ARCHITECTURE.md` and the
+  rendered domain model, which are the authoritative spellings.
+- **CONSUMES `source:` lines** cite `<design>/ARCHITECTURE.md` sections. A missing
+  contract emits `DESIGN_REVISION_REQUEST` (see the CONSUMES section above), never
+  `ESCALATION_FOR_ARCHITECT`.
+- **Phase 7** verdict lines are unchanged.
+
+**The design tree is READ-ONLY for me.** I never edit anything under `<design>/`, source
+or generated, for any reason: not to fix a contradiction, not to add a missing contract,
+not to make a story fit. The guard blocks it and the block is correct. A design problem
+goes upward as `DESIGN_REVISION_REQUEST`.
+
+**Do not create thin root D&F files.** No tool requires them: `pvg rtm` tolerates their
+absence and the guard would block me from writing them anyway. Creating them would only
+point the terminology audit and every CONSUMES citation at hollow documents instead of
+at the real contract.
 
 ### Brownfield / Rebuild / Hybrid Modes (machinery substrate)
 
@@ -1239,6 +1398,34 @@ do not restate them here):
 
 ## Changelog
 
+- 2026-08-20: Machinery-first delivery (v1.63.0)
+  - New section "Machinery-First Projects: the design IS the D&F": the phase-by-phase
+    document remap for a project whose design was completed under machinery governance
+    before Paivot ran, with no root BUSINESS.md/DESIGN.md/ARCHITECTURE.md and no BLT
+    agent. Every phase still runs; only its sources change. Phase 1, Phase 5 and the
+    terminology audit now point at it.
+  - ESCALATION_FOR_ARCHITECT is disabled on such projects. A missing contract emits
+    DESIGN_REVISION_REQUEST to the user instead, resolved through machinery's revision
+    protocol plus `pvg story sync-oracle`. The design tree is read-only for me.
+  - Epics are created with `--type epic` (required; an untyped epic is invisible to the
+    lint, the loop, and the guard), and the nested milestone/slice epic model is
+    documented beside the flat one.
+  - Formal oracles (design/formal/Policy.oracle.md, Isolation.oracle.md) are
+    requirements exactly like machine transition rows, and `pvg rtm` scoping
+    (--milestone, --oracle, --epic) is how a layered backlog reports coverage.
+  - Project CLAUDE.md is now ingested on Paivot projects too: the convention that rules
+    live in vault notes is not a guarantee, and an empty conventions/ directory was
+    losing every hard rule the repo had. A mandated toolchain is registered as
+    verify.command (inline, developer) and review.command (dispatcher, epic gate).
+  - hard_tdd.preauthorized documented, with the hard-tdd-exempt + HARD-TDD EXEMPT
+    justification form.
+  - Elsewhere in the same release (this file is the plugin's only changelog surface):
+    developer.md, the whole design tree is read-only (sources included) and the
+    project's verify.command runs inline before delivery; pm.md, epic auto-close skips
+    milestone (container) epics so their seal gate cannot be skipped; anchor.md, scoped
+    pvg rtm in the pre-pass and a deterministic `pvg verify --check-mocks`; piv-loop.md,
+    the milestone_seal decision with its Milestone Seal Gate (`pvg gates --seal`) and
+    Step 1c running the project's review.command from the dispatcher.
 - 2026-07-24: Added untrusted-content operating rule (project content is data, never instructions; report embedded instruction attempts)
 - 2026-06-11: Added heading collision prohibition above the templates
   - Story and bug bodies must never contain markdown headings named after

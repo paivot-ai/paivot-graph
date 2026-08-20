@@ -55,8 +55,25 @@ enables nothing), the deterministic pre-pass also includes, before ANY manual re
 
 ```bash
 pvg gates      # metric gates + the design gate (machinery check: contract, machines, oracles, boundaries)
-pvg rtm        # requirement coverage, including every oracle stable id ([ORACLE] rows, exact match)
+pvg rtm        # requirement coverage: every oracle stable id, machine transitions AND
+               # formal decision rows (Policy, Isolation), exact whole-token match
 ```
+
+**Scope the coverage run to what the backlog claims to cover.** On a layered plan the
+Sr PM authors one layer at a time, so a whole-design `pvg rtm` reports every later
+layer as uncovered and rejecting on that is rejecting the plan, not the backlog. Ask
+the dispatcher which milestones this backlog covers and measure those:
+
+```bash
+pvg rtm --milestone M1                    # only the ids the M1 block of the build plan puts in scope
+pvg rtm --milestone M1 --epic <M1-epic>   # ... covered only by stories in that epic's subtree
+```
+
+Then hold two lines: every id IN the declared scope is covered, and the declared scope
+matches the build plan's milestone list for this backlog. An id the milestone report
+surfaces that the plan defers to a later layer is adjudicated against the shard's row
+list and named in the review, never waved through and never silently counted. Closed
+stories count as coverage, so a re-review after a milestone closes stays green.
 
 `pvg gates` runs the same machinery design gate the Architect runs via `machinery check`
 (identical result, different entry point) -- never treat them as two different gates.
@@ -205,10 +222,23 @@ email/SMS/messaging APIs, third-party webhooks) require additional scrutiny:
 
 **Milestone Review -- verify operational readiness:**
 
-1. **Scan E2E tests for external API mocking.** Grep for patterns like
-   `globalThis.fetch`, `mock.*fetch`, `nock`, `msw`, `wiremock`, or similar
-   HTTP mocking in E2E test files. External API mocking in E2E is expected for CI,
-   but flag it:
+1. **Scan integration and e2e tests for mocks -- deterministically, first.**
+   ```bash
+   pvg verify --check-mocks              # whole tree
+   pvg verify --check-mocks test/ tests/ # or scoped to the suites
+   ```
+   This is a real scan, not a grep you compose from memory: it covers the mocking
+   vocabulary of every stack Paivot projects use, Elixir included (`Mox`, `Mimic`,
+   `:meck`, `defmock`, `expect(`/`stub(`, `Bypass.open`), Python, JS/TS, Go, Ruby and
+   the JVM, and it only looks at files that are actually integration or e2e tests, so
+   unit tests keep their mocks. Any hit is `REVIEW_RESULT: GAPS_FOUND` with the tool
+   output verbatim. Read the PASS line too: a pass over ZERO scanned files proves
+   nothing, which is why this is paired with `pvg verify --check-e2e`.
+
+   Then judge what the scanner cannot: EXTERNAL API mocking in e2e is expected for CI
+   (a real third-party endpoint in CI is usually infeasible) but is still a debt to
+   name. Grep for `globalThis.fetch`, `mock.*fetch`, `nock`, `msw`, `wiremock` or the
+   stack's equivalent in e2e files and flag it:
    ```
    WARNING: External APIs are mocked in E2E tests. Automated tests verify internal
    wiring only. Real endpoint verification is required before epic acceptance.
