@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "channel": "stable",
-  "updated": "2026-08-01",
+  "updated": "2026-08-20",
   "tools": {
     "pvg": {
       "repo": "paivot-ai/pvg",
-      "version": "v1.62.0"
+      "version": "v1.63.0"
     },
     "nd": {
       "repo": "paivot-ai/nd",
@@ -27,7 +27,7 @@
   "plugins": {
     "paivot-graph": {
       "marketplace": "paivot-ai/paivot-graph",
-      "version": "1.62.0"
+      "version": "1.63.0"
     },
     "nd": {
       "marketplace": "paivot-ai/nd",
