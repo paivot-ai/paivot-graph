@@ -991,7 +991,8 @@ disable the guard, never turn dispatcher mode off mid-loop, never route the writ
 through another role. Escalate via `AskUserQuestion` with the exact path and content,
 and hold the seal until the write lands. A blocked write pauses the seal; it never
 skips it. (The carve-out that lets these two writes through is a pvg-side guard rule
-paired to this plugin version; see docs/MILESTONE_ACCEPTANCE.md.)
+released in lockstep with this plugin version, so a block here usually means an older
+pvg; see docs/MILESTONE_ACCEPTANCE.md.)
 
 From the seal onward the layer's tests are locked at layer granularity: a change inside
 a sealed layer starts with a design revision, not with an edit to a locked test.
