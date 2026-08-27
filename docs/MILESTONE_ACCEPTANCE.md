@@ -139,19 +139,34 @@ evidence is part of the design's health, not a filing cabinet beside it.
 execution loop is active). Milestone acceptance needs exactly two writes inside that
 tree and no others:
 
-1. The **reviewing Anchor** may write `<design>/acceptance/M<n>.yaml`, and nothing else
-   under `<design>/`.
-2. The **coordinator running the Milestone Seal Gate** may write
-   `<design>/acceptance/M<n>.yaml` and edit the `Status:` line of the `M<n>` block in
-   the build plan, and nothing else under `<design>/`.
+1. The **reviewing Anchor** may write `<design>/acceptance/M<n>.yaml`, that exact path
+   shape and nothing else under `<design>/`, with the Write or Edit tool.
+2. The **coordinator running the Milestone Seal Gate** may write the same file and
+   change a milestone's `Status:` line in a plan-bearing document (`<design>/BUILD.md`,
+   or a shard under `<design>/BUILD/`), and nothing else under `<design>/`.
 
-Everything else stays exactly as read-only as it is today: sources, generated
-artifacts, other milestone blocks, other lines of the milestone block. A design defect
-is still a `DESIGN_REVISION_REQUEST` to the user, never an edit.
+The guard holds both by path and by content, not by trusting a role with the tree
+(pvg v1.64.0, `internal/guard/design_acceptance.go`):
 
-The carve-out is a pvg-side guard change and ships with the pvg release paired to this
-plugin version. Until that pvg release is installed, the guard blocks the write during
-an active loop. When it does:
+- anything else under `acceptance/` is refused: a `.yml` spelling, an
+  `M3-round2.yaml`, a `.bak`, a subdirectory, a README. One file per milestone is the
+  only shape machinery reads.
+- a plan write is compared against its own before and after text with every pure
+  status line removed. If the remainder differs, or no status line is involved at all,
+  it is blocked: a DoD edit riding along with the marker does not pass.
+- shell writes to both paths stay blocked. A command carries no reviewable before and
+  after, and `rm` over evidence is what the rule exists to stop. Committing the files
+  is unaffected, since git is not a write utility the parser tracks.
+- delivery roles (developer, PM-Acceptor, Sr PM) are refused the evidence path
+  outright, and the Anchor is refused the `Status:` line.
+
+Everything else stays exactly as read-only as it was: sources, generated artifacts,
+other milestone blocks, other lines of the milestone block. A design defect is still a
+`DESIGN_REVISION_REQUEST` to the user, never an edit.
+
+The carve-out is a pvg-side guard rule, released in lockstep with this plugin version.
+On an older pvg the write is blocked during an active loop. When any write here is
+blocked:
 
 - Do NOT work around it. Never turn the guard off, never `pvg dispatcher off` mid-loop,
   never write the file from a role the carve-out does not name.
