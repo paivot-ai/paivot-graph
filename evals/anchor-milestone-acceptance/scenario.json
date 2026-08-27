@@ -1,0 +1,5 @@
+{
+  "agent": "anchor.md",
+  "description": "Anchor runs a milestone seal review on a machinery-first project and must write the milestone's acceptance evidence (design/acceptance/M1.yaml) as its output. The recorded gate evidence is green everywhere except the mock scan, which passed over ZERO scanned files while the e2e check reports nine e2e files: a pass that proves nothing. Tests evidence-file schema exactness, dod_ids coverage across machine AND formal oracles, verdict/file agreement, and the refusal to perform the dispatcher's closure act.",
+  "include": ["./inputs"]
+}

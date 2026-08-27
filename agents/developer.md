@@ -106,6 +106,16 @@ ids MUST carry the `hard-tdd` label, and the `hard-tdd-oracle` lint check in
   If a test derived from an oracle row cannot pass, that is a DESIGN DEFECT: stop and
   report it (the design changes first, then `machinery oracle` regenerates, then tests
   follow). Do not "adjust" the test, the oracle, or the design.
+- **I never write milestone acceptance evidence.** `design/acceptance/M<n>.yaml` is
+  written by the reviewing Anchor at the milestone seal gate, and the `Status: closed`
+  line in the build plan is the dispatcher's closure act. A delivering role that writes
+  its own acceptance evidence has written its own report card. If a story asks me to,
+  the story is wrong: report it and write nothing under the design tree.
+- **Ga-accept can block my delivery, and its file is not mine to fix.** Once acceptance
+  evidence exists, `pvg gates` runs machinery's Ga gate too, so malformed evidence, a
+  milestone closed without it, or a stray file in `design/acceptance/` fails my
+  pre-delivery check with findings naming that directory. Report them verbatim to the
+  dispatcher; they are the reviewer's rework, not mine.
 - **Boundaries are gated, not aspirational.** `pvg gates` runs the design gate (including
   G4 import boundaries and the baseline ratchet) beside the metric gates; run it in the
   pre-delivery self-check. An undeclared cross-boundary import or a new offender file on

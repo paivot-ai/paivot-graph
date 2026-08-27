@@ -17,7 +17,7 @@ The installer reads the stable channel manifest ([channel/stable.json](channel/s
 | **[pvg](https://github.com/paivot-ai/pvg)** | The shared control plane for guardrails, live nd routing, loop recovery, story helpers, and updates. All hooks shell out to it. |
 | **[vlt](https://github.com/paivot-ai/vlt)** | The fast, standalone CLI that all hooks, commands, and agents use to interact with your Obsidian vault. Without it, agents fall back to grep/cat -- slower, no alias resolution, no concurrent-access locking. |
 | **[nd](https://github.com/paivot-ai/nd)** | The issue tracker Paivot uses for execution -- git-native markdown work items. For multi-branch execution see [docs/LIVE_SOR.md](docs/LIVE_SOR.md). |
-| **[machinery](https://github.com/RamXX/machinery)** | The design substrate behind `design.machinery` (default `off`; strictly user-opt-in -- artifacts on disk enable nothing, and agents may recommend enabling it but never set it): domain model (Modelith), C4 Architecture Contract, state machines, generated transition oracles, and the deterministic gates that `pvg gates`, `pvg rtm`, and `pvg story approve-red` shell out to. Its Claude Code plugin (converged with everything else) adds the design-governance hooks. |
+| **[machinery](https://github.com/RamXX/machinery)** | The design substrate behind `design.machinery` (default `off`; strictly user-opt-in -- artifacts on disk enable nothing, and agents may recommend enabling it but never set it): domain model (Modelith), C4 Architecture Contract, state machines, generated transition oracles, the milestone acceptance gate (Ga-accept) behind every milestone closure, and the deterministic gates that `pvg gates`, `pvg rtm`, and `pvg story approve-red` shell out to. Its Claude Code plugin (converged with everything else) adds the design-governance hooks. |
 | **paivot-graph plugin** | This plugin, installed from the GitHub-source marketplace `paivot-ai/paivot-graph`. |
 | **nd plugin** | The nd skill and guard hooks, installed from the GitHub-source marketplace `paivot-ai/nd`. |
 | **vlt skill** | Complete vlt command reference and agentic patterns, installed to `~/.claude/skills/vlt-skill`. |
@@ -150,7 +150,7 @@ Eleven specialized agents, each a self-contained static prompt in the plugin (`a
 | **designer-challenger** | Adversarial review of DESIGN.md (default-on; disable via `dnf.specialist_review=false`) |
 | **architect-challenger** | Adversarial review of ARCHITECTURE.md (default-on; disable via `dnf.specialist_review=false`) |
 | **sr-pm** | Creates comprehensive backlogs from D&F documents |
-| **anchor** | Adversarial review of backlogs and milestones |
+| **anchor** | Adversarial review of backlogs and milestones; writes the milestone acceptance evidence on machinery designs |
 | **developer** | Ephemeral -- implements one story with proof of passing tests |
 | **pm** | Ephemeral -- accepts or rejects delivered stories using evidence-based review |
 | **retro** | Ephemeral -- extracts learnings from completed epics |
@@ -200,6 +200,8 @@ Two structural gates enforce quality:
    - `false`: create a PR for team review
 
 Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
+
+**Milestone gate (machinery-first projects):** when the design was completed under machinery governance, an epic that discharges a build-plan milestone does not close on its last story. It seals: the whole-design check (`pvg gates --seal`), the milestone DoD, an Anchor seal review that WRITES the milestone's acceptance evidence (`<design>/acceptance/M<n>.yaml`), then the closure act -- the `Status: closed` line in the build plan plus a `machinery check <design> --impl <impl> --commit <reviewed-sha>` run with zero blocking findings, machinery's Ga-accept gate included. Only then does the epic close in the tracker. See [docs/MILESTONE_ACCEPTANCE.md](docs/MILESTONE_ACCEPTANCE.md).
 
 ### Quality gates
 
@@ -427,6 +429,7 @@ a single topic each:
 | Doc | What it covers |
 |-----|----------------|
 | [docs/QUALITY_GATES.md](docs/QUALITY_GATES.md) | `pvg gates` in full -- the analyzer matrix, install instructions, the complete `gates.*` key reference, and example output (see [Quality gates](#quality-gates)) |
+| [docs/MILESTONE_ACCEPTANCE.md](docs/MILESTONE_ACCEPTANCE.md) | Milestone acceptance on a machinery design -- who writes `<design>/acceptance/M<n>.yaml`, how the `Status: closed` closure act is sequenced against the bound `machinery check --commit` run, what the evidence's commit field names, and the guard carve-out the two writes need (see [Execution workflow](#execution-workflow)) |
 | [docs/HARD_TDD_GUARD.md](docs/HARD_TDD_GUARD.md) | The CI structural lock for `hard-tdd` stories -- `pvg story verify-tdd` plus the `scripts/verify-hard-tdd.sh` wrapper, the RED/authorized marker rules, and robust range resolution |
 | [docs/LIVE_SOR.md](docs/LIVE_SOR.md) | The live source-of-record: shared nd vault, nd-native durability via the `nd/backlog` branch (`pvg nd sync` / `pvg nd restore`, `nd sync --status`), and the dependency-edge lifecycle (`all_blocked_by`) (see [Knowledge governance](#knowledge-governance)) |
 | [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | The channel + one-command install design (see [Installation](#installation)) |

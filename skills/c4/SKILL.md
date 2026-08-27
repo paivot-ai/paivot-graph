@@ -1,7 +1,7 @@
 ---
 name: c4
 description: Architecture-as-code on the machinery design substrate. Use when the user has explicitly enabled the design.machinery setting (default off; artifact presence alone enables nothing), when the legacy architecture.c4 setting is enabled, or when the user asks about C4 diagrams, Structurizr, architecture boundaries, dependency rules, the Architecture Contract, the event-contract table, boundary baselining, import drift, or the transition architecture of a rebuild. Maps the Paivot roles onto machinery Phase 2: who authors the model, which gates hold it (G2, G4, G5 and the ratchet), and how boundary debt is baselined and burned down.
-version: 2.1.0
+version: 2.2.0
 ---
 
 # Architecture with machinery (C4 + contract)
@@ -48,13 +48,13 @@ The `machinery` binary converges from the channel (`pvg update`); `pvg doctor` r
 | Architect (rebuild/hybrid) | Adds the `Transition architecture` section to ARCHITECTURE.md: temporary exporter, replication or dual-write, routing, observability, failure posture. Temporary migration dependencies get the full treatment: detection, mitigation, residual, owner. Gm-transition reports narrative-bridge findings until ARCHITECTURE.md and BUILD.md exist; that is expected, not a defect. The migration contract and surface ledger themselves are in the domain-model skill's role map. |
 | Sr PM | References contract boundaries and event-contract rows in stories by id; never restates the contract or a payload. Story ACs include "boundaries respected" only as a pointer to the gate, not as prose to re-check. |
 | Developer | Runs `pvg gates` before delivery: the design gate (machinery check, including G4 import boundaries and the ratchet) runs beside the metric gates and blocks on failure. Never edits generated artifacts (`*.oracle.md`, `formal/*.tla|*.cfg|*.als`, `formal/*.oracle.md`, `packs/`, `pack/`, `ratchet.json`); edit sources and regenerate. |
-| Anchor | Deterministic pre-pass first (`pvg gates`, `pvg rtm`); attests only what the tools cannot: whether the boundaries are the RIGHT ones, whether every Modelith action has an owning component, whether the event-contract table's enumeration sources are real (a table with no named source is a claim with no evidence), whether the dependency declaration itself is complete, and whether the NFR record is real. |
+| Anchor | Deterministic pre-pass first (`pvg gates`, `pvg rtm`); attests only what the tools cannot: whether the boundaries are the RIGHT ones, whether every Modelith action has an owning component, whether the event-contract table's enumeration sources are real (a table with no named source is a claim with no evidence), whether the dependency declaration itself is complete, and whether the NFR record is real. At a milestone seal it also writes that milestone's acceptance evidence, `design/acceptance/M<n>.yaml`, which Ga-accept binds. |
 
 ## The deterministic split
 
-The full v0.3.4 suite is `machinery check <design> [--impl <dir>]
-[--gate gm,gs,gp,gi,gn,g2,g3,gx,gb,g4,gt,g5]`; gates activate on the artifacts that
-exist, fail on absence rather than silently passing, and print `checked:` counts. The
+The full suite is `machinery check <design> [--impl <dir>] [--commit <sha>]
+[--gate gm,gs,gp,gi,gn,gc,g2,g3,gx,gk,gb,ga,g4,gt,g5]`; gates activate on the artifacts
+that exist, fail on absence rather than silently passing, and print `checked:` counts. The
 Phase 2 slice: `--gate g2` (G2-c4) verifies the contract parses, binds to
 `workspace.dsl`, no duplicate ids, no edge both allowed and denied (or allowed and
 baselined), mitigation coverage for every declared external and every
@@ -66,6 +66,14 @@ so a lossy event-contract table fails the gate itself, and prints per-pack
 boundary-event counts so an unexpected zero is visible. Everything else about the
 architecture is attested by a named reviewer; the gate split in machinery's SKILL.md
 says exactly which half is whose.
+
+Ga-accept is the build-side member of that suite: it holds milestone CLOSURE to
+committed acceptance evidence (`design/acceptance/M<n>.yaml`) and auto-activates once
+that directory exists or any milestone carries `Status: closed`, so from the first
+closure it runs inside every `pvg gates` too. `--commit <sha>` binds the evidence to the
+commit the review ran on; without it the gate still runs and prints a non-blocking note
+that binding was not checked. Who writes the evidence, in what order, and against which
+commit: [docs/MILESTONE_ACCEPTANCE.md](../../docs/MILESTONE_ACCEPTANCE.md).
 
 ## Boundary debt ceremony (brownfield)
 
