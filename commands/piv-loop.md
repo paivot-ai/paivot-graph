@@ -900,8 +900,8 @@ when the closure check binds it.
    REVIEWED_SHA=$(git rev-parse HEAD)     # the commit the acceptance review runs on
    pvg gates --seal
    ```
-   This is the one place the design's whole-suite test gate runs:
-   It forces machinery's Gt-tests (every committed oracle stable id, machine transitions
+   `pvg gates --seal` is the one place the design's whole-suite test gate runs: it
+   forces machinery's Gt-tests (every committed oracle stable id, machine transitions
    AND formal decision rows, carried by the suite) and G4-import in over the configured
    impl dir. Story-level RED approval deliberately omits Gt, because at story
    granularity it would block the first story until the last one exists; the seal is
@@ -933,7 +933,7 @@ when the closure check binds it.
    ```
    Verify the file exists and matches the verdict before continuing. A VALIDATED
    verdict with no evidence file is not a pass: send it back, or escalate if the Anchor
-   reports the guard blocked its write (see step 6).
+   reports the guard blocked its write (see the guard note after step 6).
 
 4. **On GAPS_FOUND: commit the rejected evidence and stop.** The milestone stays open in
    the build plan and open in the tracker; the gaps re-enter delivery.
