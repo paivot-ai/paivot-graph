@@ -324,7 +324,11 @@ if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   # It seals at the milestone gate (whole-design check, Anchor seal review), which
   # only the dispatcher runs. Auto-closing it would skip that gate silently.
   SUBEPICS=$(pvg nd children $PARENT --json | jq '[.[] | select(.type == "epic")] | length')
-  if [ "$OPEN" -eq 0 ] && [ "$SUBEPICS" -eq 0 ]; then
+  # Same rule for a FLAT epic that discharges a build-plan milestone: its closure is a
+  # milestone closure, and a milestone closes in the tracker only after the acceptance
+  # evidence is committed and the bound machinery check is green.
+  MILESTONE=$(pvg nd show $PARENT | grep -c 'BUILD PLAN MILESTONE:')
+  if [ "$OPEN" -eq 0 ] && [ "$SUBEPICS" -eq 0 ] && [ "$MILESTONE" -eq 0 ]; then
     # Canonical two-step: the label contract requires closed BEFORE accepted
     pvg nd close $PARENT --reason="All stories accepted"
     pvg nd update $PARENT --add-label accepted
@@ -334,7 +338,16 @@ fi
 
 This is not optional. A leaf epic with all children accepted must be closed immediately.
 A milestone epic over slice epics is left open for its seal gate; `pvg loop next` then
-returns `milestone_seal` and the dispatcher runs it.
+returns `milestone_seal` and the dispatcher runs it. An epic that discharges a build-plan
+milestone (`BUILD PLAN MILESTONE: M<n>` in its body) is left open for the same reason,
+whatever its shape: closing it here would record a milestone closure the design does not
+carry.
+
+**I never write milestone acceptance evidence.** `<design>/acceptance/M<n>.yaml` is the
+Anchor's artifact, written from its milestone review; the `Status: closed` line in the
+build plan is the dispatcher's closure act. The whole design tree, acceptance directory
+included, is read-only for me. If a delivery I am reviewing touches anything under
+`<design>/`, that is a rejection with the path named, not a judgment call.
 
 ### Decisions
 

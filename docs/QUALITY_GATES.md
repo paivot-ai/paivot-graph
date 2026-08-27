@@ -107,10 +107,10 @@ pvg settings gates.complexity.block_cc=25
 pvg settings gates.file_loc.max=500
 ```
 
-## User-enabled machinery projects: two additional BLOCK sources
+## User-enabled machinery projects: three additional BLOCK sources
 
 On projects where the user has explicitly enabled `design.machinery` (default
-`off`; artifact presence alone enables nothing), two more deterministic checks
+`off`; artifact presence alone enables nothing), three more deterministic checks
 can BLOCK beyond the metric gates above:
 
 - **The machinery design gate runs inside `pvg gates`.** A design-gate finding
@@ -119,6 +119,19 @@ can BLOCK beyond the metric gates above:
 - **`pvg lint --backlog` includes `hard-tdd-oracle`.** The backlog lint gains
   this deterministic check: ERROR when a story cites oracle stable ids without
   the `hard-tdd` label.
+- **Ga-accept arms itself with the first milestone closure.** machinery's
+  acceptance gate auto-activates once `<design>/acceptance/` exists or any
+  milestone in the build plan carries `Status: closed`, and from then on it runs
+  inside the design gate for everyone: every developer pre-delivery self-check,
+  every PM-Acceptor Tier 1, every Anchor pre-pass. Malformed acceptance evidence,
+  a milestone closed without it, a REJECTED verdict behind a closed milestone, or
+  a stray file in the acceptance directory blocks delivery until the reviewing
+  Anchor fixes it. That blast radius is intended: acceptance evidence is part of
+  the design's health, not a filing cabinet beside it. Delivery agents report
+  those findings verbatim and never edit the file. `pvg gates` passes no
+  `--commit`, so commit binding is reported there as a non-blocking note; the
+  bound run happens once, at the closure act (see
+  [MILESTONE_ACCEPTANCE.md](MILESTONE_ACCEPTANCE.md)).
 
 ## How the PM-Acceptor uses it (Tier 1)
 

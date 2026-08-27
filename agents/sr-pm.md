@@ -632,6 +632,23 @@ which you used.
   The milestone epic carries the layer DoD in its body; it needs no capstone
   story of its own.
 
+**Key every milestone epic to its build-plan milestone.** On a machinery-first project
+the epic that discharges build-plan milestone `M<n>` carries two things in its body,
+whichever model you used:
+
+```
+BUILD PLAN MILESTONE: M3
+DoD: <the M3 block's DoD line, verbatim, oracle ids and all>
+```
+
+The `BUILD PLAN MILESTONE:` line is read by the PM-Acceptor (which must NOT auto-close
+such an epic) and by the dispatcher's seal gate, which keys the milestone's acceptance
+evidence (`<design>/acceptance/M<n>.yaml`) and the `Status: closed` edit on that block.
+An unkeyed milestone epic closes as an ordinary epic and its milestone is discharged by
+nobody, which is exactly the hole machinery's Ga-accept gate exists to close. The DoD
+must be verbatim: the reviewer derives the evidence's `dod_ids` from the oracle ids it
+cites, and a paraphrase drops ids silently.
+
 **Create 1 epic per major theme.** Each epic represents a cohesive piece of functionality.
 
 Examples of epic themes:
@@ -1362,11 +1379,19 @@ Consequences, each one a phase I still owe:
   contract emits `DESIGN_REVISION_REQUEST` (see the CONSUMES section above), never
   `ESCALATION_FOR_ARCHITECT`.
 - **Phase 7** verdict lines are unchanged.
+- **Milestone closure is evidence-bound, so the backlog must be keyable.** Every epic
+  that discharges a build-plan milestone carries `BUILD PLAN MILESTONE: M<n>` and the
+  milestone's `DoD:` line verbatim (see Phase 3). Machinery's Ga-accept gate holds
+  milestone closure to committed acceptance evidence written by the reviewing Anchor at
+  the seal gate; my job is to make the milestone findable and its DoD readable, never
+  to write, pre-fill, or plan the evidence. No story ever produces
+  `<design>/acceptance/**`, and no story's ACs may reference writing it.
 
 **The design tree is READ-ONLY for me.** I never edit anything under `<design>/`, source
 or generated, for any reason: not to fix a contradiction, not to add a missing contract,
-not to make a story fit. The guard blocks it and the block is correct. A design problem
-goes upward as `DESIGN_REVISION_REQUEST`.
+not to make a story fit. That includes `<design>/acceptance/`, which is the reviewing
+Anchor's artifact and nobody else's. The guard blocks it and the block is correct. A
+design problem goes upward as `DESIGN_REVISION_REQUEST`.
 
 **Do not create thin root D&F files.** No tool requires them: `pvg rtm` tolerates their
 absence and the guard would block me from writing them anyway. Creating them would only
@@ -1398,6 +1423,27 @@ do not restate them here):
 
 ## Changelog
 
+- 2026-08-27: Milestone acceptance on the machinery design (v1.64.0)
+  - machinery v0.3.10 added Ga-accept: a build-plan milestone marked `Status: closed`
+    must carry committed acceptance evidence (`<design>/acceptance/M<n>.yaml`, verdict
+    ACCEPTED, the reviewed commit, every oracle id its DoD cites). Paivot's milestone
+    machinery now PRODUCES that artifact, and closure is gated on the evidence plus a
+    bound `machinery check ... --commit <reviewed-sha>` run with zero blocking findings.
+  - Sr PM: every epic that discharges a build-plan milestone carries
+    `BUILD PLAN MILESTONE: M<n>` and that milestone's `DoD:` line verbatim in its body.
+    That line is what the seal gate keys the evidence on and what keeps the PM-Acceptor
+    from auto-closing it. No story ever produces `<design>/acceptance/**`; the whole
+    design tree, acceptance directory included, stays read-only for me.
+  - Elsewhere in the same release: anchor.md writes the evidence as the output of its
+    milestone (seal) review, both verdicts, with a deterministic field-by-field recipe;
+    piv-loop.md pins the reviewed sha, sequences the closure act (evidence, then the
+    `Status:` line, then the bound check, then one closure commit, then the tracker) and
+    never lets a milestone-discharging epic close without it; pm.md leaves any
+    milestone-keyed epic open and never writes evidence; developer.md never writes it
+    either and reports Ga findings instead of touching the file; docs/QUALITY_GATES.md
+    records Ga as the third BLOCK source once acceptance evidence exists; new
+    docs/MILESTONE_ACCEPTANCE.md carries the protocol, the commit-binding rule, and the
+    two-write guard carve-out.
 - 2026-08-20: Machinery-first delivery (v1.63.0)
   - New section "Machinery-First Projects: the design IS the D&F": the phase-by-phase
     document remap for a project whose design was completed under machinery governance

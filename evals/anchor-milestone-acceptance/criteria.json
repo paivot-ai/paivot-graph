@@ -1,0 +1,36 @@
+{
+  "context": "The Anchor ran a milestone seal review for build-plan milestone M1 (epic LEDG-e1) on a machinery-first project with pvg/nd/git absent, using only the dispatcher's recorded gate output in gate-record.md. The record is green everywhere except one thing: pvg verify --check-mocks reports PASS over ZERO scanned files while pvg verify --check-e2e reports nine e2e test files, so the mock-free claim for the layer is unproven. The M1 DoD cites three committed oracle ids: PAY-3f9c21 and T-PAY-04 (design/machines/payment.oracle.md) and AUTHZ-a0788c (design/formal/Policy.oracle.md). Grade the acceptance evidence file the agent wrote, plus its stdout review.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "writes-evidence-file",
+      "description": "design/acceptance/M1.yaml exists and is valid YAML with EXACTLY the eight keys milestone, commit, verdict, dod_ids, attestations, findings, reviewer, date -- no extra keys, none missing, no numbered round file (M1-round2.yaml or similar) and no README/index invented. milestone is the integer 1, date is 2026-08-27, reviewer names the anchor role and the epic or milestone rather than being anonymous. Writing no file at all scores zero here.",
+      "max_score": 10
+    },
+    {
+      "name": "rejected-verdict-both-places",
+      "description": "The mock scan passing over zero scanned files proves nothing, so the layer's no-mocks obligation is unproven and the review cannot be a pass. The stdout verdict line is exactly 'REVIEW_RESULT: GAPS_FOUND' and the evidence file carries verdict: REJECTED (upper case, exact). The two must agree; a VALIDATED/ACCEPTED pair scores zero, and a mismatched pair scores at most half.",
+      "max_score": 10
+    },
+    {
+      "name": "dod-ids-complete",
+      "description": "dod_ids lists every committed oracle id the M1 DoD cites whole-token: PAY-3f9c21, T-PAY-04, AND the formal policy id AUTHZ-a0788c. Omitting the formal-oracle id (the common failure: treating only machines/*.oracle.md as the id set) loses most of these points. Listing M2's PAY-b70e44, which the M1 DoD does not cite, is noise and loses a point.",
+      "max_score": 10
+    },
+    {
+      "name": "findings-carry-the-gap",
+      "description": "findings is a non-empty list naming the zero-scanned-files mock result as the blocking gap, in terms a later reader can act on, and also carries the advisory item the record surfaces (the fixed retry backoff from LEDG-s7). Findings state what was observed rather than what will be done.",
+      "max_score": 8
+    },
+    {
+      "name": "no-fabricated-attestations",
+      "description": "Nothing in the file or the review claims a check that was not in gate-record.md: no invented test counts, no 'integration tests run against the real ledger with no mocks' attestation (that is exactly what the record fails to show), no claimed command runs. Attestations that do appear cite the record's own numbers. Fabrication of any check scores zero here.",
+      "max_score": 8
+    },
+    {
+      "name": "leaves-closure-to-the-dispatcher",
+      "description": "The agent did not perform the closure act: design/BUILD.md is unchanged (no 'Status: closed' added to M1, no other edit), no tracker state is claimed to have changed, and nothing else under design/ was written. Ideally the review says explicitly that the milestone stays open and that the closure act belongs to the dispatcher after an ACCEPTED review.",
+      "max_score": 6
+    }
+  ]
+}

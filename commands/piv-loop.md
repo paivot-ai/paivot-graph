@@ -705,6 +705,11 @@ Validate that the completed epic delivered real value:
 Epic branch: epic/EPIC_ID
 ```
 
+A SLICE epic review writes no acceptance evidence. Acceptance evidence is one file per
+BUILD PLAN milestone, written at the Milestone Seal Gate; a slice is not a milestone,
+and inventing an evidence file for one is a design-tree write the guard blocks and the
+gate rejects.
+
 Anchor verdicts are prefixed for reliable parsing: milestone reviews return
 `REVIEW_RESULT: VALIDATED` or `REVIEW_RESULT: GAPS_FOUND`; backlog reviews
 return `REVIEW_RESULT: APPROVED` or `REVIEW_RESULT: REJECTED`. (The Sr-PM/
@@ -756,6 +761,13 @@ Otherwise a red or missing remote CI run BLOCKS the gate: spawn a developer
 to fix the failure (treat it like a Step 1 verification failure) before
 closing the epic. Field finding: an epic closed with 3 total GitHub runs,
 all red, while every "CI green" claim was container-local.
+
+**Before closing the epic, check whether it discharges a build-plan milestone.**
+On a machinery-first project, read the epic body for a `BUILD PLAN MILESTONE: M<n>`
+line. If it carries one, this epic's closure IS a milestone closure: run the Milestone
+Seal Gate below (Anchor acceptance evidence, the `Status: closed` edit, the bound
+`machinery check` run) before the two nd steps. A milestone epic never closes in the
+tracker while the design says its milestone is open.
 
 **After** branch cleanup succeeds, close the epic in nd. The label contract
 requires the epic to be closed BEFORE the `accepted` label is added -- two
@@ -878,12 +890,17 @@ milestone in `seal_epic` and returns `milestone_seal` when only the seal remains
 stop hook blocks exit while a seal is pending, exactly as it does for an unmerged epic
 branch.
 
-Run these four steps on `main`, after the last slice has merged:
+Run these six steps on `main`, after the last slice has merged. Nothing may be
+committed between step 1 and step 6: the sha the Anchor reviewed must still be `HEAD`
+when the closure check binds it.
 
-1. **Whole-design gate.** This is the one place the design's whole-suite test gate runs:
+1. **Pin the reviewed commit, then run the whole-design gate.**
    ```bash
+   git checkout main && git pull --ff-only
+   REVIEWED_SHA=$(git rev-parse HEAD)     # the commit the acceptance review runs on
    pvg gates --seal
    ```
+   This is the one place the design's whole-suite test gate runs:
    It forces machinery's Gt-tests (every committed oracle stable id, machine transitions
    AND formal decision rows, carried by the suite) and G4-import in over the configured
    impl dir. Story-level RED approval deliberately omits Gt, because at story
@@ -896,22 +913,95 @@ Run these four steps on `main`, after the last slice has merged:
    from the build plan. Every line must be demonstrably satisfied, with evidence.
 
 3. **Anchor seal review.** Spawn `paivot-graph:anchor` in milestone review mode against
-   the MILESTONE epic, naming its DoD lines and its slice epics. Its deterministic
-   pre-pass (`pvg gates`, scoped `pvg rtm`, `pvg verify --check-e2e`,
-   `pvg verify --check-mocks`) runs over the whole layer, not one slice.
-   `REVIEW_RESULT: VALIDATED` is required; `GAPS_FOUND` re-enters delivery.
+   the MILESTONE epic, naming its DoD lines, its slice epics, the BUILD PLAN milestone
+   number `M<n>` from the epic body, and `REVIEWED_SHA`. Its deterministic pre-pass
+   (`pvg gates`, scoped `pvg rtm`, `pvg verify --check-e2e`, `pvg verify --check-mocks`)
+   runs over the whole layer, not one slice. `REVIEW_RESULT: VALIDATED` is required;
+   `GAPS_FOUND` re-enters delivery.
 
-4. **Close the milestone.** Only after 1 to 3 are green, and in this order (the label
-   contract requires closed before accepted):
+   On a machinery-first project the Anchor also WRITES the milestone's acceptance
+   evidence, `<design>/acceptance/M<n>.yaml`, as the output of this review: `ACCEPTED`
+   on VALIDATED, `REJECTED` with the gaps as findings on GAPS_FOUND. Include in the
+   spawn prompt:
+   ```
+   MILESTONE SEAL REVIEW for milestone epic EPIC_ID (BUILD PLAN MILESTONE M<n>).
+   Reviewed commit: REVIEWED_SHA (main, all slices merged).
+   Write the acceptance evidence for this milestone per your Milestone Acceptance
+   Evidence section: <design>/acceptance/M<n>.yaml, commit: REVIEWED_SHA, dod_ids
+   covering every committed oracle id the M<n> DoD cites, real attestations with their
+   counts, every finding verbatim. Both verdicts write the file.
+   ```
+   Verify the file exists and matches the verdict before continuing. A VALIDATED
+   verdict with no evidence file is not a pass: send it back, or escalate if the Anchor
+   reports the guard blocked its write (see step 6).
+
+4. **On GAPS_FOUND: commit the rejected evidence and stop.** The milestone stays open in
+   the build plan and open in the tracker; the gaps re-enter delivery.
    ```bash
-   pvg nd close <milestone-epic> --reason="Layer sealed: DoD green, whole-design gate green, Anchor VALIDATED"
+   git add <design>/acceptance/M<n>.yaml
+   git commit -m "review(M<n>): acceptance review REJECTED on $REVIEWED_SHA"
+   git push origin main    # skip if local-only
+   ```
+   A REJECTED file on an OPEN milestone is a legal, passing state for machinery. The
+   next review overwrites the same path; never create a second, numbered file.
+
+5. **On VALIDATED: the closure act (design first, tracker second).** The `Status: closed`
+   line and the ACCEPTED evidence are one act, and the marker never lands first:
+   ```bash
+   # a. Edit ONLY the Status line of the M<n> block in the build plan (root document or
+   #    the shard that declares it), beside its DoD: line:
+   #        Status: closed
+   #    Nothing else in the design changes. This is the one design edit the dispatcher
+   #    is permitted to make, ever.
+
+   # b. Verify the closure BEFORE committing it, bound to the reviewed commit:
+   machinery check <design> --impl <impl> --commit "$REVIEWED_SHA"
+   ```
+   Require **0 blocking (ERROR/DRIFT) findings, Ga-accept included**. Any finding is a
+   FAILED closure: Ga names exactly what is wrong (a missing `dod_ids` entry, a bad
+   field, a verdict that does not match the marker, a commit that does not bind), and
+   the fix goes back to the Anchor whose artifact it is. Never commit a red closure and
+   never revert the marker to make the gate quiet. `<design>` and `<impl>` come from
+   `.machinery.json` (`design`, `impl`); with no `impl` configured, run without it and
+   say so in the record.
+
+   Then commit both files as one closure commit, tag the seal, and record the gate
+   output on the epic:
+   ```bash
+   git add <design>/acceptance/M<n>.yaml <design>/BUILD.md   # or the shard holding M<n>
+   git commit -m "accept(M<n>): milestone closed on $REVIEWED_SHA, Ga green"
+   git tag -a seal/M<n> -m "M<n> sealed"
+   git push origin main --follow-tags    # skip if local-only
+   pvg nd comments add <milestone-epic> "Ga-accept green: machinery check <design> --impl <impl> --commit $REVIEWED_SHA -- 0 blocking findings"
+   ```
+
+6. **Close the milestone in the tracker.** Only after 1 to 5 are green, and in this
+   order (the label contract requires closed before accepted):
+   ```bash
+   pvg nd close <milestone-epic> --reason="Layer sealed: DoD green, whole-design gate green, Anchor VALIDATED, Ga-accept green on $REVIEWED_SHA"
    pvg nd update <milestone-epic> --add-label accepted
    ```
-   Tag the seal commit so later design revisions can diff against it
-   (`pvg story sync-oracle --base <seal-tag>`).
+   No epic that discharges a build-plan milestone closes in the tracker without that
+   recorded green run. The seal tag is what later design revisions diff against
+   (`pvg story sync-oracle --base seal/M<n>`).
+
+**If the guard blocks a write** (`BLOCKED: the machinery design tree ... is read-only`),
+either the Anchor's evidence write or the `Status:` edit: do not work around it. Never
+disable the guard, never turn dispatcher mode off mid-loop, never route the write
+through another role. Escalate via `AskUserQuestion` with the exact path and content,
+and hold the seal until the write lands. A blocked write pauses the seal; it never
+skips it. (The carve-out that lets these two writes through is a pvg-side guard rule
+paired to this plugin version; see docs/MILESTONE_ACCEPTANCE.md.)
 
 From the seal onward the layer's tests are locked at layer granularity: a change inside
 a sealed layer starts with a design revision, not with an edit to a locked test.
+
+**Flat epic model.** The acceptance act keys on the BUILD PLAN milestone, not on the
+epic shape. If the backlog uses the flat model and a completing `milestone` epic carries
+a `BUILD PLAN MILESTONE: M<n>` line in its body, run steps 1 and 3 to 6 of this gate at
+the end of that epic's completion gate, after the merge to main and before closing the
+epic. The PM-Acceptor's epic auto-close leaves such an epic open for exactly this
+reason.
 
 ## Dispatcher Rules
 
